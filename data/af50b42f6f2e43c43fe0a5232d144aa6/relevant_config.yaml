@@ -1,0 +1,13 @@
+parameters:
+  cde: 6
+tasks:
+  a:
+    class: tasks.A
+    input_tasks:
+    - init_a
+    parameters:
+    - cde
+    pipeline: pipeline1
+  init_a:
+    class: tasks.InitA
+    pipeline: pipeline0

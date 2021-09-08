@@ -1,0 +1,5 @@
+parameters: {}
+tasks:
+  init_a:
+    class: tasks.InitA
+    pipeline: pipeline0
