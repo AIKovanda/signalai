@@ -1,0 +1,108 @@
+datasets:
+  diamond_loc00:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc00.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc00.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc00.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc00.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  diamond_loc01:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc01.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc01.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc01.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc01.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  diamond_loc02:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc02.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc02.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc02.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc02.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  diamond_loc03:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc03.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc03.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc03.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc03.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  diamond_loc04:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc04.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc04.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc04.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc04.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  diamond_loc05:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc05.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc05.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc05.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc05.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  diamond_loc06:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc06.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc06.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc06.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc06.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  diamond_loc07:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc07.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc07.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc07.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc07.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  diamond_loc08:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc08.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc08.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc08.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc08.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  diamond_loc09:
+    folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
+    channels:
+      - re_path: '.*loc09.*ch(?P<channel>1).*.bin'
+      - re_path: '.*loc09.*ch(?P<channel>2).*.bin'
+      - re_path: '.*loc09.*ch(?P<channel>3).*.bin'
+      - re_path: '.*loc09.*ch(?P<channel>4).*.bin'
+    functional_unit: file
+  noise:
+    folder: '/mnt/AXAGO/Martin/signalai/noise'
+    channels:
+      - re_path: '.*ch(?P<channel>1).*.bin'
+      - re_path: '.*ch(?P<channel>2).*.bin'
+      - re_path: '.*ch(?P<channel>3).*.bin'
+      - re_path: '.*ch(?P<channel>4).*.bin'
+    functional_unit: anything
+#    relevant_intervals:
+#      - [456, 83456]  # in values
+    op_dtype: float16
+    to_ram: False
+#    adjustments: [0, -400, 5, -15]
+
+fake_datasets:
+  simple_gen:
+    class: signalai.signal_tools.fake_datasets.SimpleGenerator
+    params:
+      sth: sth
+
+default_signal_info:
+  source_dtype: 'float32'
+  big_endian: true
+  signed: true
+  frequency: 1562500
+  op_dtype: float16
+  to_ram: True

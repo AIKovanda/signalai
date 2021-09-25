@@ -1,0 +1,15 @@
+pipelines:
+  - '{CONFIG_DIR}/data_preparation/pipeline.yaml'
+
+import_parameters: '{CONFIG_DIR}/processing/test_params.yaml'
+default_parameters: {}
+
+tasks:
+  train_model:
+    class: signalai.tasks.processing.TrainModel
+    input_tasks: [data_generator]
+    parameters: [cde]
+
+  trained_model:
+    class: signalai.tasks.processing.TrainedModel
+    input_tasks: [train_model]

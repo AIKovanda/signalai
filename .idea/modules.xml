@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/signalai.iml" filepath="$PROJECT_DIR$/.idea/signalai.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/soundai.iml" filepath="$PROJECT_DIR$/.idea/soundai.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../task-organizer/.idea/task-organizer.iml" filepath="$PROJECT_DIR$/../task-organizer/.idea/task-organizer.iml" />
     </modules>
   </component>
 </project>

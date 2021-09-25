@@ -1,7 +1,0 @@
-pipelines: []
-
-parameters: {}
-
-tasks:
-  init_a:
-    class: tasks.InitA

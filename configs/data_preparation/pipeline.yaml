@@ -1,0 +1,15 @@
+pipelines: []
+
+default_parameters:
+  fake_datasets: null
+
+tasks:
+  dataset_loader:
+    class: signalai.tasks.data_preparation.DatasetLoader
+    parameters: [datasets, default_signal_info]
+
+  data_generator:
+    class: signalai.tasks.data_preparation.DataGenerator
+    input_tasks: [dataset_loader]
+    parameters: [manager_config, default_tracks_config, fake_datasets]
+    save: false
