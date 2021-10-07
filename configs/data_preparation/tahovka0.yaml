@@ -7,7 +7,7 @@ datasets:
     standardize: false
     dataset_id: 0
     relevant_intervals:
-    - [5625000, 62500000]
+    - [15625000, 62500000]
 
   tahovka_plastized:
     folder: '/mnt/280EB8D100D42ACE/Datasets/AE stream'
@@ -17,7 +17,7 @@ datasets:
     standardize: false
     dataset_id: 1
     relevant_intervals:
-    - [946718750, 1072656250]
+    - [966718750, 1010156250]
 
   all_tahovka:
     folder: '/mnt/280EB8D100D42ACE/Datasets/AE stream'

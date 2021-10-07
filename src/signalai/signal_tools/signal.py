@@ -85,11 +85,12 @@ class SignalManager:
                     if re.match(dataset_regex, available_dataset):
                         track_datasets.append(available_dataset)
 
+            next_after_samples = self.get_info(track_name, "next_after_samples")
+
             if self.log > 0:
                 print(f"track {track_name} initialized with datasets {json.dumps(track_datasets)}")
+                print(track_name, next_after_samples)
 
-            next_after_samples = self.get_info(track_name, "next_after_samples")
-            print(track_name, next_after_samples)
             max_signal_length = self.get_info(track_name, "max_signal_length")
             self.tracks[track_name] = {
                 "datasets": self.init_datasets(track_datasets, max_signal_length, next_after_samples),
@@ -139,7 +140,7 @@ class SignalManager:
 
     def next_simple_manager(self):
         signal_dict = {}
-
+        start_id = 0
         for track_name, track_info in self.tracks.items():
             if track_name not in self.present_tracks:
                 continue
@@ -150,21 +151,23 @@ class SignalManager:
 
             p = p / np.sum(p)
             chosen_dataset = np.random.choice(list(track_info["datasets"].values()), p=p)
-            signal = next(chosen_dataset).margin_interval(track_info["length"], start_id=None, crop=None)
+            signal, start_id = next(chosen_dataset)
+            signal.margin_interval(track_info["length"], start_id=None, crop=None)  # to fit the track_info["length"]
             signal_dict[track_name] = signal
 
         X = eval(self.X_re)
         Y = eval(self.Y_re)
-        return X, Y
+        return X, Y , start_id
 
     def next_batch(self):
-        X_b, Y_b = [], []
+        X_b, Y_b, ids = [], [], []
         for _ in range(self.batch_size):
-            X, Y = self.next_simple_manager()
+            X, Y, start_id = self.next_simple_manager()
             X_b.append(X)
             Y_b.append(Y)
+            ids.append(start_id)
 
-        return X_b, Y_b
+        return X_b, Y_b  #, ids
 
     def __next__(self):
         if self.type_ == 'simple_manager':
@@ -217,7 +220,7 @@ class SignalLoader:
 
 
 class SignalIndexer:
-    def __init__(self, df, max_signal_length, next_after_samples=False):
+    def __init__(self, df, max_signal_length, next_after_samples=False, log=0):
         self.df = df.drop_duplicates(subset="filename_id").reset_index(drop=True)
         self.max_signal_length = max_signal_length
         self.next_after_samples = next_after_samples
@@ -229,6 +232,7 @@ class SignalIndexer:
         }
         self.id_now = 0
         self.file_now = 0
+        self.log = log
 
     def __next__(self):
         if self.next_after_samples:
@@ -237,7 +241,9 @@ class SignalIndexer:
             self.id_now += self.next_after_samples
             if self.id_now > self.indexing_end[self.file_now]:
                 self.id_now = 0
-                print("new cycle")
+                if self.log > 0:
+                    print("new cycle")
+
                 self.file_now += 1
                 if self.file_now >= len(self.indexing_end):
                     self.file_now = 0
@@ -260,7 +266,7 @@ class SignalDataset:
         if self.split is not None:
             self.df = self.df.query(f"split=='{self.split}'")
         self.log = log
-        self.signal_indexer = SignalIndexer(self.df, self.max_signal_length, self.next_after_samples)
+        self.signal_indexer = SignalIndexer(self.df, self.max_signal_length, self.next_after_samples, log=self.log)
         self.total_interval_length = self.signal_indexer.total_interval_length
 
     def __next__(self):
@@ -269,7 +275,7 @@ class SignalDataset:
             chosen_filename_id,
             start_relative=relative_start,
             max_interval_length=self.max_signal_length
-        )
+        ), relative_start
 
 
 class Signal:

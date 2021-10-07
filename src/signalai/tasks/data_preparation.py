@@ -148,4 +148,4 @@ class DataGenerator(PipelineTask):
             manager_config,
             default_tracks_config,
             fake_datasets,
-            log=1)
+            log=1) 
