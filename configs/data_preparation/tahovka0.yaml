@@ -1,0 +1,86 @@
+datasets:
+  tahovka_normal:
+    folder: '/mnt/280EB8D100D42ACE/Datasets/AE stream'
+    channels:
+      - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
+    splittable: true
+    standardize: false
+    dataset_id: 0
+    relevant_intervals:
+    - [5625000, 62500000]
+
+  tahovka_plastized:
+    folder: '/mnt/280EB8D100D42ACE/Datasets/AE stream'
+    channels:
+      - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
+    splittable: true
+    standardize: false
+    dataset_id: 1
+    relevant_intervals:
+    - [946718750, 1072656250]
+
+  all_tahovka:
+    folder: '/mnt/280EB8D100D42ACE/Datasets/AE stream'
+    channels:
+      - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
+    splittable: false
+    standardize: false
+    to_ram: false
+    dataset_id: 2
+
+  noise:
+    folder: '/mnt/AXAGO/Martin/signalai/noise'
+    channels:
+      - re_path: '.*ch(?P<channel>1).*.bin'
+    splittable: true
+    standardize: false
+    to_ram: true
+    dataset_id: 3
+
+default_signal_info:
+  source_dtype: 'float32'
+  big_endian: true
+  signed: true
+  frequency: 1562500
+  op_dtype: float32
+  to_ram: True
+  split: [0.95,0.0,0.05]
+
+
+manager_config:
+  type: simple_manager
+
+  transformers:
+    standardizer:
+      class: signalai.signal_tools.transformers.Standardizer
+      params:
+        mean: 0
+        std: 1
+
+  tracks:
+    t0:
+      datasets:
+      - tahovka.+
+      equal_category: true
+      next_after_samples: false
+    t1:
+      datasets:
+      - all_tahovka
+      next_after_samples: 32734
+
+    noise:
+      datasets:
+      - noise
+      next_after_samples: false
+
+  # X: "t0.signal" # + (noise.signal * np.random.uniform(0.,0.4))"
+  X: "t0.signal" # + np.random.normal(loc=0.0, scale=np.random.uniform(0.,np.std(t0.signal)/2), size=[1,32734]).astype(np.float32)"
+  Y: "t0.category_id"
+  X_all: "t1.signal"
+  Y_all: "None"
+
+default_tracks_config:
+  equal_category: true
+  next_after_samples: false
+  max_signal_length: 32734
+  length: 32734

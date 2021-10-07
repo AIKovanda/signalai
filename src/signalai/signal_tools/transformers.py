@@ -11,7 +11,7 @@ class Transformer:
 
     def __call__(self, x):
         if isinstance(x, Signal):
-            return self.transform(x.signal)
+            return Signal(self.transform(x.signal), info=x.info, signal_map=x.signal_map)
 
         return self.transform(x)
 
@@ -24,5 +24,5 @@ class Standardizer(Transformer):
     def transform(self, x):
         mean_ = np.mean(x)
         std_ = np.std(x)
-        x = (x - mean_) / std_
-        return (x * self.std) + self.mean
+        y = (x - mean_) / std_
+        return (y * self.std) + self.mean

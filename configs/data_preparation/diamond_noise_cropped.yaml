@@ -8,6 +8,8 @@ datasets:
       - re_path: '.*loc00.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9500, 25884]
   diamond_loc01:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -17,6 +19,8 @@ datasets:
       - re_path: '.*loc01.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9500, 25884]
   diamond_loc02:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -26,6 +30,8 @@ datasets:
       - re_path: '.*loc02.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9500, 25884]
   diamond_loc03:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -35,6 +41,8 @@ datasets:
       - re_path: '.*loc03.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9500, 25884]
   diamond_loc04:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -44,6 +52,8 @@ datasets:
       - re_path: '.*loc04.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9500, 25884]
   diamond_loc05:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -53,6 +63,8 @@ datasets:
       - re_path: '.*loc05.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9500, 25884]
   diamond_loc06:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -62,6 +74,8 @@ datasets:
       - re_path: '.*loc06.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9500, 25884]
   diamond_loc07:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -71,6 +85,8 @@ datasets:
       - re_path: '.*loc07.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9500, 25884]
   diamond_loc08:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -80,6 +96,8 @@ datasets:
       - re_path: '.*loc08.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9500, 25884]
   diamond_loc09:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -89,19 +107,9 @@ datasets:
       - re_path: '.*loc09.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
-  noise:
-    folder: '/mnt/AXAGO/Martin/signalai/noise'
-    channels:
-      - re_path: '.*ch(?P<channel>1).*.bin'
-      - re_path: '.*ch(?P<channel>2).*.bin'
-      - re_path: '.*ch(?P<channel>3).*.bin'
-      - re_path: '.*ch(?P<channel>4).*.bin'
-    splittable: true
-#    relevant_intervals:
-#      - [456, 83456]  # in values
-    op_dtype: float16
-    to_ram: False
-#    adjustments: [0, -400, 5, -15]
+    relevant_intervals:
+    - [9500, 25884]
+
 
 fake_datasets:
   simple_gen:
@@ -114,6 +122,6 @@ default_signal_info:
   big_endian: true
   signed: true
   frequency: 1562500
-  op_dtype: float16
+  op_dtype: float32
   to_ram: True
   split: [0.5,0.25,0.25]

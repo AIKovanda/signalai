@@ -1,43 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="75d09377-ee68-4427-9f49-e2f2cbe7486c" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/configs/data_preparation/diamond_noise.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/configs/data_preparation/pipeline.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/configs/generators/diamond_noise.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/configs/processing/pipeline.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/dataset_checker.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/simple_generator.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/core.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/hfd_spectrogram/hfd_spectrogram.pyx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/hfd_spectrogram/run_hfd_spectrogram.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/signal_tools/fake_datasets.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/signal_tools/generator2.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/signal_tools/signal.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/signal_tools/signal_tools.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/signal_tools/transformers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/tasks/data_preparation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/tasks/processing.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/signalai/tools/utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/signalai.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/signalai.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/pipelines/pipeline0.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/configs/pipelines/pipeline1.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/166b48865f7d1cd8d35d2fb68967c225/output.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/166b48865f7d1cd8d35d2fb68967c225/relevant_config.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/166b48865f7d1cd8d35d2fb68967c225/run_info.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/166b48865f7d1cd8d35d2fb68967c225/used_config.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/744a18bba919e462d8e371946e5e30c6/output.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/744a18bba919e462d8e371946e5e30c6/relevant_config.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/744a18bba919e462d8e371946e5e30c6/run_info.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/744a18bba919e462d8e371946e5e30c6/used_config.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/af50b42f6f2e43c43fe0a5232d144aa6/output.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/af50b42f6f2e43c43fe0a5232d144aa6/relevant_config.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/af50b42f6f2e43c43fe0a5232d144aa6/run_info.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/af50b42f6f2e43c43fe0a5232d144aa6/used_config.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/signalai/script.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/script.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/signalai/tasks.py" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/data_preparation/diamond_noise_cropped.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/data_preparation/tahovka0.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/configs/generators/diamond.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/inceptiontime.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/data_preparation/diamond_noise.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/data_preparation/diamond_noise.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/configs/generators/diamond_noise.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/configs/generators/diamond_noise.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/simple_generator.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/simple_generator.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/signalai/signal_tools/generator2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/signalai/signal_tools/generator2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/signalai/signal_tools/signal.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/signalai/signal_tools/signal.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/signalai/signal_tools/transformers.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/signalai/signal_tools/transformers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/signalai/tasks/data_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/signalai/tasks/data_preparation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -77,18 +56,13 @@
     </file-type-list>
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$USER_HOME$/FlowerChecker/object_detection/src/fch_detection/tasks/detection.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/src/signalai/core.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$USER_HOME$/FlowerChecker/object_detection/src/fch_detection/models/yolox/train.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/scripts/script.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$USER_HOME$/FlowerChecker/object_detection/src/fch_detection/models/core.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/../task-organizer/src/taskorganizer/pipeline.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$USER_HOME$/FlowerChecker/object_detection/src/fch_detection/models/yolox/yolox/core/launch.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$USER_HOME$/FlowerChecker/object_detection/src/fch_detection/models/yolox/fchexp.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$USER_HOME$/FlowerChecker/object_detection/src/fch_detection/models/yolox/yolox/data/datasets/voc.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/signalai/core.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$USER_HOME$/FlowerChecker/object_detection/src/fch_detection/models/core.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/signalai/tasks/processing.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$USER_HOME$/FlowerChecker/object_detection/src/fch_detection/models/yolox/yolox/exp/base_exp.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/scripts/script.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/signalai/tasks/data_preparation.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$USER_HOME$/FlowerChecker/object_detection/src/fch_detection/tasks/detection.py" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="ProjectId" id="1yGDAfBqDQ6LvgFWfpfxfAPvf7i" />
   <component name="ProjectViewState">
@@ -99,7 +73,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/configs/data_preparation" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
@@ -109,6 +83,11 @@
     <option name="enabled" value="false" />
   </component>
   <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/configs/data_preparation" />
+      <recent name="$PROJECT_DIR$/src/signalai/tasks" />
+      <recent name="$PROJECT_DIR$/configs/generators" />
+    </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/signalai/hfd_spectrogram" />
       <recent name="$PROJECT_DIR$/configs/processing" />
@@ -175,7 +154,9 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1631868889298</updated>
-      <workItem from="1631868890629" duration="85039000" />
+      <workItem from="1631868890629" duration="86076000" />
+      <workItem from="1632837925610" duration="57487000" />
+      <workItem from="1633251733073" duration="14465000" />
     </task>
     <servers />
   </component>
@@ -192,6 +173,7 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/signalai$dataset_checker.coverage" NAME="dataset_checker Coverage Results" MODIFIED="1632063848795" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />

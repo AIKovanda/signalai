@@ -21,7 +21,7 @@ manager_config:
       next_after_samples: false
       max_signal_length: 100000
 
-  X: "standardizer(t0.signal) + np.random.uniform(0.1,0.2) * standardizer(t1.signal) "
+  X: "standardizer(t0) + (standardizer(t1) * np.random.uniform(0.1,0.2))"
   Y: "t0.category"
 
 default_tracks_config:

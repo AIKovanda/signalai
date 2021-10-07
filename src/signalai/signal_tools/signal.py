@@ -1,35 +1,67 @@
-import importlib
 import json
 import re
-from abc import abstractmethod
-
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 import simpleaudio as sa
+from tqdm import tqdm
+
+
+def join_dicts(*args):
+    if all([i == args[0] for i in args]):
+        return args[0]
+    else:
+        new_info = {}
+        for key, value in args[0].items():
+            if all([key in i for i in args]):
+                if all([value == i[key] for i in args]):
+                    new_info[key] = value
+        return new_info
+
+
+class SignalManagerGenerator:
+    def __init__(self, df, manager_config, default_tracks_config, fake_datasets=None, log=0):
+        self.df = df
+        self.manager_config = manager_config
+        self.default_tracks_config = default_tracks_config
+        self.fake_datasets = fake_datasets
+        self.log = log
+        self.signal_loader = SignalLoader(df, log=0)
+
+    def get_generator(self, split, batch_size=1, log=None, x="X", y="Y"):
+        if log is None:
+            log = self.log
+        return SignalManager(
+            self.df,
+            manager_config=self.manager_config, signal_loader=self.signal_loader,
+            default_tracks_config=self.default_tracks_config, batch_size=batch_size,
+            fake_datasets=self.fake_datasets, log=log, split=split, x=x, y=y)
 
 
 class SignalManager:
-    def __init__(self, df, manager_config, default_tracks_config, fake_datasets=None, log=0):
+    def __init__(self, df, manager_config, signal_loader, default_tracks_config, batch_size=1, split=None, fake_datasets=None, log=0, x="X", y="Y"):
         if fake_datasets is None:
             fake_datasets = {}
 
         self.df = df
+        self.signal_loader = signal_loader
+        self.split = split
         self.all_available_datasets = self.df.dataset.drop_duplicates().to_list()
 
         self.manager_config = manager_config
         self.fake_datasets = fake_datasets
         self.default_tracks_config = default_tracks_config
+        self.batch_size = batch_size
         self.log = log
 
         self.max_signal_length = None
-        self.datasets = {}
         self.transformers = {}
         self.tracks = {}
+        self.present_tracks = []
 
-        self.X_re = self.manager_config["X"]
-        self.Y_re = self.manager_config["Y"]
+        self.X_re = self.manager_config[x]
+        self.Y_re = self.manager_config[y]
 
         assert "type" in manager_config, "manager_config must have specified type"
         self.type_ = manager_config["type"]
@@ -48,7 +80,6 @@ class SignalManager:
     def init_simple_manager(self):
         for track_name, track_info in self.tracks_info.items():
             track_datasets = []
-            track_dict = {}
             for dataset_regex in track_info["datasets"]:
                 for available_dataset in self.all_available_datasets:
                     if re.match(dataset_regex, available_dataset):
@@ -58,6 +89,7 @@ class SignalManager:
                 print(f"track {track_name} initialized with datasets {json.dumps(track_datasets)}")
 
             next_after_samples = self.get_info(track_name, "next_after_samples")
+            print(track_name, next_after_samples)
             max_signal_length = self.get_info(track_name, "max_signal_length")
             self.tracks[track_name] = {
                 "datasets": self.init_datasets(track_datasets, max_signal_length, next_after_samples),
@@ -66,7 +98,8 @@ class SignalManager:
                 "next_after_samples": next_after_samples,
                 "length": self.get_info(track_name, "length")
             }
-
+            if re.search(fr"(^|[\W])({track_name})($|[\W])", self.X_re) or re.search(fr"(^|[\W])({track_name})($|[\W])", self.Y_re):
+                self.present_tracks.append(track_name)
             self.X_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1signal_dict['\2']\3", self.X_re)
             self.Y_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1signal_dict['\2']\3", self.Y_re)
 
@@ -80,7 +113,9 @@ class SignalManager:
             if dataset_name in datasets:
                 initialized_datasets[dataset_name] = SignalDataset(
                     df=sub_df,
+                    signal_loader=self.signal_loader,
                     max_signal_length=max_signal_length,
+                    split=self.split,
                     next_after_samples=next_after_samples,
                     log=self.log)
 
@@ -106,6 +141,8 @@ class SignalManager:
         signal_dict = {}
 
         for track_name, track_info in self.tracks.items():
+            if track_name not in self.present_tracks:
+                continue
             if track_info["equal_category"]:
                 p = np.ones(len(track_info["datasets"]))
             else:
@@ -120,67 +157,126 @@ class SignalManager:
         Y = eval(self.Y_re)
         return X, Y
 
+    def next_batch(self):
+        X_b, Y_b = [], []
+        for _ in range(self.batch_size):
+            X, Y = self.next_simple_manager()
+            X_b.append(X)
+            Y_b.append(Y)
+
+        return X_b, Y_b
+
     def __next__(self):
         if self.type_ == 'simple_manager':
-            return self.next_simple_manager()
+            return self.next_batch()
         elif self.type_ == 'midi':
             raise NotImplementedError
         else:
             raise ValueError(f"{self.type_} is an unknown manager type, choose either 'simple_manager' or 'midi'")
 
 
-class SignalDataset:
-    def __init__(self, df, max_signal_length, next_after_samples=False, log=0):
+class SignalLoader:
+    def __init__(self, df, log=0):
         self.df = df
-        self.max_signal_length = max_signal_length
-        self.next_after_samples = next_after_samples
-        self.start_relative = 0  # only useful if next_after_samples != False
         self.log = log
-        self.total_interval_length = None
+        self.loaded_signals = {}
+        for chosen_filename_id in tqdm(self.df.query("to_ram").filename_id.drop_duplicates().to_list(),
+                                       desc=f"Loading datasets {self.df.query('to_ram').dataset.drop_duplicates().to_list()} to RAM"):
+            self.loaded_signals[chosen_filename_id] = self.load_from_disc(filename_id=chosen_filename_id)
 
-    def __next__(self):
-        p = self.df.interval_length.to_numpy()
-        p = p / np.sum(p)
-        self.total_interval_length = np.sum(p)
-        chosen_filename_id = self.df.at[np.random.choice(self.df.index.to_list(), p=p), 'filename_id']
-        chosen_sub_df = self.df.query(f"filename_id=='{chosen_filename_id}'").sort_values(
-            by="channel_id")
-
-        chosen_sub_df_info = chosen_sub_df.iloc[0].to_dict()
+    def load_from_disc(self, filename_id, start_relative=0, max_interval_length=None):
+        chosen_sub_df = self.df.query(f"filename_id=='{filename_id}'").sort_values(by="channel_id")
+        chosen_sub_df_info = join_dicts(*[chosen_sub_df.iloc[i].to_dict() for i in range(len(chosen_sub_df))])
         interval_start = int(chosen_sub_df_info["interval_start"])
-        interval_length = int(chosen_sub_df_info["interval_length"])
-        if interval_length <= self.max_signal_length:
-            start_relative = 0
-            taken_interval_length = interval_length
-        else:
-            taken_interval_length = self.max_signal_length
-            if not self.next_after_samples:
-                start_relative = np.random.choice(interval_length - self.max_signal_length)
-            else:
-                if self.start_relative + taken_interval_length > interval_length:
-                    self.start_relative = 0
-                start_relative = self.start_relative
-                self.start_relative += self.next_after_samples
-        
+        all_interval_length = int(chosen_sub_df_info["interval_length"])
+        if max_interval_length is None:
+            max_interval_length = all_interval_length
+        interval_length = min(max_interval_length, all_interval_length)
+
         loaded_signal = []
         for row in chosen_sub_df.itertuples():
             real_start = interval_start + start_relative + int(row.adjustment)
-
             if self.log > 0:
-                print(f"Sample taken from {real_start} to {real_start+taken_interval_length}, channel {row.channel_id}")
+                print(f"Sample taken from {real_start} to {real_start + interval_length}, channel {row.channel_id}")
 
             with open(row.filename, "rb") as f:
-                f.seek(int(row.dtype_bytes)*real_start, 0)
-                loaded_signal.append(np.fromfile(f, dtype=row.source_dtype, count=taken_interval_length))
-        
-        return Signal(np.vstack(loaded_signal), info=chosen_sub_df_info)
-        
+                f.seek(int(row.dtype_bytes) * real_start, 0)
+                loaded_signal.append(np.fromfile(f, dtype=row.source_dtype, count=interval_length))
+
+        stacked_signal = np.vstack(loaded_signal)
+        if chosen_sub_df_info["standardize"]:
+            stacked_signal = (stacked_signal - np.mean(stacked_signal)) / np.std(stacked_signal)
+
+        return Signal(stacked_signal.astype(chosen_sub_df_info["op_dtype"]), info=chosen_sub_df_info)
+
+    def load(self, filename_id, start_relative=0, max_interval_length=None):
+        if filename_id in self.loaded_signals:
+            return self.loaded_signals[filename_id].margin_interval(max_interval_length, start_id=-start_relative)
+
+        return self.load_from_disc(filename_id, start_relative, max_interval_length)
+
+
+class SignalIndexer:
+    def __init__(self, df, max_signal_length, next_after_samples=False):
+        self.df = df.drop_duplicates(subset="filename_id").reset_index(drop=True)
+        self.max_signal_length = max_signal_length
+        self.next_after_samples = next_after_samples
+        self.p = self.df.interval_length.to_numpy()
+        self.total_interval_length = np.sum(self.p)
+        self.p = self.p / np.sum(self.p)
+        self.indexing_end = {
+            int(i.Index): max(0, int(i.interval_length)-self.max_signal_length) for i in self.df.itertuples()
+        }
+        self.id_now = 0
+        self.file_now = 0
+
+    def __next__(self):
+        if self.next_after_samples:
+            id_ = self.id_now
+            filename_id = self.df.loc[self.file_now, "filename_id"]
+            self.id_now += self.next_after_samples
+            if self.id_now > self.indexing_end[self.file_now]:
+                self.id_now = 0
+                print("new cycle")
+                self.file_now += 1
+                if self.file_now >= len(self.indexing_end):
+                    self.file_now = 0
+            return filename_id, id_
+
+        else:
+            random_df_index = np.random.choice(self.df.index.to_list(), p=self.p)
+            chosen_filename_id = self.df.at[random_df_index, 'filename_id']
+            chosen_relative_start_id = np.random.choice(self.indexing_end[random_df_index]+1)
+            return chosen_filename_id, chosen_relative_start_id
+
+
+class SignalDataset:
+    def __init__(self, df, signal_loader, max_signal_length, split=None, next_after_samples=False, log=0):
+        self.df = df
+        self.signal_loader = signal_loader
+        self.max_signal_length = max_signal_length
+        self.next_after_samples = next_after_samples
+        self.split = split
+        if self.split is not None:
+            self.df = self.df.query(f"split=='{self.split}'")
+        self.log = log
+        self.signal_indexer = SignalIndexer(self.df, self.max_signal_length, self.next_after_samples)
+        self.total_interval_length = self.signal_indexer.total_interval_length
+
+    def __next__(self):
+        chosen_filename_id, relative_start = next(self.signal_indexer)
+        return self.signal_loader.load(
+            chosen_filename_id,
+            start_relative=relative_start,
+            max_interval_length=self.max_signal_length
+        )
+
 
 class Signal:
     def __init__(self, signal: np.ndarray, info=None, signal_map=None):
         if info is None:
             info = {}
-        self.signal = signal
+        self.signal = signal.copy()
         self.signal_map = np.ones_like(self.signal, dtype=bool) if signal_map is None else signal_map
         self.info = info
 
@@ -220,6 +316,16 @@ class Signal:
     def category(self):
         return self.dataset
 
+    @property
+    def category_id(self):
+        return self.info["dataset_id"]
+
+    @property
+    def dummy(self):
+        dummy_out = np.zeros(self.info["dataset_total"])
+        dummy_out[self.info["dataset_id"]] = 1
+        return dummy_out
+
     def play(self, fs=44100, channel_id=0):
         # Ensure that highest value is in 16-bit range
         audio = self.signal[channel_id] * (2 ** 15 - 1) / np.max(np.abs(self.signal[channel_id]))
@@ -227,7 +333,10 @@ class Signal:
         play_obj = sa.play_buffer(audio, 1, 2, fs)  # Start playback
         play_obj.wait_done()  # Wait for playback to finish before exiting
 
-    def margin_interval(self, interval_length, start_id=None, crop=None):
+    def margin_interval(self, interval_length=None, start_id=0, crop=None):
+        if interval_length is None:
+            interval_length = len(self)
+
         if interval_length == len(self) and (start_id == 0 or start_id is None) and crop is None:
             return self
 
@@ -239,12 +348,9 @@ class Signal:
             signal = self.signal[:, max(crop[0], 0):min(crop[1], len(self))]
             signal_map = self.signal_map[:, max(crop[0], 0):min(crop[1], len(self))]
 
-        new_signal = np.zeros((self.signal.shape[0], interval_length))
+        new_signal = np.zeros((self.signal.shape[0], interval_length), dtype=self.signal.dtype)
         new_signal_map = np.zeros((self.signal.shape[0], interval_length), dtype=bool)
         sig_len = signal.shape[1]
-
-        if start_id is None:
-            start_id = np.random.randint(0, interval_length - sig_len)
 
         new_signal[:, max(0, start_id):min(interval_length, start_id+sig_len)] = \
             signal[:, max(0, -start_id):min(sig_len, interval_length-start_id)]
@@ -260,14 +366,7 @@ class Signal:
 
         assert len(self) == len(other), "Adding signals with different lengths is forbidden (for a good reason)"
         signal = self.signal + other.signal
-        if self.info == other.info:
-            new_info = self.info
-        else:
-            new_info = {}
-            for key, value in self.info.items():
-                if key in other.info:
-                    if value == other.info[key]:
-                        new_info[key] = value
+        new_info = join_dicts(self.info, other.info)
 
         return Signal(signal=signal, info=new_info, signal_map=(self.signal_map | other.signal_map))
 
@@ -279,3 +378,6 @@ class Signal:
 
     def __len__(self):
         return self.signal.shape[1]
+
+    def __repr__(self):
+        return str(pd.DataFrame.from_dict(self.info, orient='index'))

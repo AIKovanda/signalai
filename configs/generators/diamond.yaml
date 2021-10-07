@@ -1,0 +1,29 @@
+manager_config:
+  type: simple_manager
+
+  transformers:
+    standardizer:
+      class: signalai.signal_tools.transformers.Standardizer
+      params:
+        mean: 0
+        std: 1
+
+  tracks:
+    t0:
+      datasets:
+      - diamond_loc[\d]
+      equal_category: true
+      next_after_samples: false
+#    t1:
+#      datasets:
+#      - noise
+#      next_after_samples: false
+
+  X: "t0.signal" # + np.random.uniform(0.1,0.2) * standardizer(t1.signal)"
+  Y: "t0.category_id"
+
+default_tracks_config:
+  equal_category: true
+  next_after_samples: false
+  max_signal_length: 16384
+  length: 16384

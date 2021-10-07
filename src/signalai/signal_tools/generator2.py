@@ -135,3 +135,40 @@ class SignalGeneratorOld:
 
 # def on_epoch_end(self):
 #     pass
+
+####### backup
+    def load_from_disc(self, chosen_filename_id):
+        s = self.signal_loader.load(chosen_filename_id, start_relative=0, max_interval_length=None)
+        chosen_sub_df = self.df.query(f"filename_id=='{chosen_filename_id}'").sort_values(by="channel_id")
+        chosen_sub_df_info = join_dicts(*[chosen_sub_df.iloc[i].to_dict() for i in range(len(chosen_sub_df))])
+        interval_start = int(chosen_sub_df_info["interval_start"])
+        interval_length = int(chosen_sub_df_info["interval_length"])
+        if interval_length <= self.max_signal_length:
+            start_relative = 0
+        else:
+            if not self.next_after_samples:
+                start_relative = np.random.choice(interval_length - self.max_signal_length)
+            else:
+                if self.start_relative + taken_interval_length > interval_length:
+                    self.start_relative = 0
+                start_relative = self.start_relative
+                self.start_relative += self.next_after_samples
+
+        loaded_signal = []
+        for row in chosen_sub_df.itertuples():
+            real_start = interval_start + start_relative + int(row.adjustment)
+
+            if self.log > 0:
+                print(
+                    f"Sample taken from {real_start} to {real_start + taken_interval_length}, channel {row.channel_id}")
+
+            with open(row.filename, "rb") as f:
+                #print(row.filename, int(row.dtype_bytes) * real_start)
+                f.seek(int(row.dtype_bytes) * real_start, 0)
+                loaded_signal.append(np.fromfile(f, dtype=row.source_dtype, count=taken_interval_length))
+
+        stacked_signal = np.vstack(loaded_signal)
+        if chosen_sub_df_info["standardize"]:
+            stacked_signal = (stacked_signal - np.mean(stacked_signal)) / np.std(stacked_signal)
+
+        return Signal(stacked_signal.astype(chosen_sub_df_info["op_dtype"]), info=chosen_sub_df_info)
