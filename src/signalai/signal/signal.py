@@ -5,7 +5,8 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 import simpleaudio as sa
-from tqdm import tqdm
+from signalai.config import DEVICE
+from tqdm import tqdm, trange
 
 
 def join_dicts(*args):
@@ -27,20 +28,21 @@ class SignalManagerGenerator:
         self.default_tracks_config = default_tracks_config
         self.fake_datasets = fake_datasets
         self.log = log
-        self.signal_loader = SignalLoader(df, log=0)
+        self.signal_loader = None
 
-    def get_generator(self, split, batch_size=1, log=None, x="X", y="Y"):
+    def get_generator(self, split, batch_size=1, log=None, x_name="X", y_name="Y"):
+        self.signal_loader = SignalLoader(self.df, log=0)
         if log is None:
             log = self.log
         return SignalManager(
             self.df,
             manager_config=self.manager_config, signal_loader=self.signal_loader,
             default_tracks_config=self.default_tracks_config, batch_size=batch_size,
-            fake_datasets=self.fake_datasets, log=log, split=split, x=x, y=y)
+            fake_datasets=self.fake_datasets, log=log, split=split, x_name=x_name, y_name=y_name)
 
 
 class SignalManager:
-    def __init__(self, df, manager_config, signal_loader, default_tracks_config, batch_size=1, split=None, fake_datasets=None, log=0, x="X", y="Y"):
+    def __init__(self, df, manager_config, signal_loader, default_tracks_config, batch_size=1, split=None, fake_datasets=None, log=0, x_name="X", y_name="Y"):
         if fake_datasets is None:
             fake_datasets = {}
 
@@ -60,8 +62,8 @@ class SignalManager:
         self.tracks = {}
         self.present_tracks = []
 
-        self.X_re = self.manager_config[x]
-        self.Y_re = self.manager_config[y]
+        self.X_re = self.manager_config[x_name]
+        self.Y_re = self.manager_config[y_name]
 
         assert "type" in manager_config, "manager_config must have specified type"
         self.type_ = manager_config["type"]
@@ -168,6 +170,15 @@ class SignalManager:
             ids.append(start_id)
 
         return X_b, Y_b  #, ids
+
+    def benchmark_data_generator(self, num=1000, device=None):
+        import torch
+        if device is None:
+            device = DEVICE
+        for _ in trange(num):
+            x, y = self.__next__()
+            _ = torch.from_numpy(np.array(x)).to(device)
+            _ = torch.from_numpy(np.array(y)).to(device)
 
     def __next__(self):
         if self.type_ == 'simple_manager':

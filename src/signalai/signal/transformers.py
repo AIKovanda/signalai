@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 import numpy as np
-from signalai.signal_tools.signal import Signal
+from signalai.signal.signal import Signal
 
 
 class Transformer:

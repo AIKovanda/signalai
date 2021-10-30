@@ -9,10 +9,10 @@ import scipy
 
 def gauss_convolve(arr, window_length, rel_std):
     window = signal.windows.gaussian(window_length, std=window_length * rel_std)
-    window = window / sum(window)
-    c = np.array([np.convolve(arr[:, i], window, mode='same') for i in range(arr.shape[1])])
+    window = window / np.sum(window)
+    c = np.array([np.convolve(arr[i, :], window, mode='same') for i in range(arr.shape[0])])
 
-    return c.T
+    return c
 
 
 def gauss_filter(arr, rel_std):

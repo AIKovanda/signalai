@@ -7,9 +7,11 @@ default_parameters: {}
 tasks:
   train_model:
     class: signalai.tasks.processing.TrainModel
-    input_tasks: [data_generator]
-    parameters: [cde]
+    input_tasks: [gen_generator]
+    parameters: [model_info, model_params, training_params]
 
   trained_model:
     class: signalai.tasks.processing.TrainedModel
     input_tasks: [train_model]
+    parameters: [model_info, model_params]
+    save: false

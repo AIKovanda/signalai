@@ -34,3 +34,13 @@ def load_file(file_paths, dtype="float32"):
         return all_loaded[0]
     else:
         raise NotImplemented("multiple input is not implemented yet")
+
+
+def get_instance(instance_class, params):
+    instance_class = instance_class
+    instance_from = ".".join(instance_class.split(".")[:-1])
+    instance_class_name = instance_class.split(".")[-1]
+    exec(f"from {instance_from} import {instance_class_name}")
+
+    instance = eval(f"{instance_class_name}(**params)")
+    return instance

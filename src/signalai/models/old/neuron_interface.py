@@ -22,16 +22,6 @@ from tools.utils import load_file, name_from_network
 import seaborn as sns
 
 
-# def show_stat_classes(y_test, prediction, classes):
-#     if len(prediction.shape) == 2:
-#         prediction = np.argmax(prediction, axis=1)
-#     pd.set_option('precision', 2)
-#     display(pd.DataFrame(metrics.classification_report(y_test, prediction, target_names=classes, output_dict=True)))
-#     # print(metrics.f1_score(y_test, prediction, average='micro'))
-#     conf_matrix = metrics.confusion_matrix(y_test, prediction)
-#     display(pd.DataFrame(conf_matrix, columns=classes, index=classes))
-
-
 class ExperimentDataInterface:
     def __init__(self, chosen_experiment, data_2D=None, data_3D=None):
         self.loaded_data = {}
@@ -204,52 +194,6 @@ class NeuronInterface:
         generator = self.choose_generator(generator_name)
         generator.reset_index()
         return predictions, generator.get_time_positions()
-
-    # def predict_model(self, network, threshold=0.5, force_predict=False, show_stat=False, prediction_name=None):
-    #     network = network['model_params']
-    #
-    #     prediction = self.get_predictions(network, force_predict)
-    #
-    #     if self.sub_folder == 'binary':
-    #         y_test = make_logical(y_test)
-    #         possible_threshold = np.arange(.01, 1, .01)
-    #         threshold_f1max = possible_threshold[
-    #             np.argmax([sklearn.metrics.f1_score(y_test, prediction > i) for i in possible_threshold])
-    #         ]
-    #         metrics = models.utils.evaluate_binary(y_test, prediction, threshold=threshold)
-    #         metrics_f1max = models.utils.evaluate_binary(y_test, prediction, threshold=threshold_f1max)
-    #
-    #     elif self.sub_folder == 'categorical':
-    #         y_test = list(map(int, y_test))
-    #         metrics = models.utils.evaluate(y_test, prediction, classes=self.classes)
-    #         metrics_f1max = None
-    #
-    #     else:  # self.sub_folder == 'multi_label':
-    #         threshold_f1max = [0] * len(self.classes)
-    #         for i, class_ in enumerate(self.classes):
-    #             possible_threshold = np.arange(.01, 1, .01)
-    #             threshold_f1max[i] = possible_threshold[
-    #                 np.argmax(
-    #                     [sklearn.metrics.f1_score(y_test[:, i], prediction[:, i] > j) for j in possible_threshold])
-    #             ]
-    #         metrics = models.utils.evaluate_multi_label(y_test, prediction, classes=self.classes)
-    #         metrics_f1max = models.utils.evaluate_multi_label(y_test, prediction, classes=self.classes,
-    #                                                           threshold=threshold_f1max)
-    #
-    #     if show_stat:
-    #         if self.binary:
-    #             show_stat_classes(np.array(y_test, dtype=np.int), np.array(prediction[:, 0] > threshold, dtype=np.int),
-    #                               None)
-    #         else:
-    #             show_stat_classes(y_test, prediction, self.classes)
-    #
-    #     save_report(model_name=network["model_name"],
-    #                 sub_folder=self.sub_folder,
-    #                 metrics=metrics,
-    #                 metrics_f1max=metrics_f1max,
-    #                 metrics_name=prediction_name,
-    #                 model_params=network,
-    #                 other=network["other"])
 
     def evaluate_model(self, data_interface=None, force_predict=False, bandpass_params=None, add_name=""):
         if data_interface is None:

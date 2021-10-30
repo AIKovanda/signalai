@@ -23,7 +23,8 @@ setuptools.setup(
     install_requires=[
         'pandas',
         'numpy',
-        'pyyaml'
+        'pyyaml',
+        'simpleaudio'
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],

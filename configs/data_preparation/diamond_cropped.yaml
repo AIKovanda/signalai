@@ -9,7 +9,7 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
   diamond_loc01:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -20,7 +20,7 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
   diamond_loc02:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -31,7 +31,7 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
   diamond_loc03:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -42,7 +42,7 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
   diamond_loc04:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -53,7 +53,7 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
   diamond_loc05:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -64,7 +64,7 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
   diamond_loc06:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -75,7 +75,7 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
   diamond_loc07:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -86,7 +86,7 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
   diamond_loc08:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -97,7 +97,7 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
   diamond_loc09:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -108,12 +108,12 @@ datasets:
     splittable: false
     standardize: true
     relevant_intervals:
-    - [9500, 25884]
+    - [9000, 41734]
 
 
 fake_datasets:
   simple_gen:
-    class: signalai.signal_tools.fake_datasets.SimpleGenerator
+    class: signalai.signal.fake_datasets.SimpleGenerator
     params:
       sth: sth
 
@@ -124,4 +124,4 @@ default_signal_info:
   frequency: 1562500
   op_dtype: float32
   to_ram: True
-  split: [0.5,0.25,0.25]
+  split: [0.75,0.,0.25]

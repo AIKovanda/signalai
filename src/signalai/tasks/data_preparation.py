@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from signalai.signal_tools.signal import SignalManagerGenerator, SignalLoader
+from signalai.signal.signal import SignalManagerGenerator
 from taskorganizer.pipeline import PipelineTask
 
 
@@ -141,11 +141,11 @@ class DatasetLoader(PipelineTask):
         return self.load_signal(datasets, default_signal_info)
 
 
-class DataGenerator(PipelineTask):
+class GenGenerator(PipelineTask):
     def run(self, dataset_loader: pd.DataFrame, manager_config, default_tracks_config, fake_datasets):
         return SignalManagerGenerator(
             dataset_loader,
             manager_config,
             default_tracks_config,
             fake_datasets,
-            log=1) 
+            log=1)

@@ -1,6 +1,6 @@
 datasets:
   tahovka_normal:
-    folder: '/mnt/280EB8D100D42ACE/Datasets/AE stream'
+    folder: '/mnt/AXAGO/Datasets/AE stream'
     channels:
       - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
     splittable: true
@@ -10,7 +10,7 @@ datasets:
     - [15625000, 62500000]
 
   tahovka_plastized:
-    folder: '/mnt/280EB8D100D42ACE/Datasets/AE stream'
+    folder: '/mnt/AXAGO/Datasets/AE stream'
     channels:
       - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
     splittable: true
@@ -20,7 +20,7 @@ datasets:
     - [966718750, 1010156250]
 
   all_tahovka:
-    folder: '/mnt/280EB8D100D42ACE/Datasets/AE stream'
+    folder: '/mnt/AXAGO/Datasets/AE stream'
     channels:
       - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
     splittable: false
@@ -52,7 +52,7 @@ manager_config:
 
   transformers:
     standardizer:
-      class: signalai.signal_tools.transformers.Standardizer
+      class: signalai.signal.transformers.Standardizer
       params:
         mean: 0
         std: 1

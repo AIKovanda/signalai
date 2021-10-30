@@ -3,7 +3,7 @@ manager_config:
 
   transformers:
     standardizer:
-      class: signalai.signal_tools.transformers.Standardizer
+      class: signalai.signal.transformers.Standardizer
       params:
         mean: 0
         std: 1

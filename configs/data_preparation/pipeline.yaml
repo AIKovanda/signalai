@@ -8,8 +8,8 @@ tasks:
     class: signalai.tasks.data_preparation.DatasetLoader
     parameters: [datasets, default_signal_info]
 
-  data_generator:
-    class: signalai.tasks.data_preparation.DataGenerator
+  gen_generator:
+    class: signalai.tasks.data_preparation.GenGenerator
     input_tasks: [dataset_loader]
     parameters: [manager_config, default_tracks_config, fake_datasets]
     save: false
