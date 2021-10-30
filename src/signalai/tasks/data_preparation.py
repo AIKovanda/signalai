@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from signalai.signal.signal import SignalManagerGenerator
+from signalai.signal.signal_manager import SignalManagerGenerator
 from taskorganizer.pipeline import PipelineTask
 
 

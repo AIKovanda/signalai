@@ -94,3 +94,15 @@ if __name__ == '__main__':
     # b, a = butter_bandpass(lowcut, highcut, fs)
     # w, h = freqz(b, a, worN=2000)
     # plt.plot((fs * 0.5 / np.pi) * w, abs(h), label="order = %d" % order)
+
+
+def join_dicts(*args):
+    if all([i == args[0] for i in args]):
+        return args[0]
+    else:
+        new_info = {}
+        for key, value in args[0].items():
+            if all([key in i for i in args]):
+                if all([value == i[key] for i in args]):
+                    new_info[key] = value
+        return new_info

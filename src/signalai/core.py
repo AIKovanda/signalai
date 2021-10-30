@@ -1,6 +1,5 @@
 import abc
 from pathlib import Path
-
 from signalai.tools.utils import get_instance
 
 
