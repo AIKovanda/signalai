@@ -1,7 +1,7 @@
 pipelines:
-  - '{CONFIG_DIR}/data_preparation/pipeline.yaml'
+  - '{CONFIG_DIR}/pipeline/data_preparation.yaml'
 
-import_parameters: '{CONFIG_DIR}/processing/test_params.yaml'
+# import_parameters: '{CONFIG_DIR}/processing/test_params.yaml'
 default_parameters: {}
 
 tasks:

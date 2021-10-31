@@ -3,6 +3,8 @@ import re
 
 import numpy as np
 from signalai.config import DEVICE
+from signalai.signal.signal import Signal
+from signalai.tools.utils import get_instance
 from tqdm import trange
 
 from signalai.signal.signal_dataset import SignalDataset
@@ -10,11 +12,11 @@ from signalai.signal.signal_loader import SignalLoader
 
 
 class SignalManagerGenerator:
-    def __init__(self, df, manager_config, default_tracks_config, fake_datasets=None, log=0):
+    def __init__(self, df, manager_config, default_tracks_config, fake_dataset_configs=None, log=0):
         self.df = df
         self.manager_config = manager_config
         self.default_tracks_config = default_tracks_config
-        self.fake_datasets = fake_datasets
+        self.fake_dataset_configs = fake_dataset_configs
         self.log = log
         self.signal_loader = None
 
@@ -26,21 +28,28 @@ class SignalManagerGenerator:
             self.df,
             manager_config=self.manager_config, signal_loader=self.signal_loader,
             default_tracks_config=self.default_tracks_config, batch_size=batch_size,
-            fake_datasets=self.fake_datasets, log=log, split=split, x_name=x_name, y_name=y_name)
+            fake_dataset_configs=self.fake_dataset_configs, log=log, split=split, x_name=x_name, y_name=y_name)
 
 
 class SignalManager:
-    def __init__(self, df, manager_config, signal_loader, default_tracks_config, batch_size=1, split=None, fake_datasets=None, log=0, x_name="X", y_name="Y"):
-        if fake_datasets is None:
-            fake_datasets = {}
+    def __init__(
+            self, df, manager_config, signal_loader,
+            default_tracks_config, batch_size=1, split=None,
+            fake_dataset_configs=None, log=0, x_name="X", y_name="Y"
+    ):
+        if fake_dataset_configs is None:
+            fake_dataset_configs = {}
 
         self.df = df
         self.signal_loader = signal_loader
         self.split = split
-        self.all_available_datasets = self.df.dataset.drop_duplicates().to_list()
+        if len(df) > 0:
+            self.all_available_datasets = self.df.dataset.drop_duplicates().to_list() + list(fake_dataset_configs.keys())
+        else:
+            self.all_available_datasets = list(fake_dataset_configs.keys())
 
         self.manager_config = manager_config
-        self.fake_datasets = fake_datasets
+        self.fake_dataset_configs = fake_dataset_configs
         self.default_tracks_config = default_tracks_config
         self.batch_size = batch_size
         self.log = log
@@ -89,7 +98,8 @@ class SignalManager:
                 "next_after_samples": next_after_samples,
                 "length": self.get_info(track_name, "length")
             }
-            if re.search(fr"(^|[\W])({track_name})($|[\W])", self.X_re) or re.search(fr"(^|[\W])({track_name})($|[\W])", self.Y_re):
+            if re.search(fr"(^|[\W])({track_name})($|[\W])", self.X_re) or re.search(fr"(^|[\W])({track_name})($|[\W])",
+                                                                                     self.Y_re):
                 self.present_tracks.append(track_name)
             self.X_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1signal_dict['\2']\3", self.X_re)
             self.Y_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1signal_dict['\2']\3", self.Y_re)
@@ -100,20 +110,29 @@ class SignalManager:
 
     def init_datasets(self, datasets, max_signal_length, next_after_samples):
         initialized_datasets = {}
-        for dataset_name, sub_df in self.df.groupby("dataset"):
-            if dataset_name in datasets:
-                initialized_datasets[dataset_name] = SignalDataset(
-                    df=sub_df,
-                    signal_loader=self.signal_loader,
-                    max_signal_length=max_signal_length,
-                    split=self.split,
-                    next_after_samples=next_after_samples,
-                    log=self.log)
+        if len(self.df) > 0:
+            for dataset_name, sub_df in self.df.groupby("dataset"):
+                if len(sub_df) > 0:
+                    if dataset_name in datasets:
+                        initialized_datasets[dataset_name] = SignalDataset(
+                            df=sub_df,
+                            signal_loader=self.signal_loader,
+                            max_signal_length=max_signal_length,
+                            split=self.split,
+                            next_after_samples=next_after_samples,
+                            log=self.log)
 
-        for dataset in self.fake_datasets:  # todo
-            pass
-
+        initialized_datasets.update(self.init_fake_datasets(max_signal_length=max_signal_length, datasets=datasets))
         return initialized_datasets
+
+    def init_fake_datasets(self, max_signal_length, datasets):
+        fake_datasets = {}
+        for name, fake_dataset_config in self.fake_dataset_configs.items():
+            if name in datasets:
+                kwargs = {"max_signal_length": max_signal_length, "name": name, **fake_dataset_config.get("kwargs", {})}
+                fake_dataset = get_instance(fake_dataset_config['class'], kwargs)
+                fake_datasets[name] = fake_dataset
+        return fake_datasets
 
     def init_transformers(self):
         for transformer_name, transformer_info in self.manager_config.get("transformers", {}).items():
@@ -145,19 +164,25 @@ class SignalManager:
             signal.margin_interval(track_info["length"], start_id=None, crop=None)  # to fit the track_info["length"]
             signal_dict[track_name] = signal
 
-        X = eval(self.X_re)
-        Y = eval(self.Y_re)
-        return X, Y , start_id
+        x = eval(self.X_re)
+        y = eval(self.Y_re)
+        return x, y, start_id
 
     def next_batch(self):
-        X_b, Y_b, ids = [], [], []
+        x_batch, y_batch, ids = [], [], []
         for _ in range(self.batch_size):
-            X, Y, start_id = self.next_simple_manager()
-            X_b.append(X)
-            Y_b.append(Y)
+            x, y, start_id = self.next_simple_manager()
+            if isinstance(x, Signal):
+                x_batch.append(x.signal)
+            else:
+                x_batch.append(x)
+            if isinstance(y, Signal):
+                y_batch.append(y.signal)
+            else:
+                y_batch.append(y)
             ids.append(start_id)
 
-        return X_b, Y_b  #, ids
+        return x_batch, y_batch  # , ids
 
     def benchmark_data_generator(self, num=1000, device=None):
         import torch
@@ -175,3 +200,14 @@ class SignalManager:
             raise NotImplementedError
         else:
             raise ValueError(f"{self.type_} is an unknown manager type, choose either 'simple_manager' or 'midi'")
+
+    def test(self, spectrogram_freq=None):
+        print("SHOWING GENERATOR")
+        x, y = self.__next__()
+        x, y = np.array(x), np.array(y)
+        print(f"{x.shape=}")
+        print(f"{y.shape=}")
+        x_sig = Signal(x[0])
+        y_sig = Signal(y[0])
+        x_sig.show_all(title="X", spectrogram_freq=spectrogram_freq)
+        y_sig.show_all(title="Y", spectrogram_freq=spectrogram_freq)

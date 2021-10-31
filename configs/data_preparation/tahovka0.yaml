@@ -53,7 +53,7 @@ manager_config:
   transformers:
     standardizer:
       class: signalai.signal.transformers.Standardizer
-      params:
+      kwargs:
         mean: 0
         std: 1
 

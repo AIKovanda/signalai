@@ -103,17 +103,12 @@ datasets:
     to_ram: False
 #    adjustments: [0, -400, 5, -15]
 
-fake_datasets:
-  simple_gen:
-    class: signalai.signal.fake_datasets.SimpleGenerator
-    params:
-      sth: sth
 
 default_signal_info:
   source_dtype: 'float32'
   big_endian: true
   signed: true
-  frequency: 1562500
+  fs: 1562500
   op_dtype: float16
   to_ram: True
   split: [0.5,0.25,0.25]

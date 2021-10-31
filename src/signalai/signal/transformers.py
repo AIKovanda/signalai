@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 import numpy as np
 from signalai.signal.signal import Signal
+from signalai.signal.filters import butter_bandpass_filter
 
 
 class Transformer:
@@ -26,3 +27,16 @@ class Standardizer(Transformer):
         std_ = np.std(x)
         y = (x - mean_) / std_
         return (y * self.std) + self.mean
+
+
+class BandPassFilter(Transformer):
+    def __init__(self, fs, low_cut=None, high_cut=None):
+        self.fs = fs
+        self.low_cut = low_cut
+        self.high_cut = high_cut
+
+    def transform(self, x):
+        x_copy = x.copy()
+        for i in range(len(x_copy)):
+            x_copy[i] = butter_bandpass_filter(x_copy[i], self.low_cut, self.high_cut, self.fs)
+        return x_copy

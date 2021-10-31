@@ -120,7 +120,7 @@ class DatasetLoader(PipelineTask):
                             "interval_end": split_info["interval_end"],
                             "interval_length": split_info["interval_length"],
                             "values": file_size,
-                            "frequency": get_info("frequency", 44100),
+                            "fs": get_info("fs", 44100),
                             "big_endian": get_info("big_endian", True),
                             "source_dtype": source_dtype,
                             "dtype_bytes": dtype_byte,
@@ -131,10 +131,12 @@ class DatasetLoader(PipelineTask):
                             "adjustment": adjustment
                         }))
 
-        df = pd.DataFrame(series_list).sort_values(by=["filename_id", "channel_id"]).reset_index(drop=True)  # for better readability
+        df = pd.DataFrame(series_list)
+        if len(df) > 0:
+            df.sort_values(by=["filename_id", "channel_id"]).reset_index(drop=True)  # for better readability
 
-        dataset_list = df.dataset.drop_duplicates().sort_values().to_list()
-        df["dataset_total"] = len(dataset_list)
+            dataset_list = df.dataset.drop_duplicates().sort_values().to_list()
+            df["dataset_total"] = len(dataset_list)
         return df
 
     def run(self, datasets, default_signal_info):

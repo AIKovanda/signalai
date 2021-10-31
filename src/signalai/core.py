@@ -26,9 +26,10 @@ class SignalModel(abc.ABC):
                 "train", log=0, batch_size=self.training_params["batch_size"]
             )
         if self.evaluator is None:
-            eval_info = self.training_params["evaluator"]
-            self.evaluator = get_instance(eval_info["class"], {
-                "gen_gen": self.gen_generator})
+            eval_info = self.training_params.get("evaluator", None)
+            if eval_info is not None:
+                self.evaluator = get_instance(eval_info["class"], {
+                    "gen_gen": self.gen_generator})
         
         self._train_on_generator()
 

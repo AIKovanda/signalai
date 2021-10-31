@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 
 from signalai.signal.signal import Signal
-from signalai.signal.tools import join_dicts
+from signalai.tools.utils import join_dicts
 
 
 class SignalLoader:
@@ -10,6 +10,10 @@ class SignalLoader:
         self.df = df
         self.log = log
         self.loaded_signals = {}
+        if len(self.df) > 0:
+            self.load_to_ram()
+
+    def load_to_ram(self):
         for chosen_filename_id in tqdm(self.df.query("to_ram").filename_id.drop_duplicates().to_list(),
                                        desc=f"Loading datasets {self.df.query('to_ram').dataset.drop_duplicates().to_list()} to RAM"):
             self.loaded_signals[chosen_filename_id] = self.load_from_disc(filename_id=chosen_filename_id)

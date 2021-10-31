@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from signalai.config import DEVICE
-from signalai.signal.tools import gauss_convolve
+from signalai.signal.filters import gauss_convolve
 import seaborn as sns
 
 

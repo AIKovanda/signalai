@@ -1,7 +1,8 @@
 pipelines: []
 
 default_parameters:
-  fake_datasets: null
+  fake_datasets: {}
+  default_signal_info: {}
 
 tasks:
   dataset_loader:

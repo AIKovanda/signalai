@@ -3,35 +3,88 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 import simpleaudio as sa
-
-from signalai.signal.tools import join_dicts
+from scipy import signal as scipy_signal
+from signalai.tools.utils import join_dicts
 
 
 class Signal:
-    def __init__(self, signal: np.ndarray, info=None, signal_map=None):
+    def __init__(self, signal, info=None, signal_map=None):
         if info is None:
             info = {}
-        self.signal = signal.copy()
-        self.signal_map = np.ones_like(self.signal, dtype=bool) if signal_map is None else signal_map
-        self.info = info
+        if isinstance(signal, np.ndarray):
+            self.signal = signal.copy()
+            self.signal_map = np.ones_like(self.signal, dtype=bool) if signal_map is None else signal_map
+            self.info = info
+        elif isinstance(signal, Signal):
+            self.signal = signal.signal.copy()
+            self.signal_map = signal_map or signal.signal_map
+            self.info = info or signal.info
+        else:
+            raise TypeError(f"Unknown signal type {type(signal)}.")
 
-    def show(self, channels=None, figsize=(16, 9), save_as=None, show=True):
+    def show(self, channels=None, figsize=(16, 3), save_as=None, show=True, split=False, title=None,
+             spectrogram_freq=None):
         if channels is None:
-            channels = list(range(self.signal.shape[0]))
-
-        if isinstance(channels, int):
+            channels = range(self.signal.shape[0])
+        elif isinstance(channels, int):
             channels = [channels]
 
-        plt.figure(figsize=figsize)
-        for channel_id in channels:
-            y = self.signal[channel_id].copy()
-            y -= np.mean(y)
-            y = y / np.std(y)
-            sns.lineplot(x=range(len(y)), y=y)
+        if split:
+            if spectrogram_freq is None:
+                with plt.style.context('seaborn-darkgrid'):
+                    fig, axes = plt.subplots(self.channels, 1, figsize=figsize, squeeze=False)
+                    for channel_id in channels:
+                        y = self.signal[channel_id]
+                        sns.lineplot(x=range(len(y)), y=y, ax=axes[channel_id, 0])
+            else:
+                fig, axes = plt.subplots(self.channels, 1, figsize=figsize, squeeze=False)
+                for channel_id in channels:
+                    f, t, Sxx = scipy_signal.spectrogram(self.signal[channel_id], spectrogram_freq)
+                    axes[channel_id, 0].pcolormesh(t, f, Sxx, shading='gouraud')
+        else:
+            if spectrogram_freq is None:
+                with plt.style.context('seaborn-darkgrid'):
+                    fig = plt.figure(figsize=figsize)
+                    for channel_id in channels:
+                        if spectrogram_freq is None:
+                            y = self.signal[channel_id]
+                            sns.lineplot(x=range(len(y)), y=y)
+            else:
+                fig = plt.figure(figsize=figsize)
+                f, t, Sxx = scipy_signal.spectrogram(self.signal[0], spectrogram_freq)
+                plt.pcolormesh(t, f, Sxx, shading='gouraud')
+
+        fig.patch.set_facecolor('white')
+        if title is not None:
+            fig.suptitle(title)
+
         if save_as is not None:
             plt.savefig(save_as)
         if show:
             plt.show()
+
+    def show_all(self, spectrogram_freq, title=None):
+        self.show(figsize=(18, 1.5 * self.channels), split=True, title=title)
+        self.show(figsize=(18, 1.5 * self.channels), split=True, title=title, spectrogram_freq=spectrogram_freq)
+
+        self.margin_interval(interval_length=150).show(
+            figsize=(18, 1.5 * self.channels), split=True,
+            title=f"{title} - first 150 samples")
+
+    def spectrogram(self, fs, figsize=(16, 9), save_as=None, show=True):
+        plt.figure(figsize=figsize)
+        f, t, Sxx = scipy_signal.spectrogram(self.signal[0], fs)
+        plt.pcolormesh(t, f, Sxx, shading='gouraud')
+        plt.ylabel('Frequency [Hz]')
+        plt.xlabel('Time [sec]')
+        if save_as is not None:
+            plt.savefig(save_as)
+        if show:
+            plt.show()
+
+    @property
+    def channels(self):
+        return self.signal.shape[0]
 
     @property
     def joined_signal(self):
@@ -61,7 +114,7 @@ class Signal:
         dummy_out[self.info["dataset_id"]] = 1
         return dummy_out
 
-    def play(self, fs=44100, channel_id=0):
+    def play(self, channel_id=0, fs=44100):
         # Ensure that highest value is in 16-bit range
         audio = self.signal[channel_id] * (2 ** 15 - 1) / np.max(np.abs(self.signal[channel_id]))
         audio = audio.astype(np.int16)
@@ -104,6 +157,21 @@ class Signal:
         new_info = join_dicts(self.info, other.info)
 
         return Signal(signal=signal, info=new_info, signal_map=(self.signal_map | other.signal_map))
+
+    def __or__(self, other):
+        if isinstance(other, Signal):
+            other_signal = other
+            new_info = join_dicts(self.info, other.info)
+            new_signal_map = (self.signal_map | other.signal_map)
+        else:
+            other_signal = Signal(other)
+            new_info = self.info
+            new_signal_map = self.signal_map
+
+        assert len(self) == len(other), "Adding signals with different lengths is forbidden (for a good reason)"
+        new_signal = np.concatenate([self.signal, other_signal.signal], axis=0)
+
+        return Signal(signal=new_signal, info=new_info, signal_map=new_signal_map)
 
     def __mul__(self, other):
         return Signal(signal=self.signal*other, info=self.info, signal_map=self.signal_map)
