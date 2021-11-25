@@ -156,7 +156,7 @@ class SignalManager:
             if track_info["equal_category"]:
                 p = np.ones(len(track_info["datasets"]))
             else:
-                p = np.array([i.total_interval_length for i in track_info["datasets"]])
+                p = np.array([i.total_interval_length for i in track_info["datasets"].values()])
 
             p = p / np.sum(p)
             chosen_dataset = np.random.choice(list(track_info["datasets"].values()), p=p)
@@ -207,6 +207,8 @@ class SignalManager:
         x, y = np.array(x), np.array(y)
         print(f"{x.shape=}")
         print(f"{y.shape=}")
+        print(f"{x.dtype=}")
+        print(f"{y.dtype=}")
         x_sig = Signal(x[0])
         y_sig = Signal(y[0])
         x_sig.show_all(title="X", spectrogram_freq=spectrogram_freq)

@@ -1,8 +1,9 @@
+from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
 from signalai.signal.signal import Signal
-from signalai.tools.utils import join_dicts
+from signalai.tools.utils import join_dicts, audio_file2numpy
 
 
 class SignalLoader:
@@ -14,8 +15,9 @@ class SignalLoader:
             self.load_to_ram()
 
     def load_to_ram(self):
-        for chosen_filename_id in tqdm(self.df.query("to_ram").filename_id.drop_duplicates().to_list(),
-                                       desc=f"Loading datasets {self.df.query('to_ram').dataset.drop_duplicates().to_list()} to RAM"):
+        for chosen_filename_id in tqdm(
+                self.df.query("to_ram").filename_id.drop_duplicates().to_list(),
+                desc=f"Loading datasets {self.df.query('to_ram').dataset.drop_duplicates().to_list()} to RAM"):
             self.loaded_signals[chosen_filename_id] = self.load_from_disc(filename_id=chosen_filename_id)
 
     def load_from_disc(self, filename_id, start_relative=0, max_interval_length=None):
@@ -33,9 +35,15 @@ class SignalLoader:
             if self.log > 0:
                 print(f"Sample taken from {real_start} to {real_start + interval_length}, channel {row.channel_id}")
 
-            with open(row.filename, "rb") as f:
-                f.seek(int(row.dtype_bytes) * real_start, 0)
-                loaded_signal.append(np.fromfile(f, dtype=row.source_dtype, count=interval_length))
+            suffix = Path(row.filename).suffix
+            if suffix in ['.bin', '.dat']:
+                with open(row.filename, "rb") as f:
+                    f.seek(int(row.dtype_bytes) * real_start, 0)
+                    loaded_signal.append(np.fromfile(f, dtype=row.source_dtype, count=interval_length))
+            elif suffix in [".aac", ".wav", ".mp3"]:
+                loaded_signal.append(audio_file2numpy(row.filename)[:, real_start: real_start + interval_length])
+            else:
+                raise TypeError(f"Suffix '{suffix}' unknown!")
 
         stacked_signal = np.vstack(loaded_signal)
         if chosen_sub_df_info["standardize"]:

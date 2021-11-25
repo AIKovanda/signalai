@@ -5,7 +5,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from signalai.signal.signal_manager import SignalManagerGenerator
+from signalai.tools.utils import audio_file2numpy
 from taskorganizer.pipeline import PipelineTask
+from tqdm import tqdm
 
 
 class DatasetLoader(PipelineTask):
@@ -59,14 +61,22 @@ class DatasetLoader(PipelineTask):
                 split_map += ["valid"] * int(split_ratios[1] * len(unique_dataset_files_id))
                 split_map += ["test"] * (len(unique_dataset_files_id) - len(split_map))
 
-            for file_id, dataset_file in enumerate(dataset_files):
+            for file_id, dataset_file in tqdm(enumerate(dataset_files), total=len(dataset_files), desc="Objects:"):
                 channel_id = file_channel_id[file_id]
                 source_dtype = get_info("source_dtype", "float32")
                 dtype_byte = np.dtype(source_dtype).itemsize
-                file_size = os.path.getsize(dataset_file)
-                assert file_size % dtype_byte == 0, f"""file {dataset_file} may be corrupted, 
-                                the byte length {file_size} is not compatible 
-                                with data type {source_dtype} which has a size of {dtype_byte}"""
+                suffix = Path(dataset_file).suffix
+                if suffix in ['.bin', '.dat']:
+                    file_size = os.path.getsize(dataset_file)
+                    assert file_size % dtype_byte == 0, f"""file {dataset_file} may be corrupted, 
+                                    the byte length {file_size} is not compatible 
+                                    with data type {source_dtype} which has a size of {dtype_byte}"""
+                elif suffix in [".aac", ".wav", ".mp3"]:
+                    file_size = audio_file2numpy(dataset_file).shape[-1]
+
+                else:
+                    raise TypeError(f"Suffix type '{suffix}' is not supported yet!")
+
                 file_size = file_size // dtype_byte
                 if "adjustments" in dataset_info:
                     assert len(dataset_info["channels"]) == len(dataset_info["adjustments"]), \

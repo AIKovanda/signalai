@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pydub
 import seaborn as sns
 from matplotlib import pyplot as plt
 import simpleaudio as sa
@@ -70,10 +71,12 @@ class Signal:
         self.margin_interval(interval_length=150).show(
             figsize=(18, 1.5 * self.channels), split=True,
             title=f"{title} - first 150 samples")
+        self.play()
 
     def spectrogram(self, fs, figsize=(16, 9), save_as=None, show=True):
         plt.figure(figsize=figsize)
         f, t, Sxx = scipy_signal.spectrogram(self.signal[0], fs)
+        Sxx = np.sqrt(Sxx)
         plt.pcolormesh(t, f, Sxx, shading='gouraud')
         plt.ylabel('Frequency [Hz]')
         plt.xlabel('Time [sec]')
@@ -85,6 +88,20 @@ class Signal:
     @property
     def channels(self):
         return self.signal.shape[0]
+
+    def join_channels(self, channels):
+        assert isinstance(channels, list) or isinstance(channels, tuple), \
+            f"Wrong channels type, list or tuple is needed, not {type(channels)}"
+        if all([isinstance(i, int) for i in channels]):
+            channels = [channels]
+
+        new_signal = []
+        for new_channel in channels:
+            assert all([isinstance(i, int) for i in new_channel]), \
+                f"Wrong channel type, list of ints needed, not list of {type(new_channel[0])}"
+            new_signal.append(np.sum(self.signal[new_channel, :], axis=0))
+
+        return Signal(signal=np.array(new_signal))
 
     @property
     def joined_signal(self):
@@ -184,3 +201,12 @@ class Signal:
 
     def __repr__(self):
         return str(pd.DataFrame.from_dict(self.info, orient='index'))
+
+    def to_mp3(self, file, sf=44100, normalized=True):
+        channels = 2 if (self.signal.ndim == 2 and self.signal.shape[0] == 2) else 1
+        if normalized:  # normalized array - each item should be a float in [-1, 1)
+            y = np.int16(self.signal.T * 2 ** 15)
+        else:
+            y = np.int16(self.signal.T)
+        song = pydub.AudioSegment(y.tobytes(), frame_rate=sf, sample_width=2, channels=channels)
+        song.export(file, format="mp3", bitrate="320k")

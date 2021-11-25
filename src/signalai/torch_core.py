@@ -61,6 +61,7 @@ class TorchModel(SignalModel):
             print(f"Signal visualization is at {output_svg}.")
 
     def train_on_batch(self, x, y):
+        self.model.train()
         if isinstance(x, np.ndarray) or isinstance(x, list):
             x_batch = torch.from_numpy(np.array(x)).type(torch.float32).to(DEVICE)
             if self.training_params.get("output_type", "label") == "label":
@@ -78,15 +79,15 @@ class TorchModel(SignalModel):
         return loss.item()
 
     def eval_on_batch(self, x):
-        self.model.eval()
-        if isinstance(x, np.ndarray):
-            inputs = torch.from_numpy(np.array(x)).type(torch.float32).to(DEVICE)
-        else:
-            inputs = x.to(DEVICE)
+        with torch.no_grad():
+            self.model.eval()
+            if isinstance(x, np.ndarray):
+                inputs = torch.from_numpy(np.array(x)).type(torch.float32).to(DEVICE)
+            else:
+                inputs = x.to(DEVICE)
 
-        y_hat = self.model(inputs).cpu()
-        self.model.train()
-        return y_hat
+            y_hat = self.model(inputs).detach().cpu().numpy()
+            return y_hat
 
     def save(self, output_file, verbose=1):
         if not str(output_file).endswith(".pth"):
@@ -107,6 +108,8 @@ class TorchModel(SignalModel):
             return nn.BCELoss(**criterion_info.get("kwargs", {}))
         elif criterion_info["name"] == "MSELoss":
             return nn.MSELoss(**criterion_info.get("kwargs", {}))
+        elif criterion_info["name"] == "L1Loss":
+            return nn.L1Loss(**criterion_info.get("kwargs", {}))
         else:
             raise NotImplementedError(f"Criterion '{criterion_info['name']}' not implemented yet!!")
 
@@ -120,7 +123,7 @@ class TorchModel(SignalModel):
 
 class InceptionTime(nn.Module):
 
-    def __init__(self, build_config, in_channels=1, outputs=1):
+    def __init__(self, build_config, in_channels=1, outputs=1, activation="SELU"):
         """
         InceptionTime network
         :param build_config: list of dicts
@@ -131,15 +134,25 @@ class InceptionTime(nn.Module):
         n_filters = [in_channels] + [node.get("n_filters", 32) for node in build_config]
         kernel_sizes = [node.get("kernel_sizes", [11, 21, 41]) for node in build_config]
         bottleneck_channels = [node.get("bottleneck_channels", 32) for node in build_config]
+        use_residuals = [node.get("use_residual", True) for node in build_config]
         num_of_nodes = len(kernel_sizes)
         self.outputs = outputs
+        if activation == "SELU":
+            activation_function = nn.SELU()
+        elif activation == "Mish":
+            activation_function = nn.Mish()
+        elif activation == "Tanh":
+            activation_function = nn.Tanh()
+        else:
+            raise ValueError(f"Activation {activation} unknown!")
+            
         self.inception_blocks = ModuleList([InceptionBlock(
-            in_channels=n_filters[i],
+            in_channels=n_filters[i] if i==0 else n_filters[i]*4,
             n_filters=n_filters[i+1],
             kernel_sizes=kernel_sizes[i],
             bottleneck_channels=bottleneck_channels[i],
-            use_residual=True,
-            activation=nn.SELU()
+            use_residual=use_residuals[i],
+            activation=activation_function
         ) for i in range(num_of_nodes)])
         self.in_features = (1 + len(kernel_sizes[-1])) * n_filters[-1] * 1
         if self.outputs > 0:
