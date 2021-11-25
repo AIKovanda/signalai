@@ -1,3 +1,5 @@
+tasks: signalai.tasks.data_preparation.*
+
 datasets:
   karaoke:
     folder: '/home/martin/dataset_karaoke'
@@ -16,8 +18,8 @@ default_signal_info:
   signed: true
   fs: 44100
   op_dtype: float16
-  to_ram: false
-  split: [0.9,0.,0.1]
+  to_ram: true
+  split: [1.,0.,0.]
 
 
 manager_config:
@@ -39,10 +41,10 @@ manager_config:
 
   # X: "t0.signal" # + (noise.signal * np.random.uniform(0.,0.4))"
   X: "t0.join_channels([[0,2,4,6], [1,3,5,7]])" # + np.random.normal(loc=0.0, scale=np.random.uniform(0.,np.std(t0.signal)/2), size=[1,32734]).astype(np.float32)"
-  Y: "t0.join_channels([[0,2,4], [1,3,5]])"
+  Y: "t0"
 
 default_tracks_config:
   equal_category: true
   next_after_samples: false
-  max_signal_length: 327340
-  length: 327340
+  max_signal_length: 32734
+  length: 32734

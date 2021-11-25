@@ -10,7 +10,7 @@ class SignalModel(abc.ABC):
         self.gen_generator = gen_generator
         self.model_type = model_type
         self.training_params = training_params
-        self.save_dir = Path(save_dir)
+        self.save_dir = Path(save_dir) if save_dir is not None else None
 
         self.train_gen = None
         self.evaluator = None

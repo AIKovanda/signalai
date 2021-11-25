@@ -105,7 +105,9 @@ class SignalManager:
             self.Y_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1signal_dict['\2']\3", self.Y_re)
 
     def get_info(self, track_name, info_name):
-        assert info_name in self.manager_config or info_name in self.default_tracks_config, f"{info_name} is missing in manager_config"
+        if info_name not in self.manager_config:
+            return None
+
         return self.tracks_info[track_name].get(info_name, self.default_tracks_config.get(info_name))
 
     def init_datasets(self, datasets, max_signal_length, next_after_samples):
@@ -122,27 +124,18 @@ class SignalManager:
                             next_after_samples=next_after_samples,
                             log=self.log)
 
-        initialized_datasets.update(self.init_fake_datasets(max_signal_length=max_signal_length, datasets=datasets))
+        initialized_datasets.update(self.init_fake_datasets(datasets=datasets))
         return initialized_datasets
 
-    def init_fake_datasets(self, max_signal_length, datasets):
+    def init_fake_datasets(self, datasets):
         fake_datasets = {}
-        for name, fake_dataset_config in self.fake_dataset_configs.items():
+        for name, fake_dataset in self.fake_dataset_configs.items():
             if name in datasets:
-                kwargs = {"max_signal_length": max_signal_length, "name": name, **fake_dataset_config.get("kwargs", {})}
-                fake_dataset = get_instance(fake_dataset_config['class'], kwargs)
                 fake_datasets[name] = fake_dataset
         return fake_datasets
 
     def init_transformers(self):
-        for transformer_name, transformer_info in self.manager_config.get("transformers", {}).items():
-            transformer_class = transformer_info["class"]
-            transformer_from = ".".join(transformer_class.split(".")[:-1])
-            transformer_class_name = transformer_class.split(".")[-1]
-            exec(f"from {transformer_from} import {transformer_class_name}")
-
-            params = transformer_info.get("params", {})
-            transformer = eval(f"{transformer_class_name}(**params)")
+        for transformer_name, transformer in self.manager_config.get("transformers", {}).items():
             self.transformers[transformer_name] = transformer
             self.X_re = re.sub(fr"(^|[\W])({transformer_name})($|[\W])", fr"\1self.transformers['\2']\3", self.X_re)
             self.Y_re = re.sub(fr"(^|[\W])({transformer_name})($|[\W])", fr"\1self.transformers['\2']\3", self.Y_re)

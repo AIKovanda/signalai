@@ -1,15 +1,20 @@
-model_info:
-  class: signalai.torch_core.InceptionTime
-  type: torch  # tf
+tasks: signalai.tasks.processing.*
+uses: "{CONFIGS_DIR}/data_preparation/decomposer/decomposer_noram.yaml"
 
-model_params:
-  build_config:
-    - bottleneck_channels: 32
-      kernel_sizes: [51, 121, 255]
-      n_filters: 32
-      use_residual: false
-  in_channels: 2
-  outputs: -8
+
+signal_model_config:
+  signal_model_type: torch_signal_model
+  model:
+    class: signalai.torch_core.InceptionTime
+    kwargs:
+      build_config:
+        - bottleneck_channels: 32
+          kernel_sizes: [51, 121, 255]
+          n_filters: 32
+          use_residual: false
+      in_channels: 2
+      outputs: -8
+
 
 training_params:
   batch_size: 16

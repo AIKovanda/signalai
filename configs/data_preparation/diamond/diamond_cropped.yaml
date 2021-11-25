@@ -1,3 +1,5 @@
+tasks: signalai.tasks.data_preparation.*
+
 datasets:
   diamond_loc00:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
@@ -8,6 +10,8 @@ datasets:
       - re_path: '.*loc00.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9000, 41734]
   diamond_loc01:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -17,6 +21,8 @@ datasets:
       - re_path: '.*loc01.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9000, 41734]
   diamond_loc02:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -26,6 +32,8 @@ datasets:
       - re_path: '.*loc02.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9000, 41734]
   diamond_loc03:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -35,6 +43,8 @@ datasets:
       - re_path: '.*loc03.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9000, 41734]
   diamond_loc04:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -44,6 +54,8 @@ datasets:
       - re_path: '.*loc04.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9000, 41734]
   diamond_loc05:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -53,6 +65,8 @@ datasets:
       - re_path: '.*loc05.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9000, 41734]
   diamond_loc06:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -62,6 +76,8 @@ datasets:
       - re_path: '.*loc06.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9000, 41734]
   diamond_loc07:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -71,6 +87,8 @@ datasets:
       - re_path: '.*loc07.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9000, 41734]
   diamond_loc08:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -80,6 +98,8 @@ datasets:
       - re_path: '.*loc08.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
+    relevant_intervals:
+    - [9000, 41734]
   diamond_loc09:
     folder: '/mnt/AXAGO/Martin/signalai/diamond/AEforANN-tube1-diamond'
     channels:
@@ -89,19 +109,8 @@ datasets:
       - re_path: '.*loc09.*ch(?P<channel>4).*.bin'
     splittable: false
     standardize: true
-  noise:
-    folder: '/mnt/AXAGO/Martin/signalai/noise'
-    channels:
-      - re_path: '.*ch(?P<channel>1).*.bin'
-      - re_path: '.*ch(?P<channel>2).*.bin'
-      - re_path: '.*ch(?P<channel>3).*.bin'
-      - re_path: '.*ch(?P<channel>4).*.bin'
-    splittable: true
-#    relevant_intervals:
-#      - [456, 83456]  # in values
-    op_dtype: float16
-    to_ram: False
-#    adjustments: [0, -400, 5, -15]
+    relevant_intervals:
+    - [9000, 41734]
 
 
 default_signal_info:
@@ -109,9 +118,9 @@ default_signal_info:
   big_endian: true
   signed: true
   fs: 1562500
-  op_dtype: float16
+  op_dtype: float32
   to_ram: True
-  split: [0.5,0.25,0.25]
+  split: [0.75,0.,0.25]
 
 
 manager_config:
@@ -130,27 +139,16 @@ manager_config:
       - diamond_loc[\d]
       equal_category: true
       next_after_samples: false
-      max_signal_length: 100000
-    t1:
-      datasets:
-      - noise
-      next_after_samples: false
-      max_signal_length: 100000
+#    t1:
+#      datasets:
+#      - noise
+#      next_after_samples: false
 
-  X: "standardizer(t0) + (standardizer(t1) * np.random.uniform(0.1,0.2))"
-  Y: "t0.category"
+  X: "t0.signal" # + np.random.uniform(0.1,0.2) * standardizer(t1.signal)"
+  Y: "t0.category_id"
 
 default_tracks_config:
   equal_category: true
   next_after_samples: false
-  max_signal_length: 100000
-  length: 100000
-
-
-#denoise:
-#  X: "standardizer(t0.signal) + standardizer(t1.signal) * 0.2"
-#  Y: "t0.signal"
-#tick_combination:
-#  X: "t0.signal"
-#  Y: "t0.category"
-
+  max_signal_length: 32734
+  length: 32734

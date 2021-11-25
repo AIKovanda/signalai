@@ -11,6 +11,7 @@ class ToneGenerator:
         self.noise_ratio = noise_ratio
         self.noise_range = noise_range
         self.name = name
+        self.total_interval_length = max_signal_length
 
     def __next__(self):
         if isinstance(self.freq, list):

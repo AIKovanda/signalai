@@ -1,3 +1,5 @@
+tasks: signalai.tasks.data_preparation.*
+
 datasets:
   tahovka_normal:
     folder: '/mnt/AXAGO/Datasets/AE stream'

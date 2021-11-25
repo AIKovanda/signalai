@@ -12,7 +12,7 @@ import numpy as np
 from signalai.config import DEVICE
 
 
-class TorchModel(SignalModel):
+class TorchSignalModel(SignalModel):
 
     def _train_on_generator(self, verbose=1):
         print("Training params:")
@@ -24,6 +24,7 @@ class TorchModel(SignalModel):
         output_dir = self.save_dir / "saved_model"
         output_dir.mkdir(parents=True, exist_ok=True)
         batch_id = 0
+        last_file = (output_dir / f"last.pth").absolute()
 
         for batch_id in batches_id:
             x, y = next(self.train_gen)
@@ -41,7 +42,6 @@ class TorchModel(SignalModel):
             if batch_id % self.training_params["save_step"] == 0 and batch_id != 0:
                 output_stem = str(self.training_params["output_name"].format(batch_id=batch_id))
                 output_file = (output_dir / f"{output_stem}.pth").absolute()
-                last_file = (output_dir / f"last.pth").absolute()
                 self.save(output_file, verbose=verbose)
 
                 os.system(f'ln -f "{output_file}" "{last_file}"')
@@ -54,6 +54,7 @@ class TorchModel(SignalModel):
 
         output_file = (output_dir / f"{batch_id}.pth").absolute()
         self.save(output_file, verbose=verbose)
+        os.system(f'ln -f "{output_file}" "{last_file}"')
 
     def evaluate(self, output_svg, verbose=1):
         self.evaluator.evaluate(self.model, output_svg)

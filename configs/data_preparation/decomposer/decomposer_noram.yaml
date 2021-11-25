@@ -1,3 +1,5 @@
+tasks: signalai.tasks.data_preparation.*
+
 datasets:
   karaoke:
     folder: '/home/martin/dataset_karaoke'

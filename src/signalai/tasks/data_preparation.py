@@ -6,11 +6,19 @@ import numpy as np
 import pandas as pd
 from signalai.signal.signal_manager import SignalManagerGenerator
 from signalai.tools.utils import audio_file2numpy
-from taskorganizer.pipeline import PipelineTask
 from tqdm import tqdm
+from taskchain import Parameter, InMemoryData
+from taskchain.task import Task
 
 
-class DatasetLoader(PipelineTask):
+class DatasetLoader(Task):
+
+    class Meta:
+        parameters = [
+            Parameter("datasets"),
+            Parameter("default_signal_info", default={})
+        ]
+
     @staticmethod
     def load_signal(datasets, default_signal_info):
         series_list = []
@@ -149,12 +157,22 @@ class DatasetLoader(PipelineTask):
             df["dataset_total"] = len(dataset_list)
         return df
 
-    def run(self, datasets, default_signal_info):
+    def run(self, datasets, default_signal_info) -> pd.DataFrame:
         return self.load_signal(datasets, default_signal_info)
 
 
-class GenGenerator(PipelineTask):
-    def run(self, dataset_loader: pd.DataFrame, manager_config, default_tracks_config, fake_datasets):
+class GenGenerator(Task):
+    class Meta:
+        data_class = InMemoryData
+        input_tasks = [DatasetLoader]
+        parameters = [
+            Parameter("manager_config"),
+            Parameter("default_tracks_config", default={}),
+            Parameter("fake_datasets", default={})
+        ]
+
+    def run(self, dataset_loader: pd.DataFrame, manager_config,
+            default_tracks_config, fake_datasets) -> SignalManagerGenerator:
         return SignalManagerGenerator(
             dataset_loader,
             manager_config,
