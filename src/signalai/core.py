@@ -1,6 +1,5 @@
 import abc
 from pathlib import Path
-from signalai.tools.utils import get_instance
 
 
 class SignalModel(abc.ABC):
@@ -28,8 +27,9 @@ class SignalModel(abc.ABC):
         if self.evaluator is None:
             eval_info = self.training_params.get("evaluator", None)
             if eval_info is not None:
-                self.evaluator = get_instance(eval_info["class"], {
-                    "gen_gen": self.gen_generator})
+                assert False
+                # self.evaluator = get_instance(eval_info["class"], {
+                #     "gen_gen": self.gen_generator})
         
         self._train_on_generator()
 

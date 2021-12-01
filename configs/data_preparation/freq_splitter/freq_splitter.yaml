@@ -1,42 +1,60 @@
 tasks: signalai.tasks.data_preparation.*
 
-datasets: {}
-fake_datasets:
-  simple0:
-    class: signalai.signal.fake_dataset.ToneGenerator
+datasets:
+  - class: signalai.datasets.ToneGenerator
     kwargs:
+      class_structure:
+        low_freq: low_freq
+
       fs: 44100
-      max_signal_length: 32734
       freq: [10, 6000]
       noise_ratio: 5
       noise_range: [10, 6000]
-  simple1:
-    class: signalai.signal.fake_dataset.ToneGenerator
+      transform: []
+
+  - class: signalai.datasets.ToneGenerator
     kwargs:
+      class_structure:
+        high_freq: high_freq
+
       fs: 44100
-      max_signal_length: 32734
       freq: [6000, 20000]
       noise_ratio: 5
       noise_range: [6000, 20000]
+      transforms: []
 
 
-manager_config:
-  type: simple_manager
+split: [1.,0.,0.]
 
-  transformers:
-    standardizer:
-      class: signalai.signal.transformers.Standardizer
-      kwargs:
-        mean: 0
-        std: 1
 
-  tracks:
-    t0:
-      datasets:
-      - simple0
-    t1:
-      datasets:
-      - simple1
+processors:
+  train:
+    to_ram: true
+    strategy: random
+    target_length: 32734
+    tracks:
+      t0:
+        superclasses:
+        - low_freq
+        equal_classes: true
+        transforms:
+          base: []
+          X: []
+          Y: []
 
-  X: "t0 + t1" # + np.random.normal(loc=0.0, scale=np.random.uniform(0.,np.std(t0.signal)/2), size=[1,32734]).astype(np.float32)"
-  Y: "t0 | t1"
+      t1:
+        superclasses:
+        - high_freq
+        equal_classes: true
+        transforms:
+          base: []
+          X: []
+          Y: []
+
+    transforms:
+      base: []
+      X: []
+      Y: []
+
+    X: t0 + t1
+    Y: t0 | t1

@@ -1,88 +1,117 @@
 tasks: signalai.tasks.data_preparation.*
 
 datasets:
-  tahovka_normal:
-    folder: '/mnt/AXAGO/Datasets/AE stream'
-    channels:
-      - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
-    splittable: true
-    standardize: false
-    dataset_id: 0
-    relevant_intervals:
-    - [15625000, 62500000]
+  - class: signalai.datasets.FileLoader
+    kwargs:
+      class_structure:
+        tahovka_normal: tahovka
 
-  tahovka_plastized:
-    folder: '/mnt/AXAGO/Datasets/AE stream'
-    channels:
-      - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
-    splittable: true
-    standardize: false
-    dataset_id: 1
-    relevant_intervals:
-    - [966718750, 1010156250]
+      base_dir: '/mnt/AXAGO/Datasets/AE stream'
+      channels:
+        - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
 
-  all_tahovka:
-    folder: '/mnt/AXAGO/Datasets/AE stream'
-    channels:
-      - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
-    splittable: false
-    standardize: false
-    to_ram: false
-    dataset_id: 2
+      relevant_sample_intervals:
+      - [15625000, 62500000]
 
-  noise:
-    folder: '/mnt/AXAGO/Martin/signalai/noise'
-    channels:
-      - re_path: '.*ch(?P<channel>1).*.bin'
-    splittable: true
-    standardize: false
+      loading_params:
+        dtype: 'float32'
+
+      meta:
+        fs: 1562500
+        category: 0
+
+  - class: signalai.datasets.FileLoader
+    kwargs:
+      class_structure:
+        tahovka_plastized: tahovka
+
+      base_dir: '/mnt/AXAGO/Datasets/AE stream'
+      channels:
+        - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
+
+      relevant_sample_intervals:
+      - [966718750, 1010156250]
+
+      loading_params:
+        dtype: 'float32'
+
+      meta:
+        fs: 1562500
+        category: 1
+
+  - class: signalai.datasets.FileLoader
+    kwargs:
+      class_structure:
+        all_tahovka: all_tahovka
+
+      base_dir: '/mnt/AXAGO/Datasets/AE stream'
+      channels:
+        - re_path: 'AE-DATA-conti-7380295766912963-ch2.bin'
+
+      loading_params:
+        dtype: 'float32'
+
+      meta:
+        fs: 1562500
+
+  - class: signalai.datasets.FileLoader
+    kwargs:
+      class_structure:
+        tahovka_noise: tahovka_noise
+
+      base_dir: '/mnt/AXAGO/Martin/signalai/noise'
+      channels:
+        - re_path: '.*ch(?P<channel>1).*.bin'
+      loading_params:
+        dtype: 'float32'
+      meta:
+        fs: 1562500
+
+
+split: [0.95,0.0,0.05]
+
+
+processors:
+  train:
     to_ram: true
-    dataset_id: 3
+    target_length: 32734
+    strategy: random
+    tracks:
+      t0:
+        superclasses:
+        - tahovka
+        equal_classes: true
+        transforms:
+          base: []
+          X: []
+          Y: []
 
-default_signal_info:
-  source_dtype: 'float32'
-  big_endian: true
-  signed: true
-  frequency: 1562500
-  op_dtype: float32
-  to_ram: True
-  split: [0.95,0.0,0.05]
+    transforms:
+      base: []
+      X: []
+      Y: []
 
+    X: t0
+    Y: t0.meta['category']
 
-manager_config:
-  type: simple_manager
+  all:
+    to_ram: false
+    target_length: 32734
+    stride: 0
+    strategy: only_once
+    tracks:
+      t0:
+        superclasses:
+        - all_tahovka
+        transforms:
+          base: []
+          X: []
+          Y: []
 
-  transformers:
-    standardizer:
-      class: signalai.signal.transformers.Standardizer
-      kwargs:
-        mean: 0
-        std: 1
+    transforms:
+      base: []
+      X: []
+      Y: []
 
-  tracks:
-    t0:
-      datasets:
-      - tahovka.+
-      equal_category: true
-      next_after_samples: false
-    t1:
-      datasets:
-      - all_tahovka
-      next_after_samples: 32734
-
-    noise:
-      datasets:
-      - noise
-      next_after_samples: false
-
-  # X: "t0.signal" # + (noise.signal * np.random.uniform(0.,0.4))"
-  X: "t0.signal" # + np.random.normal(loc=0.0, scale=np.random.uniform(0.,np.std(t0.signal)/2), size=[1,32734]).astype(np.float32)"
-  Y: "t0.category_id"
-  X_all: "t1.signal"
-  Y_all: "None"
-
-default_tracks_config:
-  equal_category: true
-  next_after_samples: false
-  max_signal_length: 32734
-  length: 32734
+    X: t0
+    Y: None

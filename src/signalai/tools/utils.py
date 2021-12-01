@@ -1,8 +1,20 @@
-import pathlib
+from datetime import datetime
 from pathlib import Path
 import numpy as np
-import pydub
-from pydub import AudioSegment
+
+
+def set_union(*sets):
+    union = sets[0]
+    for i in range(1, len(sets)):
+        union |= sets[i]
+    return union
+
+
+def set_intersection(*sets):
+    union = sets[0]
+    for i in range(1, len(sets)):
+        union &= sets[i]
+    return union
 
 
 def double_sort(x, y, shuffle=False):
@@ -39,16 +51,6 @@ def load_file(file_paths, dtype="float32"):
         raise NotImplemented("multiple input is not implemented yet")
 
 
-def get_instance(instance_class, params):
-    instance_class = instance_class
-    instance_from = ".".join(instance_class.split(".")[:-1])
-    instance_class_name = instance_class.split(".")[-1]
-    exec(f"from {instance_from} import {instance_class_name}")
-
-    instance = eval(f"{instance_class_name}(**params)")
-    return instance
-
-
 def join_dicts(*args):
     if all([i == args[0] for i in args]):
         return args[0]
@@ -61,27 +63,9 @@ def join_dicts(*args):
         return new_info
 
 
-def pydub2numpy(audio: pydub.AudioSegment) -> (np.ndarray, int):
-    """
-    Converts pydub audio segment into np.float32 of shape [duration_in_seconds*sample_rate, channels],
-    where each value is in range [-1.0, 1.0].
-    Returns tuple (audio_np_array, sample_rate).
-    """
-    return np.array(audio.get_array_of_samples(), dtype=np.float32).reshape((-1, audio.channels)) / (
-            1 << (8 * audio.sample_width - 1)), audio.frame_rate
-
-
-def audio_file2numpy(file):
-    file = Path(file)
-    suffix = file.suffix
-    file = str(file.absolute())
-    if suffix == '.wav':
-        audio = AudioSegment.from_wav(file)
-    elif suffix == '.mp3':
-        audio = AudioSegment.from_mp3(file)
-    elif suffix == '.aac':
-        audio = AudioSegment.from_file(file, "aac")
-    else:
-        raise TypeError(f"Suffix '{suffix}' is not supported yet!")
-
-    return pydub2numpy(audio)[0].T
+def time_now(millisecond=False):
+    # datetime object containing current date and time
+    now = datetime.now()
+    if millisecond:
+        return str(now)
+    return now.strftime("%Y-%m-%d %H:%M:%S")

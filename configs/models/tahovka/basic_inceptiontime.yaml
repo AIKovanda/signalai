@@ -1,5 +1,5 @@
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/freq_splitter/freq_splitter.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/tahovka/tahovka0.yaml"
 
 
 signal_model_config:
@@ -12,7 +12,7 @@ signal_model_config:
           kernel_sizes: [11, 21, 41]
           n_filters: 32
       in_channels: 1
-      linear: 1
+      outputs: 1
 
 
 training_params:
@@ -21,8 +21,8 @@ training_params:
   echo_step: 500
   save_step: 1500
   average_losses_to_print: 300
-  evaluator:
-    class: signalai.evaluators.torch_evaluators.Tahovka
+#  evaluator:
+#    class: signalai.evaluators.torch_evaluators.Tahovka
 
   output_name: tahovka{batch_id}
   criterion:

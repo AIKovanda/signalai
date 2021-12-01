@@ -4,9 +4,9 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from signalai.config import DEVICE, BASE_DATA_DIR
-from signalai.signal.filters import gauss_convolve
+from signalai.tools.filters import gauss_convolve
 import seaborn as sns
-from signalai.signal.signal import Signal
+from signalai.signal import Signal
 from signalai.tools.utils import audio_file2numpy
 
 

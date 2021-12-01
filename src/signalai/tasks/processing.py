@@ -2,7 +2,7 @@ from pathlib import Path
 
 from signalai.config import DEVICE
 from signalai.core import SignalModel
-from signalai.tasks.data_preparation import GenGenerator
+from signalai.tasks.data_preparation import TrainSignalGenerator
 
 from taskchain import Parameter, InMemoryData, DirData
 from taskchain.task import Task
@@ -27,15 +27,15 @@ def init_model(signal_model_config, save_dir=None, gen_generator=None, training_
 class TrainModel(Task):
 
     class Meta:
-        input_tasks = [GenGenerator]
+        input_tasks = [TrainSignalGenerator]
         parameters = [
             Parameter('signal_model_config'),
             Parameter('training_params')
         ]
 
-    def run(self, gen_generator, signal_model_config, training_params) -> DirData:
+    def run(self, train_signal_generator, signal_model_config, training_params) -> DirData:
         dir_data = self.get_data_object()
-        signal_model = init_model(signal_model_config, dir_data.dir, gen_generator, training_params)
+        signal_model = init_model(signal_model_config, dir_data.dir, train_signal_generator, training_params)
 
         signal_model.train_on_generator()
         return dir_data
