@@ -27,7 +27,7 @@ class TorchSignalModel(SignalModel):
         last_file = (output_dir / f"last.pth").absolute()
 
         for batch_id in batches_id:
-            x, y = next(self.train_gen)
+            x, y = self.signal_generator.next_batch(self.training_params.get("batch_size", 1))
             new_loss = self.train_on_batch(x, y)
             losses.append(new_loss)
 

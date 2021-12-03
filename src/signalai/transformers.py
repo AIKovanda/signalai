@@ -1,6 +1,7 @@
 from abc import abstractmethod
 
 import numpy as np
+import signalai
 from signalai.signal import Signal
 from signalai.tools.filters import butter_bandpass_filter
 
@@ -34,14 +35,14 @@ class Transformer:
         pass
 
     def __call__(self, x):
-        if isinstance(x, Signal):
+        if isinstance(x, signalai.signal.Signal):
             signal_arr = self.transform_numpy(x.signal)
             signal_map = x.signal_map if self.keeps_length else None
-            return Signal(build_from=signal_arr, meta=x.meta, signal_map=signal_map, logger=x.logger)
+            return Signal(signal_arr=signal_arr, meta=x.meta, signal_map=signal_map, logger=x.logger)
         elif isinstance(x, np.ndarray):
             return self.transform_numpy(x)
         else:
-            raise TypeError(f"Transformer got a type of '{type(x)}' which is not supported.")
+            raise TypeError(f"Transformer got a type of '{type(x)}' '{type(Signal(np.array([1,2])))}' which is not supported.")
 
 
 class Standardizer(Transformer):

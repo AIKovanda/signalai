@@ -16,6 +16,8 @@ datasets:
       loading_params:
         dtype: 'float32'
 
+      target_dtype: float16
+
       meta:
         fs: 1562500
         category: 0
@@ -35,6 +37,8 @@ datasets:
       loading_params:
         dtype: 'float32'
 
+      target_dtype: float16
+
       meta:
         fs: 1562500
         category: 1
@@ -51,6 +55,8 @@ datasets:
       loading_params:
         dtype: 'float32'
 
+      target_dtype: float16
+
       meta:
         fs: 1562500
 
@@ -64,11 +70,15 @@ datasets:
         - re_path: '.*ch(?P<channel>1).*.bin'
       loading_params:
         dtype: 'float32'
+
+      target_dtype: float16
+
       meta:
         fs: 1562500
 
 
 split: [0.95,0.0,0.05]
+load_to_ram: true
 
 
 processors:

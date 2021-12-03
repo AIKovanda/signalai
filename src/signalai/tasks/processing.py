@@ -10,11 +10,11 @@ from taskchain.task import Task
 from signalai.torch_core import TorchSignalModel
 
 
-def init_model(signal_model_config, save_dir=None, gen_generator=None, training_params=None):
+def init_model(signal_model_config, save_dir=None, signal_generator=None, training_params=None):
     if signal_model_config['signal_model_type'] == 'torch_signal_model':
         signal_model = TorchSignalModel(
             model=signal_model_config['model'].to(DEVICE),
-            gen_generator=gen_generator,
+            signal_generator=signal_generator,
             model_type=signal_model_config['signal_model_type'],
             training_params=training_params,
             save_dir=save_dir

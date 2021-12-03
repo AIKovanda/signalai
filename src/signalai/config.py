@@ -16,3 +16,5 @@ DEVICE = "cuda"
 
 
 DTYPE_BYTES = {'float32': 4, 'float16': 2}
+
+LOADING_PROCESSES = 12

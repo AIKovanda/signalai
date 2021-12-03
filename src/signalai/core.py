@@ -3,15 +3,14 @@ from pathlib import Path
 
 
 class SignalModel(abc.ABC):
-    def __init__(self, model, gen_generator, model_type, training_params, save_dir):
+    def __init__(self, model, signal_generator, model_type, training_params, save_dir):
         super().__init__()
         self.model = model
-        self.gen_generator = gen_generator
+        self.signal_generator = signal_generator
         self.model_type = model_type
         self.training_params = training_params
         self.save_dir = Path(save_dir) if save_dir is not None else None
 
-        self.train_gen = None
         self.evaluator = None
 
         self.criterion = None
@@ -20,10 +19,6 @@ class SignalModel(abc.ABC):
     def train_on_generator(self):
         self.criterion = self.get_criterion()
         self.optimizer = self.get_optimizer()
-        if self.train_gen is None:
-            self.train_gen = self.gen_generator.get_generator(
-                "train", log=0, batch_size=self.training_params["batch_size"]
-            )
         if self.evaluator is None:
             eval_info = self.training_params.get("evaluator", None)
             if eval_info is not None:

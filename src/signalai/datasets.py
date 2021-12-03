@@ -57,7 +57,7 @@ class FileLoader(SignalDataset):
             if self.params.get("split_by_files", False):
                 valid_file_ids = valid_file_ids[int(len(valid_file_ids)*self.split_range[0]):
                                                 int(len(valid_file_ids)*self.split_range[1])]
-            signals = []
+            signals_build = []
             relevant_sample_intervals = self.params.get("relevant_sample_intervals") or [None]
             for relevant_sample_interval in relevant_sample_intervals:
                 if not self.params.get("split_by_files", False) and relevant_sample_interval is not None:
@@ -75,11 +75,12 @@ class FileLoader(SignalDataset):
                         } for filename in filenames],
                         "transforms": self.params.get("transforms", []),
                         "target_dtype": self.params.get("target_dtype"),
+                        "meta": self.params.get("meta", {}),
                     }
                     self.logger.log(f"Building interval '{relevant_sample_interval}' from files "
                                     f"'{filenames}'. Split range is '{self.split_range}.'", priority=2)
-                    signals.append(Signal(build_from=build_dict, meta=self.params.get("meta", {}), logger=self.logger))
-            class_obj = SignalClass(signals, class_name=class_name)
+                    signals_build.append(build_dict)
+            class_obj = SignalClass(signals_build=signals_build, class_name=class_name, logger=self.logger)
             generated_result.append((class_name, superclass_name, class_obj))
 
         return generated_result

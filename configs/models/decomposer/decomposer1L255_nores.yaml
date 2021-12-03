@@ -1,5 +1,5 @@
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/decomposer/decomposer_noram.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/decomposer/decomposer.yaml"
 
 
 signal_model_config:
