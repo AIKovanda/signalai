@@ -635,7 +635,7 @@ def signal_len(build_dict):
     if str(file_dict['filename'])[-4:] in ['.bin', '.dat']:
         return int(os.path.getsize(file_dict['filename']) // DTYPE_BYTES[file_dict.get("dtype", "float32")])
 
-    raise NotImplementedError
+    raise NotImplementedError  # todo: more options
 
 
 def get_interval_values(file_sample_interval, interval):
@@ -654,3 +654,5 @@ def get_interval_values(file_sample_interval, interval):
     if interval_length is not None:
         interval_length = int(interval_length)
     return int(real_start), interval_length
+
+# todo: build_generator somehow

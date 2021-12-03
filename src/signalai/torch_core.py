@@ -14,11 +14,8 @@ from signalai.config import DEVICE
 
 class TorchSignalModel(SignalModel):
 
-    def _train_on_generator(self, verbose=1):
-        print("Training params:")
-        for key, val in self.training_params.items():
-            print(f"{key:>24} [{str(type(val)):<14}]: {val}")
-
+    def _train_on_generator(self):
+        self.logger.log(f"Training params: {self.training_params}", priority=1)
         batches_id = trange(self.training_params["batches"])
         losses = []
         output_dir = self.save_dir / "saved_model"
@@ -42,7 +39,7 @@ class TorchSignalModel(SignalModel):
             if batch_id % self.training_params["save_step"] == 0 and batch_id != 0:
                 output_stem = str(self.training_params["output_name"].format(batch_id=batch_id))
                 output_file = (output_dir / f"{output_stem}.pth").absolute()
-                self.save(output_file, verbose=verbose)
+                self.save(output_file)
 
                 os.system(f'ln -f "{output_file}" "{last_file}"')
                 if self.evaluator:
@@ -53,7 +50,7 @@ class TorchSignalModel(SignalModel):
             self.evaluator.evaluate(self.model, "oo")
 
         output_file = (output_dir / f"{batch_id}.pth").absolute()
-        self.save(output_file, verbose=verbose)
+        self.save(output_file)
         os.system(f'ln -f "{output_file}" "{last_file}"')
 
     def evaluate(self, output_svg, verbose=1):
@@ -79,23 +76,23 @@ class TorchSignalModel(SignalModel):
         self.optimizer.step()
         return loss.item()
 
-    def eval_on_batch(self, x):
+    def predict_batch(self, x):
         with torch.no_grad():
             self.model.eval()
             if isinstance(x, np.ndarray):
-                inputs = torch.from_numpy(np.array(x)).type(torch.float32).to(DEVICE)
+                inputs = torch.from_numpy(x).type(torch.float32).to(DEVICE)
             else:
                 inputs = x.to(DEVICE)
 
             y_hat = self.model(inputs).detach().cpu().numpy()
             return y_hat
 
-    def save(self, output_file, verbose=1):
+    def save(self, output_file):
         if not str(output_file).endswith(".pth"):
-            raise ValueError(f"Enter a valid path. Filename must end with '.pth'.")
+            output_file = str(output_file) + ".pth"
+
         torch.save(self.model.state_dict(), output_file)
-        if verbose > 0:
-            print(f"Model saved at {output_file}.")
+        self.logger.log(f"Model saved at {output_file}.", priority=2)
 
     def load(self, path=None):
         if path is None:

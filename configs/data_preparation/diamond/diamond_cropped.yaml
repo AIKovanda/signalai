@@ -150,5 +150,5 @@ manager_config:
 default_tracks_config:
   equal_category: true
   next_after_samples: false
-  max_signal_length: 32734
-  length: 32734
+  max_signal_length: 32768
+  length: 32768

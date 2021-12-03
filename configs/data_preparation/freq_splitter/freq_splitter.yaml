@@ -31,7 +31,7 @@ processors:
   train:
     to_ram: true
     strategy: random
-    target_length: 32734
+    target_length: 32768
     tracks:
       t0:
         superclasses:

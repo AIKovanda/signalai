@@ -84,7 +84,7 @@ load_to_ram: true
 processors:
   train:
     to_ram: true
-    target_length: 32734
+    target_length: 32768
     strategy: random
     tracks:
       t0:
@@ -106,7 +106,7 @@ processors:
 
   all:
     to_ram: false
-    target_length: 32734
+    target_length: 32768
     stride: 0
     strategy: only_once
     tracks:
