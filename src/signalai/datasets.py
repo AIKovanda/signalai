@@ -1,8 +1,32 @@
 import re
 from pathlib import Path
 import numpy as np
-from signalai.signal import SignalClass, SignalDataset, Signal
+import pandas as pd
+
+from signalai.signal import SignalClass, SignalDataset, read_audio
 from signalai.tools.utils import set_intersection
+
+
+class AllToneLoader(SignalDataset):
+    def get_class_objects(self):
+        generated_result = []
+        class_structure = self.params["class_structure"]
+        meta = self.params.get("meta", {})
+        for superclass_name, structure in class_structure.items():
+            all_signal = read_audio(structure['filename'], dtype=self.params.get("target_dtype"))
+            all_csv = pd.read_csv(structure['classes_file'])
+            for class_name, sub_df in all_csv.groupby('tone'):
+                signals = []
+                for row in sub_df.itertuples():
+                    s = all_signal.crop(interval=(row.sample_start, row.sample_end))
+                    s.update_meta({'force': row.force})
+                    signals.append(s)
+                    signals.append(meta)
+                generated_result.append(SignalClass(
+                    signals=signals, class_name=class_name, superclass_name=superclass_name, logger=self.logger
+                ))
+
+        return generated_result
 
 
 class FileLoader(SignalDataset):
@@ -80,13 +104,15 @@ class FileLoader(SignalDataset):
                     self.logger.log(f"Building interval '{relevant_sample_interval}' from files "
                                     f"'{filenames}'. Split range is '{self.split_range}.'", priority=2)
                     signals_build.append(build_dict)
-            class_obj = SignalClass(signals_build=signals_build, class_name=class_name, logger=self.logger)
-            generated_result.append((class_name, superclass_name, class_obj))
+
+            generated_result.append(SignalClass(
+                signals_build=signals_build, class_name=class_name, superclass_name=superclass_name, logger=self.logger
+            ))
 
         return generated_result
 
 
-# class ToneGenerator(SignalDataset):
+# class ToneGenerator(SignalDataset):  # todo: repair
 #     def __init__(self, fs, max_signal_length, freq, noise_ratio=0., noise_range=(), name=""):
 #         self.fs = fs
 #         self.max_signal_length = max_signal_length
@@ -119,4 +145,3 @@ class FileLoader(SignalDataset):
 #                 )(base_noise)
 #             base_signal += base_noise
 #         return Signal(signal=base_signal), self.name
-

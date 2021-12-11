@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 from pathlib import Path
 import numpy as np
@@ -51,6 +52,24 @@ def load_file(file_paths, dtype="float32"):
         raise NotImplemented("multiple input is not implemented yet")
 
 
+def time_now(millisecond=False):
+    # datetime object containing current date and time
+    now = datetime.now()
+    if millisecond:
+        return str(now)
+    return now.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def timefunc(func):
+    def _wrapper(*args, **kwargs):
+        start_time = time.time()
+        res = func(*args, **kwargs)
+        print(f"Function '{func.__name__}' took {(time.time() - start_time)} seconds ---")
+        return res
+
+    return _wrapper
+
+
 def join_dicts(*args):
     if all([i == args[0] for i in args]):
         return args[0]
@@ -61,11 +80,3 @@ def join_dicts(*args):
                 if all([value == i[key] for i in args]):
                     new_info[key] = value
         return new_info
-
-
-def time_now(millisecond=False):
-    # datetime object containing current date and time
-    now = datetime.now()
-    if millisecond:
-        return str(now)
-    return now.strftime("%Y-%m-%d %H:%M:%S")

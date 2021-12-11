@@ -17,7 +17,7 @@ class TrainSignalGenerator(Task):
     def run(self, datasets, processors, split, load_to_ram) -> SignalProcessor:
         assert np.abs(np.sum(split) - 1) < 1e-8, "Split must sum to 1."
         split_name = "train"
-        split_range = (0., split[0])
+        split_range = (0., split[0])  # todo: not needed for some datasets
         logger = Logger(name=f"{split_name.capitalize()}SignalGenerator", verbose=0)
         keeper = SignalDatasetsKeeper(datasets_config=datasets, split_range=split_range, logger=logger)
         if load_to_ram:
