@@ -193,47 +193,6 @@ class Neuron:
                                                                                              precision_m] if len(
                 self.classes) == 1 else []))
 
-    def build_img_train_generator(self, df_train, df_test, batch_size=16, x_col="filename", y_col="healthy",
-                                  all_df=None):
-        data_gen = ImageDataGenerator(preprocessing_function=preprocess_input, rotation_range=10,
-                                      width_shift_range=0.1, height_shift_range=0.1, brightness_range=[0.7, 1.5])
-        data_gen2 = ImageDataGenerator(preprocessing_function=preprocess_input)
-        self.train_generator = data_gen.flow_from_dataframe(dataframe=df_train, directory=DATASET_PATH,
-                                                            x_col=x_col, y_col=y_col, class_mode=self.sub_folder,
-                                                            target_size=(224, 224), batch_size=batch_size)
-        self.valid_generator = data_gen2.flow_from_dataframe(dataframe=df_test, directory=DATASET_PATH,
-                                                             x_col=x_col, y_col=y_col, class_mode=self.sub_folder,
-                                                             target_size=(224, 224), batch_size=batch_size)
-
-        if all_df is not None:
-            data_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
-            self.all_generator = data_gen.flow_from_dataframe(dataframe=all_df, directory=DATASET_PATH,
-                                                              x_col=x_col, y_col=None, shuffle=False, class_mode=None,
-                                                              target_size=(224, 224), batch_size=batch_size)
-
-    def build_signal_train_generator(self, loaded_data, crop, result_shape, batch_size, chosen_experiment, categories, total_time, is_2D=False, stride=None):
-        if stride is None:
-            stride = (None, None, None)
-        if type(stride) == int:
-            stride = (stride, stride, stride)
-
-        self.train_generator = SignalGenerator(loaded_data, crop=crop, result_shape=result_shape,
-                                               categories=categories,
-                                               chosen_experiment=chosen_experiment,
-                                               shuffle=True, batch_size=batch_size, generate_labels=True,
-                                               validation_rate=0.1, is_training=True, is_2D=is_2D, stride=stride[0])
-
-        self.valid_generator = SignalGenerator(loaded_data, crop=crop, result_shape=result_shape,
-                                               categories=categories,
-                                               chosen_experiment=chosen_experiment,
-                                               shuffle=True, batch_size=batch_size, generate_labels=True,
-                                               validation_rate=0.1, is_training=False, is_2D=is_2D, stride=stride[1])
-
-        self.all_generator = SignalGenerator(loaded_data, crop=crop, result_shape=result_shape,
-                                             categories={'0': [0, total_time]},
-                                             chosen_experiment=chosen_experiment,
-                                             shuffle=False, batch_size=batch_size, generate_labels=True, is_2D=is_2D, stride=stride[2])
-
     def fit(self, train_data=None, validation_data=None, network=None, batch_size=16, epochs=None, csv_file="", decay_rate=0.85,
             decay_step=1, trainable=None, shuffle=True):
         if network is None:
@@ -313,22 +272,3 @@ class Neuron:
         if epoch % self.decay_step == 0 and epoch:
             return lr * pow(self.decay_rate, np.floor(epoch / self.decay_step))
         return lr
-
-    def choose_generator(self, which="all"):
-        if which == "all":
-            return self.all_generator
-        elif which == "train":
-            return self.train_generator
-        else:
-            return self.valid_generator
-
-    def predict(self, df=None, batch_size=16, x_col="filename", generator_name=None):
-        assert self.model is not None
-        if generator_name is not None or df is None:
-            return self.model.predict(self.choose_generator(generator_name), verbose=1)
-
-        data_gen = ImageDataGenerator(preprocessing_function=preprocess_input)
-        df_generator = data_gen.flow_from_dataframe(dataframe=df, directory=DATASET_PATH,
-                                                    x_col=x_col, y_col=None, shuffle=False, class_mode=None,
-                                                    target_size=(224, 224), batch_size=batch_size)
-        return self.model.predict(df_generator)

@@ -1,73 +1,71 @@
 import os
-
 from signalai.core import SignalModel
-from signalai.models.inceptiontime import InceptionBlock
 from torch import nn, optim
-
 import torch
-from torch.nn import ModuleList
 from tqdm import trange
 import numpy as np
-
 from signalai.config import DEVICE
 
 
 class TorchSignalModel(SignalModel):
 
     def _train_on_generator(self):
-        self.logger.log(f"Training params: {self.training_params}", priority=1)
-        batches_id = trange(self.training_params["batches"])
+        batch_indices_generator = trange(self.training_params["batches"])
         losses = []
         output_dir = self.save_dir / "saved_model"
         output_dir.mkdir(parents=True, exist_ok=True)
-        batch_id = 0
-        last_file = (output_dir / f"last.pth").absolute()
 
-        for batch_id in batches_id:
+        batch_id = 0
+
+        for batch_id in batch_indices_generator:
             x, y = self.signal_generator.next_batch(self.training_params.get("batch_size", 1))
             new_loss = self.train_on_batch(x, y)
             losses.append(new_loss)
-
             mean_loss = np.mean(losses[-self.training_params["average_losses_to_print"]:])
+
+            # stopping rule
             if mean_loss < 1e-5:
                 break
 
-            batches_id.set_description(f"Loss: {mean_loss: .08f}")
+            # progress bar update and printing
+            batch_indices_generator.set_description(f"Loss: {mean_loss: .08f}")
             if batch_id % self.training_params["echo_step"] == 0 and batch_id % self.training_params["save_step"] != 0:
                 print()
 
             if batch_id % self.training_params["save_step"] == 0 and batch_id != 0:
-                output_stem = str(self.training_params["output_name"].format(batch_id=batch_id))
-                output_file = (output_dir / f"{output_stem}.pth").absolute()
-                self.save(output_file)
+                self.save(output_dir, batch_id=batch_id)
+                self.evaluate(output_dir=output_dir, batch_id=batch_id)
 
-                os.system(f'ln -f "{output_file}" "{last_file}"')
-                if self.evaluator:
-                    output_svg = output_dir / f"{output_stem}.svg"
-                    self.evaluate(output_svg)
+        self.save(output_dir=output_dir, batch_id=batch_id)
+        self.evaluate(output_dir=output_dir, batch_id=batch_id)
 
-        if self.evaluator:
-            self.evaluator.evaluate(self.model, "oo")
+    def save(self, output_dir, batch_id):
+        latest_file = (output_dir / f"last.pth").absolute()
+        output_file = (output_dir / f"epoch_{batch_id}.pth").absolute()
 
-        output_file = (output_dir / f"{batch_id}.pth").absolute()
-        self.save(output_file)
-        os.system(f'ln -f "{output_file}" "{last_file}"')
+        if not str(output_file).endswith(".pth"):
+            output_file = str(output_file) + ".pth"
 
-    def evaluate(self, output_svg, verbose=1):
-        self.evaluator.evaluate(self.model, output_svg)
-        if verbose > 0:
-            print(f"Signal visualization is at {output_svg}.")
+        torch.save(self.model.state_dict(), output_file)
 
-    def train_on_batch(self, x, y):
+        os.system(f'ln -f "{output_file}" "{latest_file}"')
+        self.logger.log(f"Model saved at {output_file}.", priority=2)
+
+    def evaluate(self, output_dir, batch_id):
+        if self.evaluator is not None:
+            with torch.no_grad():
+                self.model.eval()
+                self.logger.log(f"Evaluation run at batch {batch_id}.")
+                self.evaluator.evaluate(output_dir=output_dir)
+                self.model.train()
+
+    def train_on_batch(self, x: np.ndarray, y: np.ndarray):
         self.model.train()
-        if isinstance(x, np.ndarray) or isinstance(x, list):
-            x_batch = torch.from_numpy(np.array(x)).type(torch.float32).to(DEVICE)
-            if self.training_params.get("output_type", "label") == "label":
-                y_batch = torch.from_numpy(np.array(y)).type(torch.float32).unsqueeze(1).to(DEVICE)
-            else:
-                y_batch = torch.from_numpy(np.array(y)).type(torch.float32).to(DEVICE)
+        x_batch = torch.from_numpy(x).type(torch.float32).to(DEVICE)
+        if self.training_params.get("output_type", "label") == "label":
+            y_batch = torch.from_numpy(y).type(torch.float32).unsqueeze(1).to(DEVICE)
         else:
-            raise TypeError(f"x of type {type(x)} is not supported yet!!")
+            y_batch = torch.from_numpy(y).type(torch.float32).to(DEVICE)
 
         self.optimizer.zero_grad()
         y_hat = self.model(x_batch)
@@ -76,25 +74,18 @@ class TorchSignalModel(SignalModel):
         self.optimizer.step()
         return loss.item()
 
-    def predict_batch(self, x):
+    def predict_batch(self, x: np.ndarray):
         with torch.no_grad():
             self.model.eval()
-            if isinstance(x, np.ndarray):
-                inputs = torch.from_numpy(x).type(torch.float32).to(DEVICE)
-            else:
-                inputs = x.to(DEVICE)
+            inputs = torch.from_numpy(x).type(torch.float32).to(DEVICE)
 
             y_hat = self.model(inputs).detach().cpu().numpy()
+            self.model.train()
             return y_hat
 
-    def save(self, output_file):
-        if not str(output_file).endswith(".pth"):
-            output_file = str(output_file) + ".pth"
-
-        torch.save(self.model.state_dict(), output_file)
-        self.logger.log(f"Model saved at {output_file}.", priority=2)
-
-    def load(self, path=None):
+    def load(self, path=None, epoch=None):
+        if epoch is not None:
+            path = self.save_dir / "saved_model" / f"epoch_{epoch}.pth"
         if path is None:
             path = self.save_dir / "saved_model" / "last.pth"
 
@@ -102,87 +93,26 @@ class TorchSignalModel(SignalModel):
 
     def get_criterion(self):
         criterion_info = self.training_params["criterion"]
-        if criterion_info["name"] == "BCELoss":
-            return nn.BCELoss(**criterion_info.get("kwargs", {}))
-        elif criterion_info["name"] == "MSELoss":
-            return nn.MSELoss(**criterion_info.get("kwargs", {}))
-        elif criterion_info["name"] == "L1Loss":
-            return nn.L1Loss(**criterion_info.get("kwargs", {}))
+        criterion_name = criterion_info["name"]
+        self.logger.log(f"Generating criterion '{criterion_name}'.")
+
+        kwargs = criterion_info.get("kwargs", {})
+        if criterion_name == "BCELoss":
+            return nn.BCELoss(**kwargs)
+        elif criterion_name == "MSELoss":
+            return nn.MSELoss(**kwargs)
+        elif criterion_name == "L1Loss":
+            return nn.L1Loss(**kwargs)
         else:
-            raise NotImplementedError(f"Criterion '{criterion_info['name']}' not implemented yet!!")
+            raise NotImplementedError(f"Criterion '{criterion_name}' not implemented yet!!")
 
     def get_optimizer(self):
         optimizer_info = self.training_params["optimizer"]
-        if optimizer_info["name"] == "Adam":
-            return optim.Adam(self.model.parameters(), **optimizer_info.get("kwargs", {}))
+        optimizer_name = optimizer_info["name"]
+        self.logger.log(f"Generating optimizer '{optimizer_name}'.")
+
+        kwargs = optimizer_info.get("kwargs", {})
+        if optimizer_name == "Adam":
+            return optim.Adam(self.model.parameters(), **kwargs)
         else:
-            raise NotImplementedError(f"Optimizer '{optimizer_info['name']}' not implemented yet!!")
-
-
-class InceptionTime(nn.Module):
-
-    def __init__(self, build_config, in_channels=1, outputs=1, activation="SELU"):
-        """
-        InceptionTime network
-        :param build_config: list of dicts
-        :param in_channels: integer
-        :param outputs: None or integer as a number of output classes, negative means output signals
-        """
-        super().__init__()
-        n_filters = [in_channels] + [node.get("n_filters", 32) for node in build_config]
-        kernel_sizes = [node.get("kernel_sizes", [11, 21, 41]) for node in build_config]
-        bottleneck_channels = [node.get("bottleneck_channels", 32) for node in build_config]
-        use_residuals = [node.get("use_residual", True) for node in build_config]
-        num_of_nodes = len(kernel_sizes)
-        self.outputs = outputs
-        if activation == "SELU":
-            activation_function = nn.SELU()
-        elif activation == "Mish":
-            activation_function = nn.Mish()
-        elif activation == "Tanh":
-            activation_function = nn.Tanh()
-        else:
-            raise ValueError(f"Activation {activation} unknown!")
-            
-        self.inception_blocks = ModuleList([InceptionBlock(
-            in_channels=n_filters[i] if i==0 else n_filters[i]*4,
-            n_filters=n_filters[i+1],
-            kernel_sizes=kernel_sizes[i],
-            bottleneck_channels=bottleneck_channels[i],
-            use_residual=use_residuals[i],
-            activation=activation_function
-        ) for i in range(num_of_nodes)])
-        self.in_features = (1 + len(kernel_sizes[-1])) * n_filters[-1] * 1
-        if self.outputs > 0:
-            self.adaptive_pool = nn.AdaptiveAvgPool1d(output_size=1)
-            self.linear1 = nn.Linear(
-                in_features=self.in_features,
-                out_features=outputs)
-            if self.outputs in [1, 2]:
-                self.out_activation = nn.Sigmoid()
-            else:
-                self.out_activation = nn.Softmax()
-        elif self.outputs < 0:
-            self.final_conv = nn.Conv1d(
-                in_channels=n_filters[-1]*4,
-                out_channels=-self.outputs,
-                kernel_size=1,
-                stride=1,
-                padding=0,
-                bias=False
-            )
-        else:
-            raise ValueError(f"Outputs cannot be 0.")
-
-    def forward(self, x):
-        for block in self.inception_blocks:
-            x = block(x)
-        if self.outputs > 0:
-            x = self.adaptive_pool(x)
-            x = x.view(-1, self.in_features)
-            x = self.linear1(x)
-            x = self.out_activation(x)
-        else:
-            x = self.final_conv(x)
-
-        return x
+            raise NotImplementedError(f"Optimizer '{optimizer_name}' not implemented yet!!")

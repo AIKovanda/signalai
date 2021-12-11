@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.nn import ModuleList
 
 
 def correct_sizes(sizes):
@@ -286,3 +287,72 @@ class InceptionBlockTranspose(nn.Module):
             Z = Z + self.residual(x)
             Z = self.activation(Z)
         return Z
+
+
+class InceptionTime(nn.Module):
+
+    def __init__(self, build_config, in_channels=1, outputs=1, activation="SELU"):
+        """
+        InceptionTime network
+        :param build_config: list of dicts
+        :param in_channels: integer
+        :param outputs: None or integer as a number of output classes, negative means output signals
+        """
+        super().__init__()
+        n_filters = [in_channels] + [node.get("n_filters", 32) for node in build_config]
+        kernel_sizes = [node.get("kernel_sizes", [11, 21, 41]) for node in build_config]
+        bottleneck_channels = [node.get("bottleneck_channels", 32) for node in build_config]
+        use_residuals = [node.get("use_residual", True) for node in build_config]
+        num_of_nodes = len(kernel_sizes)
+        self.outputs = outputs
+        if activation == "SELU":
+            activation_function = nn.SELU()
+        elif activation == "Mish":
+            activation_function = nn.Mish()
+        elif activation == "Tanh":
+            activation_function = nn.Tanh()
+        else:
+            raise ValueError(f"Activation {activation} unknown!")
+
+        self.inception_blocks = ModuleList([InceptionBlock(
+            in_channels=n_filters[i] if i == 0 else n_filters[i] * 4,
+            n_filters=n_filters[i + 1],
+            kernel_sizes=kernel_sizes[i],
+            bottleneck_channels=bottleneck_channels[i],
+            use_residual=use_residuals[i],
+            activation=activation_function
+        ) for i in range(num_of_nodes)])
+        self.in_features = (1 + len(kernel_sizes[-1])) * n_filters[-1] * 1
+        if self.outputs > 0:
+            self.adaptive_pool = nn.AdaptiveAvgPool1d(output_size=1)
+            self.linear1 = nn.Linear(
+                in_features=self.in_features,
+                out_features=outputs)
+            if self.outputs in [1, 2]:
+                self.out_activation = nn.Sigmoid()
+            else:
+                self.out_activation = nn.Softmax()
+        elif self.outputs < 0:
+            self.final_conv = nn.Conv1d(
+                in_channels=n_filters[-1] * 4,
+                out_channels=-self.outputs,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias=False
+            )
+        else:
+            raise ValueError(f"Outputs cannot be 0.")
+
+    def forward(self, x):
+        for block in self.inception_blocks:
+            x = block(x)
+        if self.outputs > 0:
+            x = self.adaptive_pool(x)
+            x = x.view(-1, self.in_features)
+            x = self.linear1(x)
+            x = self.out_activation(x)
+        else:
+            x = self.final_conv(x)
+
+        return x
