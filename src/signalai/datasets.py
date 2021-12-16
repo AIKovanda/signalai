@@ -29,7 +29,7 @@ class AllToneLoader(SignalDataset):
         return generated_result
 
 
-class FileLoader(SignalDataset):
+class FileLoader(SignalDataset):  # todo: remake as MultiSignal
     def structurize_files(self):
         num_channels = len(self.params["channels"])
         base_dir = Path(self.params["base_dir"])

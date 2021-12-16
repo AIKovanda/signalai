@@ -1,5 +1,5 @@
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/decomposer/decomposer.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/decomposer/base.yaml"
 
 
 signal_model_config:
@@ -12,8 +12,8 @@ signal_model_config:
           kernel_sizes: [51, 121, 255]
           n_filters: 32
           use_residual: false
-      in_channels: 2
-      outputs: -8
+      in_channels: 1
+      outputs: -4
 
 
 training_params:

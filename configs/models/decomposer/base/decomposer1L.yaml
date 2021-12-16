@@ -1,32 +1,31 @@
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/tahovka/tahovka0.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/decomposer/base.yaml"
 
 
 signal_model_config:
   signal_model_type: torch_signal_model
   model:
-    class: signalai.models.InceptionTime
+    class: signalai.torch_core.InceptionTime
     kwargs:
       build_config:
         - bottleneck_channels: 32
-          kernel_sizes: [11, 21, 41]
+          kernel_sizes: [21, 41, 61]
           n_filters: 32
       in_channels: 1
-      outputs: 1
+      outputs: -4
 
 
 training_params:
-  batch_size: 16
-  batches: 5000
+  batch_size: 8
+  batches: 50000
   echo_step: 500
   save_step: 1500
   average_losses_to_print: 300
-#  evaluator:
-#    class: signalai.evaluators.torch_evaluators.Tahovka
+  output_type: signal
 
-  output_name: tahovka{batch_id}
+  output_name: karaoke{batch_id}
   criterion:
-    name: BCELoss
+    name: L1Loss
   optimizer:
     name: Adam
     kwargs:

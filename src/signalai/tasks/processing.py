@@ -17,7 +17,7 @@ def init_model(signal_model_config, save_dir=None, signal_generator=None, traini
             signal_generator=signal_generator,
             model_type=signal_model_config['signal_model_type'],
             training_params=training_params,
-            save_dir=save_dir
+            save_dir=save_dir,
         )
     else:
         raise NotImplementedError(f'{signal_model_config["signal_model_type"]} type of model is not implemented yet!')
@@ -30,7 +30,7 @@ class TrainModel(Task):
         input_tasks = [TrainSignalGenerator]
         parameters = [
             Parameter('signal_model_config'),
-            Parameter('training_params')
+            Parameter('training_params'),
         ]
 
     def run(self, train_signal_generator, signal_model_config, training_params) -> DirData:

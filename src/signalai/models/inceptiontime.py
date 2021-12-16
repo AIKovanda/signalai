@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from taskchain.parameter import AutoParameterObject
 from torch.nn import ModuleList
 
 
@@ -8,29 +9,36 @@ def correct_sizes(sizes):
     return corrected_sizes
 
 
-def pass_through(X):
-    return X
+def pass_through(x):
+    return x
 
 
-class InceptionModule(nn.Module):
+class InceptionModule(AutoParameterObject, nn.Module):
     def __init__(self, in_channels, n_filters, kernel_sizes=None, bottleneck_channels=32, activation=nn.SELU(),
                  return_indices=False):
         """
-        : param in_channels				Number of input channels (input features)
-        : param n_filters				Number of filters per convolution layer => out_channels = 4*n_filters
-        : param kernel_sizes			List of kernel sizes for each convolution.
+        in_channels				Number of input channels (input features)
+        n_filters				Number of filters per convolution layer => out_channels = 4*n_filters
+        kernel_sizes			List of kernel sizes for each convolution.
                                         Each kernel size must be odd number that meets -> "kernel_size % 2 !=0".
-                                        This is nessesery because of padding size.
+                                        This is necessary because of padding size.
                                         For correction of kernel_sizes use function "correct_sizes".
-        : param bottleneck_channels		Number of output channels in bottleneck.
-                                        Bottleneck wont be used if nuber of in_channels is equal to 1.
-        : param activation				Activation function for output tensor (nn.ReLU()).
-        : param return_indices			Indices are needed only if we want to create decoder with InceptionTranspose with MaxUnpool1d.
+        bottleneck_channels		Number of output channels in bottleneck.
+                                        Bottleneck won't be used if number of in_channels is equal to 1.
+        activation				Activation function for output tensor (nn.ReLU()).
+        return_indices			Indices are needed only if we want to create decoder with InceptionTranspose with MaxUnpool1d.
         """
         super(InceptionModule, self).__init__()
+        self.in_channels = in_channels
+        self.n_filters = n_filters
+        self.kernel_sizes = kernel_sizes
+        self.bottleneck_channels = bottleneck_channels
+        self.activation = activation
+        self.return_indices = return_indices
+
         if kernel_sizes is None:
             kernel_sizes = [9, 19, 39]
-        self.return_indices = return_indices
+
         if in_channels > 1:
             self.bottleneck = nn.Conv1d(
                 in_channels=in_channels,
@@ -169,15 +177,15 @@ class InceptionModuleTranspose(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_sizes=[9, 19, 39], bottleneck_channels=32,
                  activation=nn.ReLU()):
         """
-        : param in_channels				Number of input channels (input features)
-        : param n_filters				Number of filters per convolution layer => out_channels = 4*n_filters
-        : param kernel_sizes			List of kernel sizes for each convolution.
+        in_channels				Number of input channels (input features)
+        n_filters				Number of filters per convolution layer => out_channels = 4*n_filters
+        kernel_sizes			List of kernel sizes for each convolution.
                                         Each kernel size must be odd number that meets -> "kernel_size % 2 !=0".
                                         This is nessesery because of padding size.
                                         For correction of kernel_sizes use function "correct_sizes".
-        : param bottleneck_channels		Number of output channels in bottleneck.
+        bottleneck_channels		Number of output channels in bottleneck.
                                         Bottleneck wont be used if nuber of in_channels is equal to 1.
-        : param activation				Activation function for output tensor (nn.ReLU()).
+        activation				Activation function for output tensor (nn.ReLU()).
         """
         super(InceptionModuleTranspose, self).__init__()
         self.activation = activation

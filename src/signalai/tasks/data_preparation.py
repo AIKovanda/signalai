@@ -1,3 +1,4 @@
+from typing import Union
 import numpy as np
 from signalai.signal import SignalDatasetsKeeper, SignalProcessor, Logger
 from taskchain import Parameter, InMemoryData, Task
@@ -14,7 +15,7 @@ class TrainSignalGenerator(Task):
             Parameter("split", default=[.8, .1, .1]),
         ]
 
-    def run(self, datasets, processors, split, load_to_ram) -> SignalProcessor:
+    def run(self, datasets, processors, split: Union[tuple, list], load_to_ram: bool) -> SignalProcessor:
         assert np.abs(np.sum(split) - 1) < 1e-8, "Split must sum to 1."
         split_name = "train"
         split_range = (0., split[0])  # todo: not needed for some datasets

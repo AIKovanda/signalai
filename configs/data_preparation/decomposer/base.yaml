@@ -1,6 +1,4 @@
 tasks: signalai.tasks.data_preparation.*
-
-#    class: signalai.signal.transformers.Standardizer
 load_to_ram: true
 
 

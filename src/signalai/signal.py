@@ -2,13 +2,14 @@ import abc
 import re
 from typing import Union, Optional, List, Iterable
 
+from taskchain.parameter import AutoParameterObject
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 import sounddevice as sd
 from scipy import signal as scipy_signal
 from signalai.config import LOGS_DIR, LOADING_PROCESSES
-from signalai.tools.utils import join_dicts, time_now, set_union, timefunc
+from signalai.tools.utils import join_dicts, time_now, set_union
 from tqdm import trange, tqdm
 import os
 from pathlib import Path
@@ -16,7 +17,6 @@ import numpy as np
 import pydub
 from pydub import AudioSegment
 from signalai.config import DTYPE_BYTES
-import multiprocessing as mp
 
 
 class Signal:
@@ -31,10 +31,17 @@ class Signal:
             raise TypeError(f"Unknown signal type {type(signal_arr)}.")
 
         self._signal_arr = signal_arr
+
+        if len(self._signal_arr.shape) == 1:
+            self._signal_arr = np.expand_dims(self._signal_arr, axis=0)
+
         if signal_map is None:
             self._signal_map = np.ones_like(self._signal_arr).astype(bool)
         else:
             self._signal_map = signal_map
+
+        if len(self._signal_map.shape) == 1:
+            self._signal_map = np.expand_dims(self._signal_map, axis=0)
 
         self.meta = meta.copy()
 
@@ -72,11 +79,11 @@ class Signal:
                 signal_arrays.append(np.sum(self._signal_arr[channel_gen, :], axis=0))
                 signal_maps.append(np.all(self._signal_map[channel_gen, :], axis=0))
             else:
-                raise TypeError(f"Channel cannot by generated using type '{type(channel_gen)}'.")
+                raise TypeError(f"Channel cannot be generated using type '{type(channel_gen)}'.")
 
         return Signal(
-            signal_arr=np.concatenate(signal_arrays),
-            signal_map=np.concatenate(signal_maps),
+            signal_arr=np.vstack(signal_arrays),
+            signal_map=np.vstack(signal_maps),
             meta=self.meta,
             logger=self.logger,
         )
@@ -205,7 +212,10 @@ class Signal:
         return Signal(signal_arr=self._signal_arr / other, meta=self.meta, signal_map=self._signal_map, logger=self.logger)
 
     def __repr__(self):
-        return str(pd.DataFrame.from_dict(self.meta, orient='index'))
+        return str(pd.DataFrame.from_dict(
+            self.meta | {'length': len(self), 'channels': self.channels_count},
+            orient='index', columns=['value'],
+        ))
 
     def update_meta(self, dict_):
         self.meta.update(dict_)
@@ -303,9 +313,16 @@ class SignalClass:
 
     def load_to_ram(self) -> None:
         if not self.signals:
-            pool = mp.Pool(processes=LOADING_PROCESSES)
-            self.signals = list(tqdm(pool.imap(build_signal, self.signals_build), total=len(self.signals_build)))
-            self.logger.log(f"Signals loaded to RAM.", priority=1)
+            if LOADING_PROCESSES == 1:
+                self.signals = list(tqdm(map(build_signal, self.signals_build), total=len(self.signals_build)))
+            else:
+                import multiprocessing as mp
+                pool = mp.Pool(processes=LOADING_PROCESSES)
+                self.signals = list(tqdm(pool.imap(build_signal, self.signals_build), total=len(self.signals_build)))
+                pool.close()
+                pool.terminate()
+                pool.join()  # solving memory leaks
+                self.logger.log(f"Signals loaded to RAM.", priority=1)
 
     def get_index_map(self) -> list:
         return [len(i) for i in self.signals]
@@ -324,7 +341,7 @@ class SignalClass:
         return len(self.signals)
 
 
-class SignalDataset(abc.ABC):
+class SignalDataset(AutoParameterObject, abc.ABC):
     """
     split_range: tuple of two floats in range of [0,1]
     """
@@ -761,7 +778,7 @@ def build_signal(build_dict, interval=None):
 
     new_signal = apply_transforms(np.concatenate(loaded_channels, axis=0), transforms=transforms)
     if build_dict.get('target_dtype'):
-        new_signal = new_signal.astype(build_dict['target_dtype'])
+        return Signal(signal_arr=new_signal.astype(build_dict['target_dtype']), meta=build_dict['meta'])
 
     return Signal(signal_arr=new_signal, meta=build_dict['meta'])
 

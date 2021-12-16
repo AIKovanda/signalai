@@ -1,5 +1,5 @@
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/decomposer/decomposer.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/decomposer/base.yaml"
 
 
 signal_model_config:
@@ -9,21 +9,17 @@ signal_model_config:
     kwargs:
       build_config:
         - bottleneck_channels: 32
-          kernel_sizes: [21, 41, 81]
+          kernel_sizes: [51, 121, 255]
           n_filters: 32
-        - bottleneck_channels: 32
-          kernel_sizes: [21, 41, 81]
-          n_filters: 32
-        - bottleneck_channels: 32
-          kernel_sizes: [11, 21, 41]
-          n_filters: 32
-      in_channels: 2
-      outputs: -8
+          use_residual: false
+      in_channels: 1
+      outputs: -4
+      activation: Mish
 
 
 training_params:
-  batch_size: 6
-  batches: 50000
+  batch_size: 16
+  batches: 20000
   echo_step: 500
   save_step: 1500
   average_losses_to_print: 300

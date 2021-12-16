@@ -1,15 +1,13 @@
 import abc
-import pathlib
 from pathlib import Path
-
 import numpy as np
-
 import signalai
 from signalai.signal import Logger
 
 
 class SignalModel(abc.ABC):
-    def __init__(self, model, model_type, training_params, save_dir, logger=None, signal_generator=None, evaluator=None):
+    def __init__(self, model, model_type, training_params, save_dir,
+                 logger=None, signal_generator=None, evaluator=None):
         super().__init__()
         self.model = model
         self.signal_generator = signal_generator
@@ -21,7 +19,7 @@ class SignalModel(abc.ABC):
         self._criterion = None
         self._optimizer = None
 
-        self.logger = logger or Logger(file=save_dir / "model.log")
+        self.logger = logger or Logger()
 
     @property
     def optimizer(self):
@@ -60,7 +58,7 @@ class SignalModel(abc.ABC):
             for i in range(x.shape[-1] // split_by):
                 result.append(self.predict_batch(np.expand_dims(x[..., i*split_by:(i+1)*split_by], 0))[0])
             if x.shape[-1] % split_by > 0 and residual_end:
-                result.append(self.predict_batch(np.expand_dims(x[..., (x.shape[-1] % split_by):], 0))[0])
+                result.append(self.predict_batch(np.expand_dims(x[..., -(x.shape[-1] % split_by):], 0))[0])
             return np.concatenate(result, axis=-1)
 
     @abc.abstractmethod
@@ -81,8 +79,8 @@ class SignalModel(abc.ABC):
 
     def __call__(self, x, split_by=None, residual_end=True):
         if isinstance(x, signalai.signal.Signal):
-            return self.predict_numpy(x.signal, residual_end=residual_end)
+            return self.predict_numpy(x.signal, split_by=split_by, residual_end=residual_end)
         elif isinstance(x, np.ndarray):
-            return self.predict_numpy(x, residual_end=residual_end)
+            return self.predict_numpy(x, split_by=split_by, residual_end=residual_end)
 
         raise TypeError(f"X cannot be of type '{type(x)}'.")

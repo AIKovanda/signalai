@@ -1,12 +1,9 @@
 from pathlib import Path
-
 from matplotlib import pyplot as plt
 import seaborn as sns
-
-from config import EVALUATION_DIR
 from signalai import config, read_bin
 from taskchain.task import Config
-from tools.filters import gauss_convolve
+from signalai.tools.filters import gauss_convolve
 
 
 def run(config_path, output_img):
@@ -28,7 +25,7 @@ def run(config_path, output_img):
 
     plt.figure(figsize=(16, 9))
     sns.lineplot(y=gauss_convolve(np_result[0], 30, 0.8)[0], x=range(np_result.shape[-1]))
-    plt.savefig(EVALUATION_DIR / output_img)
+    plt.savefig(config.EVALUATION_DIR / output_img)
 
 
 if __name__ == '__main__':
