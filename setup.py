@@ -5,10 +5,10 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="signalai",
-    version="0.2.0",
+    version="0.3.0",
     author="Martin Kovanda",
     author_email="kovanda.physics@gmail.com",
-    description="Toolbox for signal analysis using neural networks",
+    description="Toolbox for signal machine learning using neural networks",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="",
@@ -16,7 +16,6 @@ setuptools.setup(
     package_dir={'': 'src'},
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.7',
@@ -24,6 +23,7 @@ setuptools.setup(
         'pandas',
         'numpy',
         'pyyaml',
+        'pedalboard',
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
