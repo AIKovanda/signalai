@@ -27,7 +27,7 @@ def run(config_name):
     for song_name in song_names:
         song_signal = read_audio(song_name)
         pred_channels = [signal_model(np.expand_dims(song_signal_part, 0), split_by=2**16)
-                         for song_signal_part in song_signal.signal]
+                         for song_signal_part in song_signal.data_arr]
 
         for j in range(4):
             one_instrument_signal = Signal(np.vstack([pred_channel[j, :] for pred_channel in pred_channels]))
@@ -37,7 +37,8 @@ def run(config_name):
 
 
 if __name__ == '__main__':
-    config_tuple = ('augment', 'decomposer1L255_nores.yaml')
+    # config_tuple = ('augment', 'decomposer1L255_nores.yaml')
+    config_tuple = ('augment', 'se_decomposer.yaml')
 
     # config_tuple = ('base', 'decomposer1L.yaml')
     # config_tuple = ('base', 'decomposer1L255_nores.yaml')

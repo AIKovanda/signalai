@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="signalai",
-    version="0.3.1",
+    version="0.3.2",
     author="Martin Kovanda",
     author_email="kovanda.physics@gmail.com",
     description="Toolbox for signal machine learning using neural networks",
@@ -24,6 +24,9 @@ setuptools.setup(
         'numpy',
         'pyyaml',
         'pedalboard',
+        'taskchain',
+        'sounddevice',
+        'pydub',
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],

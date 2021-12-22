@@ -1,6 +1,6 @@
 import abc
 import re
-from typing import Union, Optional, List, Iterable
+from typing import Union, Optional, List, Iterable, Type
 
 from taskchain.parameter import AutoParameterObject
 import pandas as pd
@@ -19,74 +19,172 @@ from pydub import AudioSegment
 from signalai.config import DTYPE_BYTES
 
 
-class Signal:
-    def __init__(self, signal_arr: np.ndarray, meta=None, signal_map=None, logger=None):
+class TimeSeries(abc.ABC):
+    """
+    Stores either 1D signal or a 2D time-frequency transformation of a signal.
+    First axis represents channel axis, the last one time axis.
+    Operators:
+    a + b - summing a and b
+    a | b - joining channels of a and b
+    a & b = concatenation of a and b
+    """
+    full_dimensions = None
+
+    def __init__(self, data_arr: np.ndarray, meta=None, time_map=None, logger=None):
         if meta is None:
             meta = {}
 
         self.logger = logger if logger is not None else Logger()
 
-        if not isinstance(signal_arr, np.ndarray):
-            self.logger.log(f"Unknown signal type {type(signal_arr)}.", priority=5)
-            raise TypeError(f"Unknown signal type {type(signal_arr)}.")
+        if not isinstance(data_arr, np.ndarray):
+            self.logger.log(f"Unknown signal type {type(data_arr)}.", priority=5)
+            raise TypeError(f"Unknown signal type {type(data_arr)}.")
 
-        self._signal_arr = signal_arr
+        self._data_arr = data_arr
 
-        if len(self._signal_arr.shape) == 1:
-            self._signal_arr = np.expand_dims(self._signal_arr, axis=0)
+        if len(self._data_arr.shape) == self.full_dimensions - 1:  # channel axis missing
+            self._data_arr = np.expand_dims(self._data_arr, axis=0)
 
-        if signal_map is None:
-            self._signal_map = np.ones_like(self._signal_arr).astype(bool)
+        if time_map is None:
+            self._time_map = np.ones((self._data_arr.shape[0], self._data_arr.shape[-1]), dtype=bool)
         else:
-            self._signal_map = signal_map
+            self._time_map = time_map
 
-        if len(self._signal_map.shape) == 1:
-            self._signal_map = np.expand_dims(self._signal_map, axis=0)
+        if len(self._time_map.shape) == 1:
+            self._time_map = np.expand_dims(self._time_map, axis=0)
+
+        if len(self._time_map.shape) > 2:
+            raise ValueError(f"Data map must have one or two axes, not {len(self._time_map.shape)}.")
 
         self.meta = meta.copy()
 
     def crop(self, interval=None):
         if interval is None:
-            return Signal(self.signal, meta=self.meta, signal_map=self.signal_map, logger=self.logger)
-        new_signal_map = self._signal_map[:, interval[0]:interval[1]]
-        signal_arr = self._signal_arr[:, interval[0]:interval[1]]
-        return Signal(signal_arr=signal_arr, meta=self.meta, signal_map=new_signal_map, logger=self.logger)
+            data_arr = self._data_arr
+            time_map = self._time_map
+        else:
+            data_arr = self._data_arr[..., interval[0]:interval[1]]
+            time_map = self._time_map[..., interval[0]:interval[1]]
+
+        return type(self)(
+            data_arr=data_arr,
+            time_map=time_map,
+            meta=self.meta,
+            logger=self.logger,
+        )
 
     @property
-    def signal(self):
-        return self._signal_arr
+    def data_arr(self):
+        return self._data_arr
 
     @property
-    def signal_map(self):
-        if self._signal_map is None:
-            return None
-        return self._signal_map
+    def time_map(self):
+        return self._time_map
 
     def __len__(self):
-        return self._signal_arr.shape[1]
+        return self._data_arr.shape[-1]
+
+    @property
+    def channels_count(self):
+        return self._data_arr.shape[0]
 
     def take_channels(self, channels: Optional[List[Union[List[int], int]]] = None):
         if channels is None:
             return self
 
-        signal_arrays = []
-        signal_maps = []
+        data_arrays = []
+        time_maps = []
         for channel_gen in channels:
             if isinstance(channel_gen, int):
-                signal_arrays.append(self._signal_arr[[channel_gen], :])
-                signal_maps.append(self._signal_map[[channel_gen], :])
+                data_arrays.append(self._data_arr[[channel_gen], ...])
+                time_maps.append(self._time_map[[channel_gen], ...])
             elif isinstance(channel_gen, list):
-                signal_arrays.append(np.sum(self._signal_arr[channel_gen, :], axis=0))
-                signal_maps.append(np.all(self._signal_map[channel_gen, :], axis=0))
+                data_arrays.append(np.sum(self._data_arr[channel_gen, ...], axis=0))
+                time_maps.append(np.all(self._time_map[channel_gen, ...], axis=0))
             else:
                 raise TypeError(f"Channel cannot be generated using type '{type(channel_gen)}'.")
 
-        return Signal(
-            signal_arr=np.vstack(signal_arrays),
-            signal_map=np.vstack(signal_maps),
+        return type(self)(
+            data_arr=np.vstack(data_arrays),
+            time_map=np.vstack(time_maps),
             meta=self.meta,
             logger=self.logger,
         )
+
+    def margin_interval(self, interval_length: Union[int, None] = None, start_id=0):
+        if interval_length is None:
+            interval_length = len(self)
+
+        if interval_length == len(self) and (start_id == 0 or start_id is None):
+            return self
+
+        new_data_arr = np.zeros((*self._data_arr.shape[:-1], interval_length), dtype=self._data_arr.dtype)
+
+        new_data_arr[..., max(0, start_id):min(interval_length, start_id + len(self))] = \
+            self._data_arr[..., max(0, -start_id):min(len(self), interval_length - start_id)]
+
+        new_time_map = np.zeros((self._data_arr.shape[0], interval_length), dtype=bool)
+        new_time_map[..., max(0, start_id):min(interval_length, start_id + len(self))] = \
+            self._time_map[..., max(0, -start_id):min(len(self), interval_length - start_id)]
+
+        return type(self)(data_arr=new_data_arr, meta=self.meta, time_map=new_time_map, logger=self.logger)
+
+    def __add__(self, other):
+        if isinstance(other, type(self)):
+            assert len(self) == len(other), "Adding signals with different lengths is forbidden (for a good reason)"
+            new_data_arr = self._data_arr + other._data_arr
+            new_info = join_dicts(self.meta, other.meta)
+            new_time_map = self._time_map | other._time_map
+
+        else:
+            new_data_arr = self._data_arr + other
+            new_info = self.meta
+            new_time_map = self._time_map.copy()
+
+        return type(self)(
+            data_arr=new_data_arr,
+            meta=new_info,
+            time_map=new_time_map,
+            logger=self.logger,
+        )
+
+    def __or__(self, other):
+        if isinstance(other, type(self)):
+            other_ts = other
+            new_info = join_dicts(self.meta, other.meta)
+        else:
+            other_ts = type(self)(other)
+            new_info = self.meta
+
+        assert len(self) == len(other_ts), "Joining signals with different lengths is forbidden (for a good reason)"
+        new_data_arr = np.concatenate([self._data_arr, other_ts._data_arr], axis=0)
+        new_time_map = np.concatenate([self._time_map, other_ts._time_map], axis=0)
+
+        return type(self)(
+            data_arr=new_data_arr,
+            meta=new_info,
+            time_map=new_time_map,
+            logger=self.logger,
+        )
+
+    def __mul__(self, other):
+        return type(self)(data_arr=self._data_arr * other, meta=self.meta, time_map=self._time_map, logger=self.logger)
+
+    def __truediv__(self, other):
+        return type(self)(data_arr=self._data_arr / other, meta=self.meta, time_map=self._time_map, logger=self.logger)
+
+    def __repr__(self):
+        return str(pd.DataFrame.from_dict(
+            self.meta | {'length': len(self), 'channels': self.channels_count},
+            orient='index', columns=['value'],
+        ))
+
+    def update_meta(self, dict_):
+        self.meta.update(dict_)
+
+
+class Signal(TimeSeries):
+    full_dimensions = 2
 
     def show(self, channels=None, figsize=(16, 3), save_as=None, show=True, split=False, title=None,
              spectrogram_freq=None):
@@ -100,12 +198,12 @@ class Signal:
                 with plt.style.context('seaborn-darkgrid'):
                     fig, axes = plt.subplots(self.channels_count, 1, figsize=figsize, squeeze=False)
                     for channel_id in channels:
-                        y = self._signal_arr[channel_id]
+                        y = self._data_arr[channel_id]
                         sns.lineplot(x=range(len(y)), y=y, ax=axes[channel_id, 0])
             else:
                 fig, axes = plt.subplots(self.channels_count, 1, figsize=figsize, squeeze=False)
                 for channel_id in channels:
-                    f, t, Sxx = scipy_signal.spectrogram(self._signal_arr[channel_id], spectrogram_freq)
+                    f, t, Sxx = scipy_signal.spectrogram(self._data_arr[channel_id], spectrogram_freq)
                     axes[channel_id, 0].pcolormesh(t, f, Sxx, shading='gouraud')
         else:
             if spectrogram_freq is None:
@@ -113,11 +211,11 @@ class Signal:
                     fig = plt.figure(figsize=figsize)
                     for channel_id in channels:
                         if spectrogram_freq is None:
-                            y = self._signal_arr[channel_id]
+                            y = self._data_arr[channel_id]
                             sns.lineplot(x=range(len(y)), y=y)
             else:
                 fig = plt.figure(figsize=figsize)
-                f, t, Sxx = scipy_signal.spectrogram(self._signal_arr[0], spectrogram_freq)
+                f, t, Sxx = scipy_signal.spectrogram(self._data_arr[0], spectrogram_freq)
                 plt.pcolormesh(t, f, Sxx, shading='gouraud')
 
         fig.patch.set_facecolor('white')
@@ -140,7 +238,7 @@ class Signal:
 
     def spectrogram(self, fs=44100, figsize=(16, 9), save_as=None, show=True):
         plt.figure(figsize=figsize)
-        f, t, Sxx = scipy_signal.spectrogram(self.signal[0], fs)
+        f, t, Sxx = scipy_signal.spectrogram(self._data_arr[0], fs)
         Sxx = np.sqrt(Sxx)
         plt.pcolormesh(t, f, Sxx, shading='gouraud')
         plt.ylabel('Frequency [Hz]')
@@ -150,198 +248,151 @@ class Signal:
         if show:
             plt.show()
 
-    @property
-    def channels_count(self):
-        return self.signal.shape[0]
-
     def play(self, channel_id=0, fs=44100, volume=32):
-        sd.play(volume * self._signal_arr[channel_id].astype('float32'), fs)
+        sd.play(volume * self._data_arr[channel_id].astype('float32'), fs)
         sd.wait()
 
-    def margin_interval(self, interval_length=None, start_id=0):
-        if interval_length is None:
-            interval_length = len(self)
-
-        if interval_length == len(self) and (start_id == 0 or start_id is None):
-            return self
-
-        signal = self._signal_arr
-
-        new_signal = np.zeros((self._signal_arr.shape[0], interval_length), dtype=self._signal_arr.dtype)
-        sig_len = signal.shape[1]
-
-        new_signal[:, max(0, start_id):min(interval_length, start_id + sig_len)] = \
-            signal[:, max(0, -start_id):min(sig_len, interval_length - start_id)]
-
-        signal_map = self._signal_map
-        new_signal_map = np.zeros((self._signal_arr.shape[0], interval_length), dtype=bool)
-        new_signal_map[:, max(0, start_id):min(interval_length, start_id + sig_len)] = \
-            signal_map[:, max(0, -start_id):min(sig_len, interval_length - start_id)]
-
-        return Signal(signal_arr=new_signal, meta=self.meta, signal_map=new_signal_map, logger=self.logger)
-
-    def __add__(self, other):
-        if not isinstance(other, Signal):
-            return Signal(signal_arr=self._signal_arr + other, meta=self.meta, signal_map=self._signal_map, logger=self.logger)
-
-        assert len(self) == len(other), "Adding signals with different lengths is forbidden (for a good reason)"
-        new_signal = self._signal_arr + other._signal_arr
-        new_info = join_dicts(self.meta, other.meta)
-
-        return Signal(signal_arr=new_signal, meta=new_info, signal_map=(self._signal_map | other._signal_map), logger=self.logger)
-
-    def __or__(self, other):
-        if isinstance(other, Signal):
-            other_signal = other
-            new_info = join_dicts(self.meta, other.meta)
-            new_signal_map = (self._signal_map | other._signal_map)
-        else:
-            other_signal = Signal(other)
-            new_info = self.meta
-            new_signal_map = self._signal_map
-
-        assert len(self) == len(other), "Adding signals with different lengths is forbidden (for a good reason)"
-        new_signal = np.concatenate([self.signal, other_signal.signal], axis=0)
-
-        return Signal(signal_arr=new_signal, meta=new_info, signal_map=new_signal_map, logger=self.logger)
-
-    def __mul__(self, other):
-        return Signal(signal_arr=self._signal_arr * other, meta=self.meta, signal_map=self._signal_map, logger=self.logger)
-
-    def __truediv__(self, other):
-        return Signal(signal_arr=self._signal_arr / other, meta=self.meta, signal_map=self._signal_map, logger=self.logger)
-
-    def __repr__(self):
-        return str(pd.DataFrame.from_dict(
-            self.meta | {'length': len(self), 'channels': self.channels_count},
-            orient='index', columns=['value'],
-        ))
-
-    def update_meta(self, dict_):
-        self.meta.update(dict_)
-
     def to_mp3(self, file, sf=44100, normalized=True):  # todo channels
-        channels = 2 if (self.signal.ndim == 2 and self.signal.shape[0] == 2) else 1
+        channels = 2 if (self._data_arr.ndim == 2 and self._data_arr.shape[0] == 2) else 1
         if normalized:  # normalized array - each item should be a float in [-1, 1)
-            y = np.int16(self.signal.T * 2 ** 15)
+            y = np.int16(self._data_arr.T * 2 ** 15)
         else:
-            y = np.int16(self.signal.T)
+            y = np.int16(self._data_arr.T)
         song = pydub.AudioSegment(y.tobytes(), frame_rate=sf, sample_width=2, channels=channels)
         song.export(file, format="mp3", bitrate="320k")
 
 
-class MultiSignal:
-    def __init__(self, signals: Union[list, dict, tuple], class_order: Optional[Iterable] = None):
-        assert signals is not None and len(signals) > 0, "There is no input signal, MultiSignal does not make sense."
-        self.signals = signals  # can be None
+class Signal2D(TimeSeries):
+    full_dimensions = 3
+
+    def show(self):
+        pass
+
+
+class MultiSeries:
+    def __init__(self,
+                 series: Union[Iterable, dict],
+                 class_order: Optional[Iterable] = None,  # only usable if series is a dict
+                 ):
+        assert series is not None and len(series) > 0, "There is no input timeseries, MultiSeries does not make sense."
+        self.series = series
         self.class_order = class_order
 
-    def _signal_list(self, only_valid=True) -> List[Signal]:
-        if isinstance(self.signals, dict):
+    def _series_list(self, only_valid=True) -> List[TimeSeries]:
+        if isinstance(self.series, dict):
             if self.class_order is None:
-                signals = list(self.signals.values())
+                series = list(self.series.values())
             else:
-                signals = [self.signals.get(i, None) for i in self.class_order]
+                series = [self.series.get(i, None) for i in self.class_order]
         else:
-            signals = self.signals
+            series = self.series
 
         if only_valid:
-            signals = [i for i in signals if i is not None]
+            series = [i for i in series if i is not None]
 
-        return signals
+        return series
 
     def sum_channels(self, channels: Optional[List[Union[int, List[int]]]] = None):
-        signals = self._signal_list(only_valid=True)
-        signal_length = len(signals[0])
-        assert all([len(s) == signal_length for s in signals]), 'Signals must have a same length to be joined.'
+        series = self._series_list(only_valid=True)
+        series_length = len(series[0])
+        assert all([len(ts) == series_length for ts in series]), 'Timeseries must have a same length to be joined.'
         if channels is None:
-            signal_channels = signals[0].channels_count
-            assert all([s.channels_count == signal_channels for s in signals]), \
-                'Signals must have the same number of channels to be joined when channels are not defined.'
+            series_channels = series[0].channels_count
+            assert all([ts.channels_count == series_channels for ts in series]), \
+                'Timeseries must have the same number of channels to be joined when channels are not defined.'
 
-        zero_signal = signals[0].take_channels(channels)
-        signal_arr = zero_signal.signal.copy()
-        signal_map = zero_signal.signal_map.copy()
-        signal_meta = zero_signal.meta.copy()
+        zero_series = series[0].take_channels(channels)
+        data_arrays = [zero_series.data_arr]
+        time_map = zero_series.time_map.copy()
+        metas = [zero_series.meta]
 
-        for s in signals[1:]:
-            s_signal = s.take_channels(channels)
-            signal_arr += s_signal.signal
-            signal_map = np.logical_and(signal_map, s_signal.signal_map)
-            signal_meta = join_dicts(signal_meta, s_signal.meta)
+        for ts in series[1:]:
+            s_series = ts.take_channels(channels)
+            data_arrays.append(s_series.data_arr)
+            time_map = np.logical_and(time_map, s_series.time_map)
+            metas.append(s_series.meta)
 
-        return Signal(signal_arr=signal_arr, signal_map=signal_map, meta=signal_meta)
+        return type(series[0])(
+            data_arr=np.expand_dims(np.sum(data_arrays, axis=0), 0),
+            time_map=time_map,
+            meta=join_dicts(*metas),
+            logger=series[0].logger,
+        )
 
-    def stack_signals(self, only_valid=False):
-        signals = self._signal_list(only_valid=only_valid)
-        for signal in signals:
-            if signal is not None:
-                signal_shape = signal.signal.shape
+    def stack_series(self, only_valid=False):
+        series = self._series_list(only_valid=only_valid)
+        for ts in series:
+            if ts is not None:
+                series_shape = ts.data_arr.shape
+                logger = ts.logger
+                ts_type = type(ts)
                 break
         else:
-            raise ValueError(f"At least one signal must not be empty while stacking signals.")
+            raise ValueError(f"At least one timeseries must not be empty while stacking timeseries.")
 
-        assert all([s.signal.shape == signal_shape for s in signals if s is not None]), \
-            'Signals must have the same shapes to be joined.'
-        signal_arrays = []
-        signal_maps = []
-        signal_metas = []
+        assert all([ts.data_arr.shape == series_shape for ts in series if ts is not None]), \
+            'Timeseries must have the same shapes to be joined.'
+        data_arrays = []
+        time_maps = []
+        metas = []
 
-        for signal in signals:
-            if signal is not None:
-                signal_arrays.append(signal.signal)
-                signal_maps.append(signal.signal_map)
-                signal_metas.append(signal.meta)
+        for ts in series:
+            if ts is not None:
+                data_arrays.append(ts.data_arr)
+                time_maps.append(ts.time_map)
+                metas.append(ts.meta)
             else:
-                signal_arrays.append(np.zeros(signal_shape))
-                signal_maps.append(np.zeros(signal_shape, dtype=bool))
+                data_arrays.append(np.zeros(series_shape))
+                time_maps.append(np.zeros(series_shape, dtype=bool))
 
-        return Signal(
-            signal_arr=np.concatenate(signal_arrays, axis=0),
-            signal_map=np.concatenate(signal_maps, axis=0),
-            meta=join_dicts(*signal_metas),
+        return ts_type(
+            data_arr=np.concatenate(data_arrays, axis=0),
+            time_map=np.concatenate(time_maps, axis=0),
+            meta=join_dicts(*metas),
+            logger=logger,
         )
 
 
-class SignalClass:
-    def __init__(self, signals=None, signals_build=None, class_name=None, superclass_name=None, logger=None):
-        self.signals = signals or []  # list
-        self.signals_build = signals_build  # list
+class SeriesClass:
+    def __init__(self, series=None, series_build=None, class_name=None, superclass_name=None, logger=None):
+        self.series = series or []  # list
+        self.series_build = series_build  # list
         self.class_name = class_name
         self.superclass_name = superclass_name
         self.logger = logger if logger is not None else Logger()
 
     def load_to_ram(self) -> None:
-        if not self.signals:
+        if not self.series:
             if LOADING_PROCESSES == 1:
-                self.signals = list(tqdm(map(build_signal, self.signals_build), total=len(self.signals_build)))
+                self.series = list(tqdm(map(build_series, self.series_build), total=len(self.series_build)))
             else:
                 import multiprocessing as mp
                 pool = mp.Pool(processes=LOADING_PROCESSES)
-                self.signals = list(tqdm(pool.imap(build_signal, self.signals_build), total=len(self.signals_build)))
+                self.series = list(tqdm(pool.imap(build_series, self.series_build), total=len(self.series_build)))
                 pool.close()
                 pool.terminate()
                 pool.join()  # solving memory leaks
                 self.logger.log(f"Signals loaded to RAM.", priority=1)
 
     def get_index_map(self) -> list:
-        return [len(i) for i in self.signals]
+        return [len(i) for i in self.series]
 
-    def get_signal(self, individual_id, start_id, length):
-        if self.signals is not None:
-            return self.signals[individual_id].crop(interval=(start_id, start_id + length))
-        assert self.signals_build is not None, f"Signal cannot be built, there is no information how to do so."
-        return build_signal(self.signals_build[individual_id], interval=(start_id, start_id + length))
+    def get_individual_series(self, individual_id, start_id, length):
+        if self.series is not None:
+            return self.series[individual_id].crop(interval=(start_id, start_id + length))
+        if self.series_build is None:
+            self.logger.log(f"Signal cannot be built, there is no information how to do so.", raise_=ValueError)
+        return build_series(self.series_build[individual_id], interval=(start_id, start_id + length))
 
     @property
     def total_length(self):
-        return np.sum([len(i) for i in self.signals])
+        return np.sum([len(i) for i in self.series])
 
     def __len__(self):
-        return len(self.signals)
+        return len(self.series)
 
 
-class SignalDataset(AutoParameterObject, abc.ABC):
+class SeriesDataset(AutoParameterObject, abc.ABC):
     """
     split_range: tuple of two floats in range of [0,1]
     """
@@ -362,7 +413,7 @@ class SignalDataset(AutoParameterObject, abc.ABC):
         pass
 
 
-class SignalDatasetsKeeper:
+class SeriesDatasetsKeeper:
     def __init__(self, datasets_config, split_range, logger):
         self.datasets_config = datasets_config
         self.split_range = split_range
@@ -378,8 +429,9 @@ class SignalDatasetsKeeper:
                 class_name = class_obj.class_name
                 superclass_name = class_obj.superclass_name
                 if class_name in self.classes_dict:
-                    self.logger.log(f"Class '{class_name}' is defined multiple times. This is not allowed.", 5)
-                    raise ValueError(f"Class '{class_name}' is defined multiple times. This is not allowed.")  # todo: raise
+                    self.logger.log(f"Class '{class_name}' is defined multiple times. This is not allowed.",
+                                    raise_=ValueError)
+
                 self.classes_dict[class_name] = class_obj
                 if superclass_name in self.superclasses_dict:
                     self.superclasses_dict[superclass_name].append(class_name)
@@ -390,8 +442,7 @@ class SignalDatasetsKeeper:
 
     def _check_valid_class(self, class_name):
         if class_name not in self.classes_dict:
-            self.logger.log(f"Class '{class_name}' cannot be found, see the config.", priority=5)
-            raise ValueError(f"Class '{class_name}' cannot be found, see the config.")
+            self.logger.log(f"Class '{class_name}' cannot be found, see the config.", raise_=ValueError)
 
     def load_to_ram(self, classes_name=None) -> None:
         if classes_name is None:
@@ -413,7 +464,7 @@ class EndOfDataset(Exception):
     pass
 
 
-class SignalTaker:
+class SeriesTaker:
     """
     strategy:   'random' - taking one random interval from all the relevant signals
                 'sequence' - taking one interval is the logical order
@@ -423,11 +474,11 @@ class SignalTaker:
     zero_padding: True - no error, makes zero padding if needed, False - error when length is higher than available
     """
 
-    def __init__(self, keeper, class_name, strategy, logger, stride=0, zero_padding=True):
+    def __init__(self, keeper, class_name, strategy, logger=None, stride=0, zero_padding=True):
         self.keeper = keeper
         self.class_name = class_name
         self.strategy = strategy
-        self.logger = logger
+        self.logger: Logger = logger or Logger()
         self.stride = stride
         self.zero_padding = zero_padding  # todo
 
@@ -437,34 +488,41 @@ class SignalTaker:
         self.id_next = [0, 0]
         self.individual_now = 0
 
-    def next(self, length) -> Signal:
+    def next(self, length) -> TimeSeries:
         index_map_clean = [max(0, j - length) for i, j in enumerate(self.index_map)]
         if self.strategy == 'random' or self.strategy == 'start':
             p = np.array(index_map_clean) / np.sum(index_map_clean)
             individual_id = np.random.choice(len(p), p=p)
             start_id = np.random.choice(index_map_clean[individual_id]) if self.strategy == 'random' else 0
             self.logger.log(f"Taking '{individual_id=}', '{start_id=}' and '{length=}'.", priority=0)
-            return self.taken_class.get_signal(
+            return self.taken_class.get_individual_series(
                 individual_id=individual_id,
                 start_id=start_id,
-                length=length
+                length=length,
             )
 
         elif self.strategy == 'sequence':
             if self.id_next[1] <= index_map_clean[self.id_next[0]]:
                 self._next_individual(length, index_map_clean)
 
-            signal = self.taken_class.get_signal(individual_id=self.id_next[0], start_id=self.id_next[1], length=length)
+            ts = self.taken_class.get_individual_series(
+                individual_id=self.id_next[0],
+                start_id=self.id_next[1],
+                length=length,
+            )
             self._next_individual(length, index_map_clean)
-            return signal
+            return ts
 
         elif self.strategy == 'only_once':
-            signal = self.taken_class.get_signal(individual_id=self.id_next[0], start_id=self.id_next[1], length=length)
+            ts = self.taken_class.get_individual_series(
+                individual_id=self.id_next[0],
+                start_id=self.id_next[1],
+                length=length,
+            )
             self._next_individual(length, index_map_clean, no_beginning=True)
-            return signal
+            return ts
         else:
-            self.logger.log(f"Strategy '{self.strategy}' is not recognized.", priority=5)
-            raise ValueError(f"Strategy '{self.strategy}' is not recognized.")
+            self.logger.log(f"Strategy '{self.strategy}' is not recognized.", raise_=ValueError)
 
     def _next_individual(self, length, index_map_clean, no_beginning=False):
         if self.id_next[1] + length <= index_map_clean[self.id_next[0]]:
@@ -474,7 +532,7 @@ class SignalTaker:
             while True:
                 if self.id_next[0] == len(index_map_clean):
                     if no_beginning:
-                        raise EndOfDataset(f"Class '{self.class_name}' reached its maximum.")
+                        self.logger.log(f"Class '{self.class_name}' reached its maximum.", raise_=EndOfDataset)
 
                     self.id_next[0] = 0
                     self.logger.log(f"Class '{self.class_name}' reached its maximum, continuing from the beginning.", 3)
@@ -484,16 +542,17 @@ class SignalTaker:
                     break
 
 
-class SignalTrack:
-    def __init__(self, name, keeper, superclasses, logger,
-                 equal_classes=False, strategy: Union[str, dict] = 'random', stride=0, transforms=None):
+class SeriesTrack:
+    def __init__(self, name, keeper, superclasses, logger=None,
+                 equal_classes=False, strategy: Union[str, dict] = 'random', stride=0,
+                 transforms: Optional[dict] = None):
         if transforms is None:
             transforms = {}
 
         self.name = name
         self.keeper = keeper
         self.superclasses = superclasses
-        self.logger = logger
+        self.logger: Logger = logger or Logger()
 
         self.equal_classes = equal_classes
         self.strategy = strategy
@@ -501,21 +560,24 @@ class SignalTrack:
         self.transforms = transforms
 
         self.takers = {}
-        self.relevant_classes = list(keeper.relevant_classes(superclasses=superclasses))
+        self.relevant_classes: List[str] = list(keeper.relevant_classes(superclasses=superclasses))
         for relevant_class in self.relevant_classes:
             if isinstance(self.strategy, dict):
                 taker_strategy = self.strategy.get('inner_strategy', 'start')
             else:
                 taker_strategy = self.strategy
-            self.takers[relevant_class] = SignalTaker(
-                keeper=keeper, class_name=relevant_class, strategy=taker_strategy, stride=self.stride, logger=self.logger
+            self.takers[relevant_class] = SeriesTaker(
+                keeper=keeper,
+                class_name=relevant_class,
+                strategy=taker_strategy,
+                stride=self.stride,
+                logger=self.logger,
             )
             self.logger.log(f"Taker of '{relevant_class}' successfully initialized.", priority=2)
 
-    def _choose_class(self):
+    def _choose_class(self) -> str:
         if len(self.relevant_classes) == 0:
-            self.logger.log(f"There is no class defined for track '{self.name}'.", priority=5)
-            raise ValueError(f"There is no class defined for this track'{self.name}'.")
+            self.logger.log(f"There is no class defined for track '{self.name}'.", raise_=ValueError)
 
         if len(self.relevant_classes) == 1:
             return self.relevant_classes[0]
@@ -526,9 +588,9 @@ class SignalTrack:
             p = np.array([self.keeper.total_lengths[i] for i in self.relevant_classes])
 
         p = p / np.sum(p)
-        return np.random.choice(list(self.relevant_classes), p=p)
+        return np.random.choice(self.relevant_classes, p=p)
 
-    def next(self, length: int) -> Union[Signal, MultiSignal]:
+    def next(self, length: int) -> Union[TimeSeries, MultiSeries]:
         if isinstance(self.strategy, str):
             chosen_class = self._choose_class()
             return self.takers[chosen_class].next(length=length)
@@ -536,7 +598,10 @@ class SignalTrack:
             return self._next_compose(length)
         raise TypeError(f"Strategy type of '{type(self.strategy)}' is not supported.")
 
-    def _next_compose(self, length: int) -> MultiSignal:
+    def _next_compose(self, length: int) -> MultiSeries:
+        """
+        Tone compose, randomly taking tones into a MultiSeries.
+        """
         count_min, count_max = self.strategy.get('tones_count_range', (0, 10))
         tones_count = np.random.choice(range(count_min, count_max + 1))
         chosen_classes = [np.random.choice(self.relevant_classes) for _ in range(tones_count)]
@@ -544,7 +609,7 @@ class SignalTrack:
         possible_starting_index = np.arange(*self.strategy.get('start_arange', [1]))
         possible_tone_length = np.arange(*self.strategy.get('tone_length_arange', [length]))
 
-        signals = {}
+        series_dict = {}
         for class_name in self.relevant_classes:
             class_count = chosen_classes.count(class_name)
             if class_count == 0:
@@ -565,24 +630,24 @@ class SignalTrack:
                     final_intervals.append([starting_index, ending_index])
 
             assert len(final_intervals) > 0, "Something is wrong with chosen tone intervals."
-            signals[class_name] = MultiSignal(
-                signals=[
+            series_dict[class_name] = MultiSeries(
+                series=[
                     self.takers[class_name].next(interval[1] - interval[0]).margin_interval(
                         interval_length=length,
                         start_id=interval[0],
                     ) for interval in final_intervals]
             ).sum_channels()
 
-        return MultiSignal(signals=signals, class_order=self.relevant_classes)
+        return MultiSeries(series=series_dict, class_order=self.relevant_classes)
 
 
-class SignalProcessor:
-    def __init__(self, processor_config, keeper, logger):
+class SeriesProcessor:
+    def __init__(self, processor_config, keeper, logger=None):
         self.processor_config = processor_config
-        self.to_ram = self.processor_config.get('to_ram', False)
-        self.op_type = self.processor_config.get('op_type', 'float32')
+        # self.to_ram = self.processor_config.get('to_ram', False)  # todo: delete
+        # self.op_type = self.processor_config.get('op_type', 'float32')
 
-        self.logger = logger
+        self.logger: Logger = logger or Logger()
         self.keeper = keeper
 
         self.tracks = {}
@@ -595,7 +660,7 @@ class SignalProcessor:
         self.y_original_length = {}
 
         for track_name, track_config in self.processor_config['tracks'].items():
-            self.tracks[track_name] = SignalTrack(
+            self.tracks[track_name] = SeriesTrack(
                 name=track_name,
                 keeper=self.keeper,
                 logger=self.logger,
@@ -613,11 +678,9 @@ class SignalProcessor:
             self.x_original_length[track_name] = original_length(self.processor_config['target_length'], x_transform)
             self.y_original_length[track_name] = original_length(self.processor_config['target_length'], y_transform)
             if self.x_original_length[track_name] != self.x_original_length[track_name]:
-                message = (f"Transform makes X and Y original lengths different.\n"
-                           f"X: {self.x_original_length[track_name]}, Y: {self.x_original_length[track_name]},"
-                           f"at track '{track_name}'.")
-                self.logger.log(message, priority=5)
-                raise ValueError(message)
+                self.logger.log(f"Transform makes X and Y original lengths different.\n"
+                                f"X: {self.x_original_length[track_name]}, Y: {self.x_original_length[track_name]},"
+                                f"at track '{track_name}'.", raise_=ValueError)
 
     def next_one(self):
         track_buffer_x = {}
@@ -644,12 +707,12 @@ class SignalProcessor:
         x_batch, y_batch = [], []
         for _ in range(batch_size):
             x, y = self.next_one()
-            if isinstance(x, Signal):
-                x_batch.append(x.signal)
+            if isinstance(x, TimeSeries):
+                x_batch.append(x.data_arr)
             else:
                 x_batch.append(x)
-            if isinstance(y, Signal):
-                y_batch.append(y.signal)
+            if isinstance(y, TimeSeries):
+                y_batch.append(y.data_arr)
             else:
                 y_batch.append(y)
 
@@ -672,22 +735,28 @@ class Logger:
 
         self.verbose = verbose
 
-    def log(self, message, priority=0):
+    def log(self, message, priority=0, raise_: Optional[Type[Exception]] = None):
+        if raise_ is not None:
+            priority = 5
+
         space = "\t" * (5 - priority)
         message = f"{time_now(millisecond=True)} - {priority} {space}- {message}\n"
         with open(self.file, "a") as f:
             f.write(message)
 
+        if raise_ is not None:
+            raise raise_(message)
+
         if self.verbose:
             print(message)
 
 
-def apply_transforms(s, transforms=()):
+def apply_transforms(ts, transforms=()):
     if len(transforms) == 0:
-        return s
+        return ts
     for transform in transforms:
-        s = transform(s)
-    return s
+        ts = transform(ts)
+    return ts
 
 
 def original_length(target_length, transforms=()):
@@ -726,41 +795,47 @@ def audio_file2numpy(file):
 
 
 def read_audio(filename, file_sample_interval=None, interval=None, dtype=None):
-    real_start, interval_length = get_interval_values(file_sample_interval, interval)
-    signal_arr = audio_file2numpy(filename)
+    real_start, interval_length = _get_start_length(file_sample_interval, interval)
+    data_arr = audio_file2numpy(filename)
     if dtype is not None:
-        signal_arr = signal_arr.astype(dtype)
+        data_arr = data_arr.astype(dtype)
     if not real_start:
-        return Signal(signal_arr=signal_arr)
+        return Signal(data_arr=data_arr)
     if not file_sample_interval:
-        return Signal(signal_arr=signal_arr[:, real_start:])
-    return Signal(signal_arr=signal_arr[:, real_start: real_start + interval_length])
+        return Signal(data_arr=data_arr[:, real_start:])
+    return Signal(data_arr=data_arr[:, real_start: real_start + interval_length])
 
 
 def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='float32', dtype=None):
-    real_start, interval_length = get_interval_values(file_sample_interval, interval)
+    real_start, interval_length = _get_start_length(file_sample_interval, interval)
     with open(filename, "rb") as f:
         start_byte = int(DTYPE_BYTES[source_dtype] * real_start)
         assert start_byte % DTYPE_BYTES[source_dtype] == 0, "Bytes are not loading properly."
         f.seek(start_byte, 0)
-        signal_arr = np.expand_dims(np.fromfile(f, dtype=source_dtype, count=interval_length or -1), axis=0)
+        data_arr = np.expand_dims(np.fromfile(f, dtype=source_dtype, count=interval_length or -1), axis=0)
         if dtype is not None:
-            signal_arr = signal_arr.astype(dtype)
-        return Signal(signal_arr=signal_arr)
+            data_arr = data_arr.astype(dtype)
+        return Signal(data_arr=data_arr)
 
 
 def read_npy(filename, file_sample_interval=None, interval=None, dtype=None):
-    real_start, interval_length = get_interval_values(file_sample_interval, interval)
-    signal = np.load(filename)
-    if len(signal.shape) == 1:
-        signal = np.expand_dims(signal, axis=0)
-    signal_arr = signal[:, real_start: real_start + interval_length]
+    real_start, interval_length = _get_start_length(file_sample_interval, interval)
+    full_data_arr = np.load(filename)
+    if len(full_data_arr.shape) == 1:
+        full_data_arr = np.expand_dims(full_data_arr, axis=0)
+    data_arr = full_data_arr[:, real_start: real_start + interval_length]
     if dtype is not None:
-        signal_arr = signal_arr.astype(dtype)
-    return Signal(signal_arr=signal_arr)
+        data_arr = data_arr.astype(dtype)
+
+    if len(full_data_arr.shape) == 2:
+        return Signal(data_arr=data_arr)
+    elif len(full_data_arr.shape) == 3:
+        return Signal2D(data_arr=data_arr)
+    else:
+        raise ValueError(f"Loaded array '{filename}' has {len(full_data_arr.shape)} channels, maximum is 3.")
 
 
-def build_signal(build_dict, interval=None):
+def build_series(build_dict: dict, interval: Optional[Iterable[int]] = None) -> TimeSeries:
     if not build_dict:
         raise ValueError(f"There is no information of how to build a signal.")
 
@@ -770,20 +845,20 @@ def build_signal(build_dict, interval=None):
     for file_dict in build_dict['files']:
         suffix = str(file_dict['filename'])[-4:]
         if suffix in [".aac", ".wav", ".mp3"]:
-            loaded_channels.append(read_audio(interval=interval, **file_dict).signal)
+            loaded_channels.append(read_audio(interval=interval, **file_dict).data_arr)
         if suffix in [".bin", ".dat"]:
-            loaded_channels.append(read_bin(interval=interval, **file_dict).signal)
+            loaded_channels.append(read_bin(interval=interval, **file_dict).data_arr)
         if suffix == ".npy":
-            loaded_channels.append(read_npy(interval=interval, **file_dict).signal)
+            loaded_channels.append(read_npy(interval=interval, **file_dict).data_arr)
 
-    new_signal = apply_transforms(np.concatenate(loaded_channels, axis=0), transforms=transforms)
+    new_series = apply_transforms(np.concatenate(loaded_channels, axis=0), transforms=transforms)
     if build_dict.get('target_dtype'):
-        return Signal(signal_arr=new_signal.astype(build_dict['target_dtype']), meta=build_dict['meta'])
+        return Signal(data_arr=new_series.astype(build_dict['target_dtype']), meta=build_dict['meta'])
 
-    return Signal(signal_arr=new_signal, meta=build_dict['meta'])
+    return Signal(data_arr=new_series, meta=build_dict['meta'])
 
 
-def signal_len(build_dict):
+def signal_len(build_dict: dict) -> int:
     file_dict = build_dict['files'][0]
     if file_dict.get("file_sample_interval"):
         return int(file_dict["file_sample_interval"][1] - file_dict["file_sample_interval"][0])
@@ -794,7 +869,10 @@ def signal_len(build_dict):
     raise NotImplementedError  # todo: more options
 
 
-def get_interval_values(file_sample_interval, interval):
+def _get_start_length(file_sample_interval, interval) -> tuple[int, int]:
+    """
+    Takes file_sample_interval and inner interval and returns tuple of real_start and interval_length.
+    """
     real_start = 0
     interval_length = None
     if file_sample_interval is not None:

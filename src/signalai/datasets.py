@@ -3,11 +3,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from signalai.signal import SignalClass, SignalDataset, read_audio
+from signalai.timeseries import SeriesClass, SeriesDataset, read_audio
 from signalai.tools.utils import set_intersection
 
 
-class AllToneLoader(SignalDataset):
+class AllToneLoader(SeriesDataset):
     def get_class_objects(self):
         generated_result = []
         class_structure = self.params["class_structure"]
@@ -22,14 +22,14 @@ class AllToneLoader(SignalDataset):
                     s.update_meta({'force': row.force})
                     signals.append(s)
                     signals.append(meta)
-                generated_result.append(SignalClass(
-                    signals=signals, class_name=class_name, superclass_name=superclass_name, logger=self.logger
+                generated_result.append(SeriesClass(
+                    series=signals, class_name=class_name, superclass_name=superclass_name, logger=self.logger
                 ))
 
         return generated_result
 
 
-class FileLoader(SignalDataset):  # todo: remake as MultiSignal
+class FileLoader(SeriesDataset):  # todo: remake as MultiSignal
     def structurize_files(self):
         num_channels = len(self.params["channels"])
         base_dir = Path(self.params["base_dir"])
@@ -105,8 +105,8 @@ class FileLoader(SignalDataset):  # todo: remake as MultiSignal
                                     f"'{filenames}'. Split range is '{self.split_range}.'", priority=2)
                     signals_build.append(build_dict)
 
-            generated_result.append(SignalClass(
-                signals_build=signals_build, class_name=class_name, superclass_name=superclass_name, logger=self.logger
+            generated_result.append(SeriesClass(
+                series_build=signals_build, class_name=class_name, superclass_name=superclass_name, logger=self.logger
             ))
 
         return generated_result

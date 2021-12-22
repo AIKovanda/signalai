@@ -29,7 +29,7 @@ class TorchSignalModel(SignalModel):
 
             # progress bar update and printing
             batch_indices_generator.set_description(f"Loss: {mean_loss: .08f}")
-            if batch_id % self.training_params["echo_step"] == 0 and batch_id % self.training_params["save_step"] != 0:
+            if batch_id % self.training_params["echo_step"] == 0 and batch_id != 0:
                 print()
 
             if batch_id % self.training_params["save_step"] == 0 and batch_id != 0:

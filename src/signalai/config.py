@@ -12,7 +12,7 @@ LOGS_DIR = BASE_DIR / "logs"
 BASE_DATA_DIR = BASE_DIR / 'data'
 TASKS_DIR = DATA_DIR / 'task_data'
 
-EVALUATION_DIR = "/home/martin/Music/decomposer"
+EVALUATION_DIR = Path("/home/martin/Music/decomposer")
 
 DEVICE = "cuda"
 

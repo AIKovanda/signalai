@@ -2,7 +2,7 @@ import abc
 from pathlib import Path
 import numpy as np
 import signalai
-from signalai.signal import Logger
+from signalai.timeseries import Logger
 
 
 class SignalModel(abc.ABC):
@@ -78,8 +78,8 @@ class SignalModel(abc.ABC):
         pass
 
     def __call__(self, x, split_by=None, residual_end=True):
-        if isinstance(x, signalai.signal.Signal):
-            return self.predict_numpy(x.signal, split_by=split_by, residual_end=residual_end)
+        if isinstance(x, signalai.timeseries.Signal):
+            return self.predict_numpy(x.data_arr, split_by=split_by, residual_end=residual_end)
         elif isinstance(x, np.ndarray):
             return self.predict_numpy(x, split_by=split_by, residual_end=residual_end)
 

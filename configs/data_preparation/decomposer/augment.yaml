@@ -71,9 +71,9 @@ processors:
                 transform_chance: 0.2
                 gain_db: [-15., 15.]
 
-            - class: signalai.transformers.Phaser
-              kwargs:
-                transform_chance: 0.2
+#            - class: signalai.transformers.Phaser
+#              kwargs:
+#                transform_chance: 0.2
 
             - class: signalai.transformers.Chorus
               kwargs:
