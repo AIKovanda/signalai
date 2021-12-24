@@ -1,25 +1,40 @@
 import abc
 from pathlib import Path
 import numpy as np
-import signalai
-from signalai.timeseries import Logger
+from signalai.config import DEVICE
+
+from signalai.timeseries import Logger, from_numpy, TimeSeries
+from signalai.tools.utils import apply_transforms, by_channel
 
 
 class SignalModel(abc.ABC):
-    def __init__(self, model, model_type, training_params, save_dir,
-                 logger=None, signal_generator=None, evaluator=None):
+    def __init__(self, model, training_params, save_dir, signal_model_type, output_type='label',
+                 logger=None, signal_generator=None,
+                 evaluator=None, transform=None, post_transform=None):
         super().__init__()
+        if post_transform is None:
+            post_transform = {}
+        if transform is None:
+            transform = {}
+
         self.model = model
-        self.signal_generator = signal_generator
-        self.model_type = model_type
         self.training_params = training_params
         self.save_dir = Path(save_dir) if save_dir is not None else None
 
+        self.logger = logger or Logger()
+        self.signal_generator = signal_generator
         self.evaluator = evaluator
+
+        self.signal_model_type = signal_model_type
+        if self.signal_model_type == 'torch_signal_model':
+            self.model = self.model.to(DEVICE)
+        self.output_type = output_type
+
+        self.transform: dict = transform
+        self.post_transform: dict = post_transform
+
         self._criterion = None
         self._optimizer = None
-
-        self.logger = logger or Logger()
 
     @property
     def optimizer(self):
@@ -45,21 +60,42 @@ class SignalModel(abc.ABC):
     @abc.abstractmethod
     def train_on_batch(self, x: np.ndarray, y: np.ndarray):
         pass
-    
+
     @abc.abstractmethod
     def predict_batch(self, x: np.ndarray) -> np.ndarray:
         pass
 
-    def predict_numpy(self, x: np.ndarray, split_by=None, residual_end=True):
-        if split_by is None or split_by >= x.shape[-1]:
-            return self.predict_batch(np.expand_dims(x, 0))[0]
+    def _predict_one_timeseries(self, x: TimeSeries) -> TimeSeries:
+        new_data_arr = self.predict_batch(
+            np.expand_dims(x.data_arr, 0)
+        )[0]
+        return type(x)(
+            data_arr=new_data_arr,
+            time_map=x.time_map,
+            meta=x.meta,
+            logger=x.logger,
+        )
+
+    def predict_timeseries(self, ts: TimeSeries, split_by=None, residual_end=True):
+        if split_by is None or split_by >= len(ts):
+            new_ts = apply_transforms(ts, self.transform.get('predict', []))
+            new_data_arr = self.predict_batch(np.expand_dims(new_ts.data_arr, 0))[0]
+            new_ts = from_numpy(data_arr=new_data_arr, meta=ts.meta, time_map=ts.time_map, logger=ts.logger)
+            return apply_transforms(new_ts, self.post_transform.get('predict', []))
         else:
-            result = []
-            for i in range(x.shape[-1] // split_by):
-                result.append(self.predict_batch(np.expand_dims(x[..., i*split_by:(i+1)*split_by], 0))[0])
-            if x.shape[-1] % split_by > 0 and residual_end:
-                result.append(self.predict_batch(np.expand_dims(x[..., -(x.shape[-1] % split_by):], 0))[0])
-            return np.concatenate(result, axis=-1)
+            transformed_crops = []
+            for i in range(len(ts) // split_by):
+                new_ts = apply_transforms(ts.crop([i * split_by, (i + 1) * split_by]), self.transform.get('predict', []))
+                transformed_crops.append(new_ts)
+
+            if len(ts) % split_by > 0 and residual_end:
+                new_ts = apply_transforms(ts.crop([-(len(ts) % split_by), len(ts)]), self.transform.get('predict', []))
+                transformed_crops.append(new_ts)
+
+            predicted_crops = map(self._predict_one_timeseries, transformed_crops)
+
+            result = [apply_transforms(_ts, self.post_transform.get('predict', [])).data_arr for _ts in predicted_crops]
+            return from_numpy(np.concatenate(result, axis=-1))
 
     @abc.abstractmethod
     def save(self, path, batch_id):
@@ -78,9 +114,12 @@ class SignalModel(abc.ABC):
         pass
 
     def __call__(self, x, split_by=None, residual_end=True):
-        if isinstance(x, signalai.timeseries.Signal):
-            return self.predict_numpy(x.data_arr, split_by=split_by, residual_end=residual_end)
-        elif isinstance(x, np.ndarray):
-            return self.predict_numpy(x, split_by=split_by, residual_end=residual_end)
+        if isinstance(x, np.ndarray):
+            ts = from_numpy(data_arr=x)
 
-        raise TypeError(f"X cannot be of type '{type(x)}'.")
+        elif isinstance(x, TimeSeries):
+            ts = x
+        else:
+            raise TypeError(f"X cannot be of type '{type(x)}'.")
+
+        return self.predict_timeseries(ts, split_by=split_by, residual_end=residual_end)

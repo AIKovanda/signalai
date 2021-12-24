@@ -97,7 +97,7 @@ class FileLoader(SeriesDataset):  # todo: remake as MultiSignal
                             "file_sample_interval": relevant_sample_interval,
                             **self.params.get("loading_params", {})
                         } for filename in filenames],
-                        "transforms": self.params.get("transforms", []),
+                        "transform": self.params.get("transform", []),
                         "target_dtype": self.params.get("target_dtype"),
                         "meta": self.params.get("meta", {}),
                     }

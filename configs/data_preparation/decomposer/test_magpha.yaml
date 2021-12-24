@@ -81,7 +81,13 @@ processors:
                 centre_delay_ms: [6.5, 8.5]
           X:
             - class: signalai.transformers.ChannelJoiner
-          Y: []
+            - class: signalai.transformers.STFT
+              kwargs:
+                phase_as_meta: false
+          Y:
+            - class: signalai.transformers.STFT
+              kwargs:
+                phase_as_meta: false
 
     transform:
       base: []

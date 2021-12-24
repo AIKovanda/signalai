@@ -1,0 +1,52 @@
+tasks: signalai.tasks.processing.*
+uses: "{CONFIGS_DIR}/data_preparation/decomposer/augment_mag.yaml"
+
+
+signal_model_config:
+  signal_model_type: torch_signal_model
+  output_type: signal
+
+  model:
+    class: signalai.models.TimEXception
+    kwargs:
+      in_channels: 1
+      processing_kernels: 128
+      output_channels: 4
+      activation: SELU
+      inner_out_channels: 8
+      attention: false
+      residual:
+        - true
+        - false
+        - true
+        - false
+        - true
+
+  transform:
+    predict:
+      - class: signalai.transformers.STFT
+        kwargs:
+          phase_as_meta: true
+
+  post_transform:
+    predict:
+      - class: signalai.transformers.ISTFT
+        kwargs:
+          phase_as_meta: true
+
+
+
+training_params:
+  batch_size: 6
+  batches: 30000
+  echo_step: 500
+  save_step: 1000
+  average_losses_to_print: 300
+
+  output_name: karaoke{batch_id}
+  criterion:
+    name: MSELoss
+  optimizer:
+    name: Adam
+    kwargs:
+      lr: 0.01

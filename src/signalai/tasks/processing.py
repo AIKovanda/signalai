@@ -1,23 +1,21 @@
 from pathlib import Path
 
-from signalai.config import DEVICE
-from signalai.core import SignalModel
-from signalai.tasks.data_preparation import TrainSignalGenerator
-
 from taskchain import Parameter, InMemoryData, DirData
 from taskchain.task import Task
 
+from signalai.tasks.data_preparation import TrainSignalGenerator
+from signalai.core import SignalModel
 from signalai.torch_core import TorchSignalModel
 
 
 def init_model(signal_model_config, save_dir=None, signal_generator=None, training_params=None):
+
     if signal_model_config['signal_model_type'] == 'torch_signal_model':
         signal_model = TorchSignalModel(
-            model=signal_model_config['model'].to(DEVICE),
             signal_generator=signal_generator,
-            model_type=signal_model_config['signal_model_type'],
             training_params=training_params,
             save_dir=save_dir,
+            **signal_model_config,
         )
     else:
         raise NotImplementedError(f'{signal_model_config["signal_model_type"]} type of model is not implemented yet!')
@@ -50,7 +48,7 @@ class TrainedModel(Task):
         ]
 
     def run(self, train_model, signal_model_config) -> SignalModel:
-        signal_model = init_model(signal_model_config)
-        model_path = Path(train_model) / 'saved_model' / 'last.pth'
+        signal_model = init_model(signal_model_config, save_dir=Path(train_model))
+        model_path = Path(train_model) / 'saved_model' / 'epoch_last.pth'
         signal_model.load(model_path)
         return signal_model

@@ -1,11 +1,16 @@
 from typing import List
 
+import numpy as np
 import torch
 import torch.nn as nn
-import torchvision.models as models
 from taskchain.parameter import AutoParameterObject
 from torch.nn import ModuleList, Sequential
 import torch.nn.functional as F
+
+
+ACTIVATIONS = {
+    'SELU': nn.SELU(),
+}
 
 
 class Signal2TimeFreq(nn.Module):
@@ -86,12 +91,12 @@ class TimeFreq2Signal(nn.Module):
 
 
 class TimeFreq2TimeFreqSimple(nn.Module):
-    def __init__(self, in_channels, kernels, output_channels, activation=None):
+    def __init__(self, in_channels, kernels, output_channels, activation_function=None):
         super(TimeFreq2TimeFreqSimple, self).__init__()
         self.in_channels = in_channels
         self.kernels = kernels
         self.output_channels = output_channels
-        self.activation = activation
+        self.activation_function = activation_function
 
         self.con2D = nn.Conv2d(
             in_channels=self.in_channels,
@@ -111,24 +116,24 @@ class TimeFreq2TimeFreqSimple(nn.Module):
     def forward(self, x):
         transformed = self.con2D(x)
         joined = self.join_conv(transformed)
-        if self.activation is not None:
+        if self.activation_function is not None:
             return joined
 
-        return self.activation(joined)
+        return self.activation_function(joined)
 
 
-class TimeFreq2TimeFreqEXception(nn.Module):
-    def __init__(self, in_channels, kernels, output_channels, activation=None, inner_out_channels=4, residual=True):
-        super(TimeFreq2TimeFreqEXception, self).__init__()
+class TimeFreq2TimeFreqEXceptionModule(nn.Module):
+    def __init__(self, in_channels, kernels, output_channels, activation_function=None, inner_out_channels=4, residual=True):
+        super(TimeFreq2TimeFreqEXceptionModule, self).__init__()
         self.in_channels = in_channels
         self.kernels = kernels
         self.output_channels = output_channels
         self.inner_out_channels = inner_out_channels
         self.residual = residual
 
-        self.activation = activation
-        if self.activation is None:
-            self.activation = lambda x: x
+        self.activation_function = activation_function
+        if self.activation_function is None:
+            self.activation_function = lambda x: x
 
         self.processing = ModuleList([Sequential(
             nn.Conv2d(
@@ -170,12 +175,67 @@ class TimeFreq2TimeFreqEXception(nn.Module):
         else:
             processed.append(self.join_conv(x))  # todo: batchnorm
 
-        processed = self.activation(torch.stack(processed, dim=0).sum(dim=0))
+        processed = self.activation_function(torch.stack(processed, dim=0).sum(dim=0))
         return processed
 
 
+class TimEXception(nn.Module):
+    def __init__(self, in_channels=256, processing_kernels=128, output_channels=1, attention=False,
+                 activation='SELU', inner_out_channels=4, residual=(False,)):
+
+        super(TimEXception, self).__init__()
+        self.in_channels = in_channels
+        self.output_channels = output_channels
+        self.inner_out_channels = inner_out_channels
+        self.residual = np.array(residual, dtype=bool)
+        self.attention = attention
+
+        if activation is None:
+            self.activation_function = lambda x: x
+        else:
+            self.activation_function = ACTIVATIONS.get(activation, lambda x: x)
+
+        # First and second columns represent input and output channels, respectively. Each row stands for a module.
+        in_out = np.ones((len(residual), 2), dtype=int) * self.inner_out_channels
+        where_false = np.where(~self.residual)[0]
+
+        if len(where_false) < 2 and self.in_channels != self.output_channels:
+            raise ValueError("Residual modules must have the same input and output shape, "
+                             "there is no way how to build this network.")
+
+        in_out[:where_false[0]+1, 0] = self.in_channels
+        in_out[where_false[-1]+1:, 0] = self.output_channels
+
+        in_out[:where_false[0], 1] = self.in_channels
+        in_out[where_false[-1]:, 1] = self.output_channels
+
+        self.processing = Sequential(*[
+            TimeFreq2TimeFreqEXceptionModule(
+                in_channels=in_out[i, 0], kernels=processing_kernels, output_channels=in_out[i, 1],
+                activation_function=self.activation_function, inner_out_channels=inner_out_channels, residual=res,
+            ) for i, res in enumerate(self.residual)
+        ])
+
+        if self.attention:
+            self.attention_conv = self.con2D = nn.Conv2d(
+                in_channels=self.output_channels,
+                out_channels=self.output_channels,
+                kernel_size=5,
+                padding='same',
+                bias=True,
+            )
+
+    def forward(self, x):
+        processed = self.processing(x)
+
+        if self.attention:
+            processed = processed * self.attention_conv(processed)
+
+        return self.activation_function(processed)
+
+
 class SEModel(AutoParameterObject, nn.Module):
-    def __init__(self, n_filters=256, processing_kernels=128, kernel_sizes=None, activation=nn.SELU(),
+    def __init__(self, n_filters=256, processing_kernels=128, kernel_sizes=None, activation='SELU',
                  output_channels=1, inner_out_channels=4, attention=True, output_separately=False,
                  use_exception=True):
         super(SEModel, self).__init__()
@@ -183,6 +243,7 @@ class SEModel(AutoParameterObject, nn.Module):
         self.processing_kernels = processing_kernels
         self.output_channels = output_channels
         self.attention = attention
+        self.activation = activation
         self.inner_out_channels = inner_out_channels
         self.output_separately = output_separately
         self.use_exception = use_exception
@@ -192,36 +253,37 @@ class SEModel(AutoParameterObject, nn.Module):
         else:
             self.kernel_sizes = kernel_sizes
 
-        self.activation = activation
-        if self.activation is None:
-            self.activation = lambda x: x
+        if activation is None:
+            self.activation_function = lambda x: x
+        else:
+            self.activation_function = ACTIVATIONS.get(activation, lambda x: x)
 
         self.signal2time_freq = Signal2TimeFreq(kernel_sizes=self.kernel_sizes, output_channels=self.n_filters)
 
         if self.use_exception:
             self.processing = Sequential(
-                TimeFreq2TimeFreqEXception(
+                TimeFreq2TimeFreqEXceptionModule(
                     in_channels=len(self.kernel_sizes), kernels=processing_kernels, output_channels=len(self.kernel_sizes),
-                    activation=self.activation, inner_out_channels=inner_out_channels, residual=True,
+                    activation_function=self.activation_function, inner_out_channels=inner_out_channels, residual=True,
                 ),
-                TimeFreq2TimeFreqEXception(
+                TimeFreq2TimeFreqEXceptionModule(
                     in_channels=len(self.kernel_sizes), kernels=processing_kernels, output_channels=inner_out_channels,
-                    activation=self.activation, inner_out_channels=inner_out_channels, residual=False,
+                    activation_function=self.activation_function, inner_out_channels=inner_out_channels, residual=False,
                 ),
-                TimeFreq2TimeFreqEXception(
+                TimeFreq2TimeFreqEXceptionModule(
                     in_channels=inner_out_channels, kernels=processing_kernels, output_channels=len(self.kernel_sizes),
-                    activation=self.activation, inner_out_channels=len(self.kernel_sizes), residual=False,
+                    activation_function=self.activation_function, inner_out_channels=len(self.kernel_sizes), residual=False,
                 ),
-                TimeFreq2TimeFreqEXception(
+                TimeFreq2TimeFreqEXceptionModule(
                     in_channels=len(self.kernel_sizes), kernels=processing_kernels, output_channels=len(self.kernel_sizes),
-                    activation=self.activation, inner_out_channels=inner_out_channels, residual=True
+                    activation_function=self.activation_function, inner_out_channels=inner_out_channels, residual=True
                 ),
             )
 
         else:
             self.processing = TimeFreq2TimeFreqSimple(
                 in_channels=len(self.kernel_sizes), kernels=processing_kernels, output_channels=len(self.kernel_sizes),
-                activation=self.activation,
+                activation_function=self.activation_function,
             )
 
         if self.output_separately:
@@ -254,7 +316,7 @@ class SEModel(AutoParameterObject, nn.Module):
         if self.attention:
             processed = processed * self.attention_conv(processed)
 
-        processed = self.activation(processed)
+        processed = self.activation_function(processed)
         
         if self.output_separately:
             single_signals = [conv(processed) for conv in self.time_freq2signal]

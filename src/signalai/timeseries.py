@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import sounddevice as sd
 from scipy import signal as scipy_signal
 from signalai.config import LOGS_DIR, LOADING_PROCESSES
-from signalai.tools.utils import join_dicts, time_now, set_union
+from signalai.tools.utils import join_dicts, time_now, set_union, original_length, apply_transforms
 from tqdm import trange, tqdm
 import os
 from pathlib import Path
@@ -545,9 +545,9 @@ class SeriesTaker:
 class SeriesTrack:
     def __init__(self, name, keeper, superclasses, logger=None,
                  equal_classes=False, strategy: Union[str, dict] = 'random', stride=0,
-                 transforms: Optional[dict] = None):
-        if transforms is None:
-            transforms = {}
+                 transform: Optional[dict] = None):
+        if transform is None:
+            transform = {}
 
         self.name = name
         self.keeper = keeper
@@ -557,7 +557,7 @@ class SeriesTrack:
         self.equal_classes = equal_classes
         self.strategy = strategy
         self.stride = stride
-        self.transforms = transforms
+        self.transform = transform
 
         self.takers = {}
         self.relevant_classes: List[str] = list(keeper.relevant_classes(superclasses=superclasses))
@@ -651,7 +651,7 @@ class SeriesProcessor:
         self.keeper = keeper
 
         self.tracks = {}
-        self.transforms = self.processor_config.get('transforms', [])
+        self.transform = self.processor_config.get('transform', [])
 
         self.X_re = self.processor_config['X']
         self.Y_re = self.processor_config['Y']
@@ -670,10 +670,10 @@ class SeriesProcessor:
             self.X_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1track_buffer_x['\2']\3", self.X_re)
             self.Y_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1track_buffer_y['\2']\3", self.Y_re)
 
-            x_transform = (track_config['transforms']['base'] + track_config['transforms']['X'] +
-                           self.processor_config['transforms']['base'] + self.processor_config['transforms']['X'])
-            y_transform = (track_config['transforms']['base'] + track_config['transforms']['Y'] +
-                           self.processor_config['transforms']['base'] + self.processor_config['transforms']['Y'])
+            x_transform = (track_config['transform']['base'] + track_config['transform']['X'] +
+                           self.processor_config['transform']['base'] + self.processor_config['transform']['X'])
+            y_transform = (track_config['transform']['base'] + track_config['transform']['Y'] +
+                           self.processor_config['transform']['base'] + self.processor_config['transform']['Y'])
 
             self.x_original_length[track_name] = original_length(self.processor_config['target_length'], x_transform)
             self.y_original_length[track_name] = original_length(self.processor_config['target_length'], y_transform)
@@ -689,17 +689,17 @@ class SeriesProcessor:
             track_buffer = track_obj.next(length=self.x_original_length[track_name])
             track_buffer_x[track_name] = apply_transforms(
                 track_buffer,
-                track_obj.transforms['base'] + track_obj.transforms['X'])
+                track_obj.transform['base'] + track_obj.transform['X'])
             track_buffer_y[track_name] = apply_transforms(
                 track_buffer,
-                track_obj.transforms['base'] + track_obj.transforms['Y'])
+                track_obj.transform['base'] + track_obj.transform['Y'])
 
         x = apply_transforms(
             eval(self.X_re),
-            self.processor_config['transforms']['base'] + self.processor_config['transforms']['X'])
+            self.processor_config['transform']['base'] + self.processor_config['transform']['X'])
         y = apply_transforms(
             eval(self.Y_re),
-            self.processor_config['transforms']['base'] + self.processor_config['transforms']['Y'])
+            self.processor_config['transform']['base'] + self.processor_config['transform']['Y'])
 
         return x, y
 
@@ -749,23 +749,6 @@ class Logger:
 
         if self.verbose:
             print(message)
-
-
-def apply_transforms(ts, transforms=()):
-    if len(transforms) == 0:
-        return ts
-    for transform in transforms:
-        ts = transform(ts)
-    return ts
-
-
-def original_length(target_length, transforms=()):
-    if len(transforms) == 0:
-        return target_length
-    for transform in transforms[::-1]:
-        target_length = transform.original_length(target_length)
-    assert target_length is not None and target_length > 0, "Output of chosen transformations does not make sense."
-    return target_length
 
 
 def pydub2numpy(audio: pydub.AudioSegment) -> (np.ndarray, int):
@@ -835,11 +818,21 @@ def read_npy(filename, file_sample_interval=None, interval=None, dtype=None):
         raise ValueError(f"Loaded array '{filename}' has {len(full_data_arr.shape)} channels, maximum is 3.")
 
 
+def from_numpy(data_arr: np.ndarray, meta=None, time_map=None, logger=None) -> TimeSeries:
+    assert isinstance(data_arr, np.ndarray), f"data_arr must be a numpy.ndarray, not '{type(data_arr)}'"
+    if len(data_arr.shape) in [1, 2]:
+        return Signal(data_arr=data_arr, meta=meta, time_map=time_map, logger=logger)
+    elif len(data_arr.shape) == 3:
+        return Signal2D(data_arr=data_arr)
+    else:
+        raise ValueError(f"data_arr has unsupported dimension {len(data_arr.shape)}.")
+
+
 def build_series(build_dict: dict, interval: Optional[Iterable[int]] = None) -> TimeSeries:
     if not build_dict:
         raise ValueError(f"There is no information of how to build a signal.")
 
-    transforms = build_dict.pop('transforms', [])
+    transform = build_dict.pop('transform', [])
     loaded_channels = []
     assert len(build_dict['files']) > 0, f"There is no file to be loaded."
     for file_dict in build_dict['files']:
@@ -851,7 +844,7 @@ def build_series(build_dict: dict, interval: Optional[Iterable[int]] = None) -> 
         if suffix == ".npy":
             loaded_channels.append(read_npy(interval=interval, **file_dict).data_arr)
 
-    new_series = apply_transforms(np.concatenate(loaded_channels, axis=0), transforms=transforms)
+    new_series = apply_transforms(np.concatenate(loaded_channels, axis=0), transforms=transform)
     if build_dict.get('target_dtype'):
         return Signal(data_arr=new_series.astype(build_dict['target_dtype']), meta=build_dict['meta'])
 

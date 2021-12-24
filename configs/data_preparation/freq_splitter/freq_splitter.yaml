@@ -21,7 +21,7 @@ datasets:
       freq: [6000, 20000]
       noise_ratio: 5
       noise_range: [6000, 20000]
-      transforms: []
+      transform: []
 
 
 split: [1.,0.,0.]
@@ -37,7 +37,7 @@ processors:
         superclasses:
         - low_freq
         equal_classes: true
-        transforms:
+        transform:
           base: []
           X: []
           Y: []
@@ -46,12 +46,12 @@ processors:
         superclasses:
         - high_freq
         equal_classes: true
-        transforms:
+        transform:
           base: []
           X: []
           Y: []
 
-    transforms:
+    transform:
       base: []
       X: []
       Y: []

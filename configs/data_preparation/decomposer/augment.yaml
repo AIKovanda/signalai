@@ -19,7 +19,7 @@ datasets:
 
       split_by_files: true
       fs: 44100
-      transforms: []
+      transform: []
 
 
 split: [1.,0.,0.]
@@ -35,7 +35,7 @@ processors:
         - karaoke_superclass
         equal_classes: false
         strategy: random
-        transforms:
+        transform:
           base:
             - class: signalai.transformers.ChannelJoiner
               kwargs:
@@ -83,7 +83,7 @@ processors:
             - class: signalai.transformers.ChannelJoiner
           Y: []
 
-    transforms:
+    transform:
       base: []
       X: []
       Y: []

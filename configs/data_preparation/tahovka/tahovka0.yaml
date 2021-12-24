@@ -91,12 +91,12 @@ processors:
         superclasses:
         - tahovka
         equal_classes: true
-        transforms:
+        transform:
           base: []
           X: []
           Y: []
 
-    transforms:
+    transform:
       base: []
       X: []
       Y: []
@@ -113,12 +113,12 @@ processors:
       t0:
         superclasses:
         - all_tahovka
-        transforms:
+        transform:
           base: []
           X: []
           Y: []
 
-    transforms:
+    transform:
       base: []
       X: []
       Y: []

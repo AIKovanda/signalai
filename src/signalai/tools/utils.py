@@ -1,6 +1,8 @@
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
+
 import numpy as np
 
 
@@ -80,3 +82,34 @@ def join_dicts(*args):
                 if all([value == i[key] for i in args]):
                     new_info[key] = value
         return new_info
+
+
+def apply_transforms(ts, transforms=()):
+    if len(transforms) == 0:
+        return ts
+    for t in transforms:
+        ts = t(ts)
+    return ts
+
+
+def original_length(target_length, transforms=()):
+    if len(transforms) == 0:
+        return target_length
+    for t in transforms[::-1]:
+        target_length = t.original_signal_length(target_length)
+    assert target_length is not None and target_length > 0, "Output of chosen transformations does not make sense."
+    return target_length
+
+
+def by_channel(transform: Callable):
+    def wrapper(self, *args, **kwargs):
+        arg_len = set([len(arg) for arg in args])
+        assert len(arg_len) == 1, f"Inputs must be the same length."
+        processed_channels = []
+        for i in range(list(arg_len)[0]):
+            processed_channels.append(
+                transform(self, *[arg[i: i+1] for arg in args], **kwargs)
+            )
+        return np.concatenate(processed_channels, axis=0)
+
+    return wrapper

@@ -40,7 +40,7 @@ class TorchSignalModel(SignalModel):
         self.evaluate(output_dir=output_dir, batch_id=batch_id)
 
     def save(self, output_dir, batch_id):
-        latest_file = (output_dir / f"last.pth").absolute()
+        latest_file = (output_dir / f"epoch_last.pth").absolute()
         output_file = (output_dir / f"epoch_{batch_id}.pth").absolute()
 
         if not str(output_file).endswith(".pth"):
@@ -62,7 +62,7 @@ class TorchSignalModel(SignalModel):
     def train_on_batch(self, x: np.ndarray, y: np.ndarray):
         self.model.train()
         x_batch = torch.from_numpy(x).type(torch.float32).to(DEVICE)
-        if self.training_params.get("output_type", "label") == "label":
+        if self.output_type == "label":
             y_batch = torch.from_numpy(y).type(torch.float32).unsqueeze(1).to(DEVICE)
         else:
             y_batch = torch.from_numpy(y).type(torch.float32).to(DEVICE)
@@ -87,9 +87,10 @@ class TorchSignalModel(SignalModel):
         if epoch is not None:
             path = self.save_dir / "saved_model" / f"epoch_{epoch}.pth"
         if path is None:
-            path = self.save_dir / "saved_model" / "last.pth"
+            path = self.save_dir / "saved_model" / "epoch_last.pth"
 
         self.model.load_state_dict(torch.load(path))
+        self.logger.log(f"Weights from {path} loaded successfully.", priority=4)
 
     def get_criterion(self):
         criterion_info = self.training_params["criterion"]
