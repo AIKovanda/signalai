@@ -23,8 +23,8 @@ python setup.py develop
 The Signal class allows to easily manipulate with signal data. The basic operations are
 ```python
 import signalai as sai
-m0 = sai.read_audio('path/to/song0.mp3')  # sai.Signal class
-m1 = sai.read_audio('path/to/song1.mp3')
+m0 = sai.read_audio('data/example/dataset/Actions_-_Devils_Words_-_1.aac')  # sai.Signal class
+m1 = sai.read_audio('data/example/dataset/Actions_-_One_Minute_Smile_-_3.aac')
 
 m0_crop = m0.crop([5*44100, 10*44100])  # cropping by samples, 44100 represents the sampling frequency
 m0_crop.play()  # play the audio
@@ -32,15 +32,6 @@ m0_crop.play()  # play the audio
 m0_crop.show()  # shows the amplitude
 
 numpy_array = m0_crop.data_arr  # 2D matrix, axis 0 and 1 are the channel and time axes, respectively 
-```
-### Training a model
-Signal-AI is based on [Taskchain](https://pypi.org/project/taskchain/) which keeps 
-order in machine learning projects by splitting parts of code into individual
-tasks. This also allows to put all the dataset and network setting into YAML config
-files. See some example configs in `configs` folder. 
-
-```
-python inference.py --input path/to/an/audio/file
 ```
 
 ### Example
@@ -58,6 +49,11 @@ python scripts/decomposer.py --model_config example/augment/se_simple_noat_sep.y
 ```
 
 ### Train your own model
+
+Signal-AI is based on [Taskchain](https://pypi.org/project/taskchain/) which keeps 
+order in machine learning projects by splitting parts of code into individual
+tasks. This also allows you to put all the dataset and network setting into
+YAML config files. See some example configs in `configs` folder.
 
 In order to train your own model, create a config file based on the example configs.
 The model can be trained using the code 
