@@ -6,7 +6,6 @@ from taskchain.parameter import AutoParameterObject
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
-import sounddevice as sd
 from scipy import signal as scipy_signal
 from signalai.config import LOGS_DIR, LOADING_THREADS
 from signalai.tools.utils import join_dicts, time_now, set_union, original_length, apply_transforms
@@ -249,6 +248,7 @@ class Signal(TimeSeries):
             plt.show()
 
     def play(self, channel_id=0, fs=44100, volume=32):
+        import sounddevice as sd
         sd.play(volume * self._data_arr[channel_id].astype('float32'), fs)
         sd.wait()
 
