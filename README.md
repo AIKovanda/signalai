@@ -62,7 +62,7 @@ The model can be trained using the code
 from signalai import config
 from taskchain.task import Config
 
-config_path = config.CONFIGS_DIR / 'models' / 'example' / 'my_model.yaml'
+config_path = config.CONFIGS_DIR / 'models' / 'example' / 'augment' / 'se_simple_at_nosep.yaml'
 conf = Config(
     config.TASKS_DIR,  # where Taskchain data (including the model itself) should be stored
     config_path,
