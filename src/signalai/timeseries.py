@@ -1,6 +1,6 @@
 import abc
 import re
-from typing import Union, Optional, List, Iterable, Type
+from typing import Union, Optional, List, Iterable, Type, Tuple
 
 from taskchain.parameter import AutoParameterObject
 import pandas as pd
@@ -374,7 +374,7 @@ class SeriesClass:
                 pool.join()  # solving memory leaks
                 self.logger.log(f"Signals loaded to RAM.", priority=1)
 
-    def get_index_map(self) -> list:
+    def get_index_map(self) -> List:
         return [len(i) for i in self.series]
 
     def get_individual_series(self, individual_id, start_id, length):
@@ -863,7 +863,7 @@ def signal_len(build_dict: dict) -> int:
     raise NotImplementedError  # todo: more options
 
 
-def _get_start_length(file_sample_interval, interval) -> tuple[int, int]:
+def _get_start_length(file_sample_interval, interval) -> Tuple[int, int]:
     """
     Takes file_sample_interval and inner interval and returns tuple of real_start and interval_length.
     """
