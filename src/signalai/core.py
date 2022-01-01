@@ -1,10 +1,12 @@
 import abc
 from pathlib import Path
+from typing import Optional
+
 import numpy as np
 from signalai.config import DEVICE
 
 from signalai.timeseries import Logger, from_numpy, TimeSeries
-from signalai.tools.utils import apply_transforms, by_channel
+from signalai.tools.utils import apply_transforms
 
 
 class SignalModel(abc.ABC):
@@ -102,7 +104,7 @@ class SignalModel(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def load(self, path):
+    def load(self, path=None, batch=None):
         pass
 
     @abc.abstractmethod
@@ -113,7 +115,7 @@ class SignalModel(abc.ABC):
     def get_criterion(self):
         pass
 
-    def __call__(self, x, split_by=None, residual_end=True):
+    def __call__(self, x, split_by: Optional[int] = None, residual_end=True):
         if isinstance(x, np.ndarray):
             ts = from_numpy(data_arr=x)
 

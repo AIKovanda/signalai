@@ -1,0 +1,33 @@
+tasks: signalai.tasks.processing.*
+uses: "{CONFIGS_DIR}/data_preparation/example/augment.yaml"
+
+
+signal_model_config:
+  signal_model_type: torch_signal_model
+  output_type: signal
+  model:
+    class: signalai.models.SEModel
+    kwargs:
+      n_filters: 256
+      processing_kernels: 128
+      kernel_sizes: [128, 256]
+      output_channels: 4
+      inner_out_channels: 4
+      attention: true
+      output_separately: false
+      use_exception: false
+
+
+training_params:
+  batch_size: 12
+  batches: 30
+  echo_step: 500
+  save_step: 1000
+  average_losses_to_print: 300
+
+  criterion:
+    name: L1Loss
+  optimizer:
+    name: Adam
+    kwargs:
+      lr: 0.01

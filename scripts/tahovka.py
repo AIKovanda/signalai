@@ -11,7 +11,7 @@ from signalai.tools.filters import gauss_convolve
 def run(config_path, output_img):
     print("Loading config...")
     conf = Config(
-        config.TASKS_DIR,  # where should be data stored
+        config.TASKS_DIR,  # where Taskchain data should be stored
         config_path,
         global_vars=config,  # set global variables
     )

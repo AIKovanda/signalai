@@ -1,22 +1,26 @@
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).parent.parent.parent
-DATA_DIR = Path('/mnt/DATA/signalai_data')
+
+CONFIGS_DIR = BASE_DIR / 'configs'
+LOGS_DIR = BASE_DIR / 'logs'
+
+DATA_DIR = BASE_DIR / 'data'
+DATA_DIR.mkdir(exist_ok=True)
+
 DATASETS_DIR = DATA_DIR / 'datasets'
-
-TEMP_DIR = Path('/dev/shm/.temp_signalai')
-TEMP_DIR.mkdir(exist_ok=True)
-
-CONFIGS_DIR = BASE_DIR / "configs"
-LOGS_DIR = BASE_DIR / "logs"
-BASE_DATA_DIR = BASE_DIR / 'data'
 TASKS_DIR = DATA_DIR / 'task_data'
+EVALUATION_DIR = DATA_DIR / 'eval'
 
-EVALUATION_DIR = Path("/home/martin/Music/decomposer")
+TASKS_DIR.mkdir(exist_ok=True)
+EVALUATION_DIR.mkdir(exist_ok=True)
 
-DEVICE = "cuda"
+
+DEVICE = 'cuda'
 
 
 DTYPE_BYTES = {'float32': 4, 'float16': 2}
 
-LOADING_PROCESSES = 12
+
+LOADING_THREADS = os.cpu_count()

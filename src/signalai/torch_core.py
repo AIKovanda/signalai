@@ -83,9 +83,9 @@ class TorchSignalModel(SignalModel):
             self.model.train()
             return y_hat
 
-    def load(self, path=None, epoch=None):
-        if epoch is not None:
-            path = self.save_dir / "saved_model" / f"epoch_{epoch}.pth"
+    def load(self, path=None, batch=None):
+        if batch is not None:
+            path = self.save_dir / "saved_model" / f"epoch_{batch}.pth"
         if path is None:
             path = self.save_dir / "saved_model" / "epoch_last.pth"
 

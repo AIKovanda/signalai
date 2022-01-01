@@ -8,7 +8,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 import sounddevice as sd
 from scipy import signal as scipy_signal
-from signalai.config import LOGS_DIR, LOADING_PROCESSES
+from signalai.config import LOGS_DIR, LOADING_THREADS
 from signalai.tools.utils import join_dicts, time_now, set_union, original_length, apply_transforms
 from tqdm import trange, tqdm
 import os
@@ -363,11 +363,11 @@ class SeriesClass:
 
     def load_to_ram(self) -> None:
         if not self.series:
-            if LOADING_PROCESSES == 1:
+            if LOADING_THREADS == 1:
                 self.series = list(tqdm(map(build_series, self.series_build), total=len(self.series_build)))
             else:
                 import multiprocessing as mp
-                pool = mp.Pool(processes=LOADING_PROCESSES)
+                pool = mp.Pool(processes=LOADING_THREADS)
                 self.series = list(tqdm(pool.imap(build_series, self.series_build), total=len(self.series_build)))
                 pool.close()
                 pool.terminate()

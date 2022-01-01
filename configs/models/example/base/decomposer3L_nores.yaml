@@ -1,0 +1,40 @@
+tasks: signalai.tasks.processing.*
+uses: "{CONFIGS_DIR}/data_preparation/example/base.yaml"
+
+
+signal_model_config:
+  signal_model_type: torch_signal_model
+  output_type: signal
+  model:
+    class: signalai.torch_core.InceptionTime
+    kwargs:
+      build_config:
+        - bottleneck_channels: 32
+          kernel_sizes: [21, 41, 81]
+          n_filters: 32
+          use_residual: false
+        - bottleneck_channels: 32
+          kernel_sizes: [21, 41, 81]
+          n_filters: 32
+          use_residual: false
+        - bottleneck_channels: 32
+          kernel_sizes: [11, 21, 41]
+          n_filters: 32
+          use_residual: false
+      in_channels: 1
+      outputs: -4
+
+
+training_params:
+  batch_size: 6
+  batches: 30
+  echo_step: 500
+  save_step: 1500
+  average_losses_to_print: 300
+
+  criterion:
+    name: L1Loss
+  optimizer:
+    name: Adam
+    kwargs:
+      lr: 0.01
