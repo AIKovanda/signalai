@@ -494,7 +494,8 @@ class SeriesTaker:
             p = np.array(index_map_clean) / np.sum(index_map_clean)
             individual_id = np.random.choice(len(p), p=p)
             start_id = np.random.choice(index_map_clean[individual_id]) if self.strategy == 'random' else 0
-            self.logger.log(f"Taking '{individual_id=}', '{start_id=}' and '{length=}'.", priority=0)
+            self.logger.log(f"Taking individual_id='{individual_id}', start_id='{start_id}' and "
+                            f"length='{length}'.", priority=0)
             return self.taken_class.get_individual_series(
                 individual_id=individual_id,
                 start_id=start_id,
