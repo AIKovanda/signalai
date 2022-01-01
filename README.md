@@ -23,8 +23,8 @@ python setup.py develop
 The Signal class allows to easily manipulate with signal data. The basic operations are
 ```python
 import signalai as sai
-m0 = sai.read_audio('path/to/song0.mp3')  # sai.Signal class
-m1 = sai.read_audio('path/to/song1.mp3')
+m0 = sai.read_audio('data/example/dataset/Actions_-_Devils_Words_-_1.aac')  # sai.Signal class
+m1 = sai.read_audio('data/example/dataset/Actions_-_One_Minute_Smile_-_3.aac')
 
 m0_crop = m0.crop([5*44100, 10*44100])  # cropping by samples, 44100 represents the sampling frequency
 m0_crop.play()  # play the audio
@@ -66,7 +66,7 @@ The model can be trained using the code
 from signalai import config
 from taskchain.task import Config
 
-config_path = config.CONFIGS_DIR / 'models' / 'example' / 'my_model.yaml'
+config_path = config.CONFIGS_DIR / 'models' / 'example' / 'augment' / 'se_simple_at_nosep.yaml'
 conf = Config(
     config.TASKS_DIR,  # where Taskchain data (including the model itself) should be stored
     config_path,
