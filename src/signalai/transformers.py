@@ -1,12 +1,7 @@
-from abc import abstractmethod
-import abc
-from typing import Union, List
-
-from taskchain.parameter import AutoParameterObject
+import librosa
 import numpy as np
-from scipy import signal as scipy_signal
 
-from signalai.timeseries import Signal, Signal2D, TimeSeries, from_numpy
+from signalai.timeseries import Signal, Signal2D, TimeSeries, Transformer
 from signalai.tools.filters import butter_bandpass_filter
 from signalai.tools.utils import by_channel
 
@@ -23,59 +18,6 @@ RETURN_CLASS = {
     2: Signal,
     3: Signal2D,
 }
-
-
-class Transformer(AutoParameterObject, abc.ABC):
-    in_dim = None
-
-    def __init__(self, **params):
-        self.params = params
-
-    def _get_parameter_uniform(self, param_name: str, default: Union[float, int, List[Union[int, float]]]) -> float:
-        param_value = self.params.get(param_name, default)
-        if isinstance(param_value, list) or isinstance(param_value, tuple):
-            if len(param_value) == 1:
-                return param_value[0]
-
-            if len(param_value) == 2:
-                return np.random.uniform(*param_value)
-
-            raise ValueError(f"Parameter '{param_name}' must have one or two values, not {len(param_value)}.")
-
-        return param_value
-
-    @abstractmethod
-    def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        pass
-
-    def original_signal_length(self, length: int) -> int:
-        raise NotImplementedError("Original length is not implemented for this transformation.")
-
-    @property
-    def keeps_signal_length(self) -> bool:
-        raise NotImplementedError("Keeps length is not implemented for this transformation.")
-
-    def transform(self, x: Union[np.ndarray, TimeSeries]) -> TimeSeries:
-        if isinstance(x, TimeSeries):
-            ts = x
-        elif isinstance(x, np.ndarray):
-            ts = from_numpy(x)
-        else:
-            raise TypeError(
-                f"Transformer got a type of '{type(x)}' which is not supported.")
-
-        if self.in_dim != ts.full_dimensions:
-            raise ValueError(f"Transform '{type(self)}' takes input of dim {self.in_dim}, "
-                             f"{type(ts)} has a dim of {ts.full_dimensions}.")
-
-        transform_chance = self.params.get('transform_chance', 1.)
-        if np.random.rand() < transform_chance:
-            return self.transform_timeseries(ts)
-
-        return ts
-
-    def __call__(self, x):
-        return self.transform(x)
 
 
 class Standardizer(Transformer):
@@ -111,14 +53,14 @@ class Gain(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray) -> np.ndarray:
+    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
         gain_db = self._get_parameter_uniform('gain_db', default=[-10, 10])
-        fs = self.params.get('fs', 44100)
         return PBGain(gain_db=gain_db)(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr),
+            data_arr=self.transform_npy(x.data_arr, fs=fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
@@ -139,13 +81,13 @@ class Phaser(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray) -> np.ndarray:
-        fs = self.params.get('fs', 44100)
+    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
         return PBPhaser()(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr),
+            data_arr=self.transform_npy(x.data_arr, fs=fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
@@ -166,14 +108,14 @@ class Chorus(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray) -> np.ndarray:
+    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
         centre_delay_ms = self._get_parameter_uniform('centre_delay_ms', default=[7., 8.])
-        fs = self.params.get('fs', 44100)
         return PBChorus(centre_delay_ms=centre_delay_ms)(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr),
+            data_arr=self.transform_npy(x.data_arr, fs=fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
@@ -199,13 +141,12 @@ class Reverb(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray) -> np.ndarray:
+    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
         room_size = self._get_parameter_uniform('room_size', default=[0., 1.])
         damping = self._get_parameter_uniform('damping', default=[0., 1.])
         wet_level = self._get_parameter_uniform('wet_level', default=[0., 1.])
         dry_level = self._get_parameter_uniform('dry_level', default=[0., 1.])
         freeze_mode = self._get_parameter_uniform('freeze_mode', default=[0., .1])
-        fs = self.params.get('fs', 44100)
         return PBReverb(
             room_size=room_size,
             damping=damping,
@@ -215,8 +156,9 @@ class Reverb(Transformer):
         )(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr),
+            data_arr=self.transform_npy(x.data_arr, fs=fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
@@ -238,16 +180,16 @@ class BandPassFilter(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray) -> np.ndarray:
-        fs = self.params.get('fs', 44100)
+    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
         low_cut = self.params.get('low_cut')
         high_cut = self.params.get('high_cut')
 
         return butter_bandpass_filter(x, low_cut, high_cut, fs)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr),
+            data_arr=self.transform_npy(x.data_arr, fs=fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
@@ -263,7 +205,7 @@ class BandPassFilter(Transformer):
 
 class ChannelJoiner(Transformer):
     """
-    channels: list of list of integers
+    channels: list containing list of integers
     """
     in_dim = 2
 
@@ -297,8 +239,12 @@ class STFT(Transformer):
 
     @by_channel
     def transform_npy(self, x: np.ndarray, split_complex=False) -> np.ndarray:
-        fs = self.params.get('fs', 44100)
-        _, _, Zxx = scipy_signal.stft(x[0], fs=fs)
+        # fs = x.meta['fs']
+        center = self.params.get('center', False)
+        n_fft = self.params.get('n_fft', 256)
+        hop_length = self.params.get('hop_length')
+        # _, _, Zxx = scipy_signal.stft(x[0], fs=fs)
+        Zxx = librosa.stft(x[0], center=center, n_fft=n_fft, hop_length=hop_length)
         if split_complex:
             return np.moveaxis(Zxx.view('(2,)float32'), -1, 0)
 
@@ -333,7 +279,10 @@ class ISTFT(Transformer):
 
     @by_channel
     def transform_npy(self, x: np.ndarray) -> np.ndarray:
-        return scipy_signal.istft(x)[1]
+        # return scipy_signal.istft(x)[1]
+        center = self.params.get('center', False)
+        hop_length = self.params.get('hop_length')
+        return np.expand_dims(librosa.istft(x[0], hop_length=hop_length, center=center), 0)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
         meta = x.meta.copy()  # todo: without copy

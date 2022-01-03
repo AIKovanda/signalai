@@ -4,7 +4,7 @@ from signalai.timeseries import SeriesDatasetsKeeper, SeriesProcessor, Logger
 from taskchain import Parameter, InMemoryData, Task
 
 
-class TrainSignalGenerator(Task):
+class TrainSeriesProcessor(Task):
     class Meta:
         data_class = InMemoryData
         input_tasks = []
@@ -13,12 +13,15 @@ class TrainSignalGenerator(Task):
             Parameter("processors"),
             Parameter("load_to_ram", default=False, ignore_persistence=True),
             Parameter("split", default=[.8, .1, .1]),
+            Parameter("test", default=False),
         ]
 
-    def run(self, datasets, processors, split: Union[tuple, list], load_to_ram: bool) -> SeriesProcessor:
+    def run(self, datasets, processors, split: Union[tuple, list], load_to_ram: bool, test: bool) -> SeriesProcessor:
         assert np.abs(np.sum(split) - 1) < 1e-8, "Split must sum to 1."
         split_name = "train"
         split_range = (0., split[0])  # todo: not needed for some datasets
+        if test:
+            split_range = (0., 0.05)
         logger = Logger(name=f"{split_name.capitalize()}SignalGenerator", verbose=0)
         keeper = SeriesDatasetsKeeper(datasets_config=datasets, split_range=split_range, logger=logger)
         if load_to_ram:

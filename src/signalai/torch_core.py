@@ -18,7 +18,7 @@ class TorchSignalModel(SignalModel):
         batch_id = 0
 
         for batch_id in batch_indices_generator:
-            x, y = self.signal_generator.next_batch(self.training_params.get("batch_size", 1))
+            x, y = self.series_processor.next_batch(self.target_signal_length, self.training_params.get("batch_size", 1))
             new_loss = self.train_on_batch(x, y)
             losses.append(new_loss)
             mean_loss = np.mean(losses[-self.training_params["average_losses_to_print"]:])
@@ -69,7 +69,8 @@ class TorchSignalModel(SignalModel):
 
         self.optimizer.zero_grad()
         y_hat = self.model(x_batch)
-        loss = self.criterion(y_hat, y_batch)
+        loss_lambda = eval(self.training_params.get('loss_lambda'))
+        loss = loss_lambda(y_hat, y_batch, self.criterion)
         loss.backward()
         self.optimizer.step()
         return loss.item()

@@ -2,13 +2,16 @@ import abc
 import re
 from typing import Union, Optional, List, Iterable, Type, Tuple
 
+import librosa
+from librosa import resample
+from librosa.display import specshow
 from taskchain.parameter import AutoParameterObject
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 from scipy import signal as scipy_signal
 from signalai.config import LOGS_DIR, LOADING_THREADS
-from signalai.tools.utils import join_dicts, time_now, set_union, original_length, apply_transforms
+from signalai.tools.utils import join_dicts, time_now, set_union, original_length, apply_transforms, by_channel
 from tqdm import trange, tqdm
 import os
 from pathlib import Path
@@ -82,6 +85,9 @@ class TimeSeries(abc.ABC):
 
     def __len__(self):
         return self._data_arr.shape[-1]
+
+    def astype_(self, dtype):
+        self._data_arr = self._data_arr.astype(dtype)
 
     @property
     def channels_count(self):
@@ -179,7 +185,28 @@ class TimeSeries(abc.ABC):
         ))
 
     def update_meta(self, dict_):
+        self.meta = self.meta.copy()
         self.meta.update(dict_)
+
+    def apply(self, func):
+        pass  # todo: transforms
+
+    def __iter__(self):
+        self.n = 0
+        return self
+
+    def __next__(self):
+        if self.n < self.channels_count:
+            sub_arr = self._data_arr[self.n: self.n+1]
+            self.n += 1
+            return type(self)(
+                data_arr=sub_arr,
+                meta=self.meta,
+                time_map=self.time_map,
+                logger=self.logger,
+            )
+        else:
+            raise StopIteration
 
 
 class Signal(TimeSeries):
@@ -247,18 +274,40 @@ class Signal(TimeSeries):
         if show:
             plt.show()
 
+    def spectrogram3(self, fs=44100, figsize=(16, 9), save_as=None, show=True):
+        plt.figure(figsize=figsize)
+        Sxx = np.abs(librosa.stft(self._data_arr[0, ::2], center=False, n_fft=2048, hop_length=1024))
+        Sxx = Sxx / np.max(Sxx)
+        print(Sxx.shape, np.max(Sxx), np.min(Sxx))
+        plt.pcolormesh(Sxx, shading='gouraud')
+        plt.ylabel('Frequency [Hz]')
+        plt.xlabel('Time [sec]')
+        if save_as is not None:
+            plt.savefig(save_as)
+        if show:
+            plt.show()
+
+    def spectrogram2(self, fs=44100, figsize=(16, 9), save_as=None, show=True):
+        S = np.abs(librosa.stft(self._data_arr[0]))
+        fig, ax = plt.subplots()
+
+        img = specshow(librosa.amplitude_to_db(S, ref=np.max),
+                       y_axis='log', x_axis='time', sr=fs, ax=ax)
+        ax.set_title('Power spectrogram')
+        fig.colorbar(img, ax=ax, format="%+2.0f dB")
+
     def play(self, channel_id=0, fs=44100, volume=32):
         import sounddevice as sd
         sd.play(volume * self._data_arr[channel_id].astype('float32'), fs)
         sd.wait()
 
-    def to_mp3(self, file, sf=44100, normalized=True):  # todo channels
+    def to_mp3(self, file, normalized=True):  # todo channels
         channels = 2 if (self._data_arr.ndim == 2 and self._data_arr.shape[0] == 2) else 1
         if normalized:  # normalized array - each item should be a float in [-1, 1)
             y = np.int16(self._data_arr.T * 2 ** 15)
         else:
             y = np.int16(self._data_arr.T)
-        song = pydub.AudioSegment(y.tobytes(), frame_rate=sf, sample_width=2, channels=channels)
+        song = pydub.AudioSegment(y.tobytes(), frame_rate=self.meta['fs'], sample_width=2, channels=channels)
         song.export(file, format="mp3", bitrate="320k")
 
 
@@ -319,7 +368,7 @@ class MultiSeries:
             logger=series[0].logger,
         )
 
-    def stack_series(self, only_valid=False):
+    def stack_series(self, only_valid=False, axis=0):
         series = self._series_list(only_valid=only_valid)
         for ts in series:
             if ts is not None:
@@ -346,7 +395,7 @@ class MultiSeries:
                 time_maps.append(np.zeros(series_shape, dtype=bool))
 
         return ts_type(
-            data_arr=np.concatenate(data_arrays, axis=0),
+            data_arr=np.concatenate(data_arrays, axis=axis),
             time_map=np.concatenate(time_maps, axis=0),
             meta=join_dicts(*metas),
             logger=logger,
@@ -645,11 +694,11 @@ class SeriesTrack:
 class SeriesProcessor:
     def __init__(self, processor_config, keeper, logger=None):
         self.processor_config = processor_config
-        # self.to_ram = self.processor_config.get('to_ram', False)  # todo: delete
-        # self.op_type = self.processor_config.get('op_type', 'float32')
 
-        self.logger: Logger = logger or Logger()
         self.keeper = keeper
+        self.logger: Logger = logger or Logger()
+
+        self.fs_transform = []
 
         self.tracks = {}
         self.transform = self.processor_config.get('transform', [])
@@ -671,43 +720,41 @@ class SeriesProcessor:
             self.X_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1track_buffer_x['\2']\3", self.X_re)
             self.Y_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1track_buffer_y['\2']\3", self.Y_re)
 
-            x_transform = (track_config['transform']['base'] + track_config['transform']['X'] +
-                           self.processor_config['transform']['base'] + self.processor_config['transform']['X'])
-            y_transform = (track_config['transform']['base'] + track_config['transform']['Y'] +
-                           self.processor_config['transform']['base'] + self.processor_config['transform']['Y'])
+    def set_processing_fs(self, processing_fs: int):
+        if processing_fs is not None:
+            self.fs_transform = [Resampler(output_fs=22050)]
 
-            self.x_original_length[track_name] = original_length(self.processor_config['target_length'], x_transform)
-            self.y_original_length[track_name] = original_length(self.processor_config['target_length'], y_transform)
-            if self.x_original_length[track_name] != self.x_original_length[track_name]:
-                self.logger.log(f"Transform makes X and Y original lengths different.\n"
-                                f"X: {self.x_original_length[track_name]}, Y: {self.x_original_length[track_name]},"
-                                f"at track '{track_name}'.", raise_=ValueError)
-
-    def next_one(self):
+    def next_one(self, target_length):
         track_buffer_x = {}
         track_buffer_y = {}
+
         for track_name, track_obj in self.tracks.items():
-            track_buffer = track_obj.next(length=self.x_original_length[track_name])
+            all_track_transforms = self.fs_transform + track_obj.transform['base'] + track_obj.transform['X']
+            track_buffer = track_obj.next(
+                length=original_length(target_length, all_track_transforms + self.processor_config['transform']['X']),
+            )
+            transformed_buffer = apply_transforms(
+                track_buffer,
+                self.fs_transform + track_obj.transform['base'])
+
             track_buffer_x[track_name] = apply_transforms(
-                track_buffer,
-                track_obj.transform['base'] + track_obj.transform['X'])
+                transformed_buffer, track_obj.transform['X'])
             track_buffer_y[track_name] = apply_transforms(
-                track_buffer,
-                track_obj.transform['base'] + track_obj.transform['Y'])
+                transformed_buffer, track_obj.transform['Y'])
 
         x = apply_transforms(
             eval(self.X_re),
-            self.processor_config['transform']['base'] + self.processor_config['transform']['X'])
+            self.processor_config['transform']['X'])
         y = apply_transforms(
             eval(self.Y_re),
-            self.processor_config['transform']['base'] + self.processor_config['transform']['Y'])
+            self.processor_config['transform']['Y'])
 
         return x, y
 
-    def next_batch(self, batch_size=1):
+    def next_batch(self, target_length, batch_size=1):
         x_batch, y_batch = [], []
         for _ in range(batch_size):
-            x, y = self.next_one()
+            x, y = self.next_one(target_length)
             if isinstance(x, TimeSeries):
                 x_batch.append(x.data_arr)
             else:
@@ -719,9 +766,9 @@ class SeriesProcessor:
 
         return np.array(x_batch), np.array(y_batch)
 
-    def benchmark(self, batch_size=1, num=1000):
+    def benchmark(self, target_length, batch_size=1, num=1000):
         for _ in trange(num):
-            _ = self.next_batch(batch_size)
+            _ = self.next_batch(target_length, batch_size)
 
     def load_to_ram(self):
         self.keeper.load_to_ram()
@@ -781,13 +828,14 @@ def audio_file2numpy(file):
 def read_audio(filename, file_sample_interval=None, interval=None, dtype=None):
     real_start, interval_length = _get_start_length(file_sample_interval, interval)
     data_arr = audio_file2numpy(filename)
+    meta = {'fs': 44100}  # todo: automatically
     if dtype is not None:
         data_arr = data_arr.astype(dtype)
     if not real_start:
-        return Signal(data_arr=data_arr)
+        return Signal(data_arr=data_arr, meta=meta)
     if not file_sample_interval:
-        return Signal(data_arr=data_arr[:, real_start:])
-    return Signal(data_arr=data_arr[:, real_start: real_start + interval_length])
+        return Signal(data_arr=data_arr[:, real_start:], meta=meta)
+    return Signal(data_arr=data_arr[:, real_start: real_start + interval_length], meta=meta)
 
 
 def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='float32', dtype=None):
@@ -839,17 +887,19 @@ def build_series(build_dict: dict, interval: Optional[Iterable[int]] = None) -> 
     for file_dict in build_dict['files']:
         suffix = str(file_dict['filename'])[-4:]
         if suffix in [".aac", ".wav", ".mp3"]:
-            loaded_channels.append(read_audio(interval=interval, **file_dict).data_arr)
+            loaded_channels.append(read_audio(interval=interval, **file_dict))
         if suffix in [".bin", ".dat"]:
-            loaded_channels.append(read_bin(interval=interval, **file_dict).data_arr)
+            loaded_channels.append(read_bin(interval=interval, **file_dict))
         if suffix == ".npy":
-            loaded_channels.append(read_npy(interval=interval, **file_dict).data_arr)
+            loaded_channels.append(read_npy(interval=interval, **file_dict))
 
-    new_series = apply_transforms(np.concatenate(loaded_channels, axis=0), transforms=transform)
+    new_series = apply_transforms(MultiSeries(loaded_channels).stack_series(), transforms=transform)
     if build_dict.get('target_dtype'):
-        return Signal(data_arr=new_series.astype(build_dict['target_dtype']), meta=build_dict['meta'])
+        new_series.astype_(build_dict['target_dtype'])
+        new_series.update_meta(build_dict['meta'])
 
-    return Signal(data_arr=new_series, meta=build_dict['meta'])
+    assert 'fs' in new_series.meta
+    return new_series
 
 
 def signal_len(build_dict: dict) -> int:
@@ -884,3 +934,89 @@ def _get_start_length(file_sample_interval, interval) -> Tuple[int, int]:
     return int(real_start), interval_length
 
 # todo: build_generator somehow
+
+
+class Transformer(AutoParameterObject, abc.ABC):
+    in_dim = None
+
+    def __init__(self, **params):
+        self.params = params
+
+    def _get_parameter_uniform(self, param_name: str, default: Union[float, int, List[Union[int, float]]]) -> float:
+        param_value = self.params.get(param_name, default)
+        if isinstance(param_value, list) or isinstance(param_value, tuple):
+            if len(param_value) == 1:
+                return param_value[0]
+
+            if len(param_value) == 2:
+                return np.random.uniform(*param_value)
+
+            raise ValueError(f"Parameter '{param_name}' must have one or two values, not {len(param_value)}.")
+
+        return param_value
+
+    @abc.abstractmethod
+    def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+        pass
+
+    def original_signal_length(self, length: int) -> int:
+        raise NotImplementedError("Original length is not implemented for this transformation.")
+
+    @property
+    def keeps_signal_length(self) -> bool:
+        raise NotImplementedError("Keeps length is not implemented for this transformation.")
+
+    def transform(self, x: Union[np.ndarray, TimeSeries]) -> TimeSeries:
+        if isinstance(x, TimeSeries):
+            ts = x
+        elif isinstance(x, np.ndarray):
+            ts = from_numpy(x)
+        else:
+            raise TypeError(
+                f"Transformer got a type of '{type(x)}' which is not supported.")
+
+        if self.in_dim != ts.full_dimensions:
+            raise ValueError(f"Transform '{type(self)}' takes input of dim {self.in_dim}, "
+                             f"{type(ts)} has a dim of {ts.full_dimensions}.")
+
+        transform_chance = self.params.get('transform_chance', 1.)
+        if np.random.rand() < transform_chance:
+            return self.transform_timeseries(ts)
+
+        return ts
+
+    def __call__(self, x):
+        return self.transform(x)
+
+
+class Resampler(Transformer):
+    in_dim = 2
+
+    @by_channel
+    def transform_npy(self, x: np.ndarray, input_fs: int, output_fs: int) -> np.ndarray:
+        return np.expand_dims(resample(
+            x[0].astype('float32'), input_fs, output_fs, res_type='linear'
+        ).astype(x.dtype), 0)
+
+    def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+        input_fs = x.meta['fs']
+        output_fs = self.params.get('output_fs')
+        if input_fs == output_fs:
+            return x
+
+        data_arr = self.transform_npy(x.data_arr, input_fs=input_fs, output_fs=output_fs)
+        s = Signal(
+            data_arr=data_arr,
+            time_map=x.time_map,
+            meta=x.meta,
+            logger=x.logger,
+        )
+        s.update_meta({'fs': output_fs})
+        return s
+
+    def original_signal_length(self, length: int) -> int:
+        return int(length * self.params.get('input_fs', 44100) / self.params.get('output_fs'))  # todo: this is error
+
+    @property
+    def keeps_signal_length(self) -> bool:
+        return False

@@ -5,13 +5,13 @@ from typing import Optional
 import numpy as np
 from signalai.config import DEVICE
 
-from signalai.timeseries import Logger, from_numpy, TimeSeries
-from signalai.tools.utils import apply_transforms
+from signalai.timeseries import Logger, from_numpy, TimeSeries, SeriesProcessor, Resampler, MultiSeries
+from signalai.tools.utils import apply_transforms, original_length
 
 
 class SignalModel(abc.ABC):
-    def __init__(self, model, training_params, save_dir, signal_model_type, output_type='label',
-                 logger=None, signal_generator=None,
+    def __init__(self, model, training_params, save_dir, signal_model_type, target_signal_length: int,
+                 processing_fs=44100, output_type='label', logger=None, series_processor: SeriesProcessor = None,
                  evaluator=None, transform=None, post_transform=None):
         super().__init__()
         if post_transform is None:
@@ -24,12 +24,21 @@ class SignalModel(abc.ABC):
         self.save_dir = Path(save_dir) if save_dir is not None else None
 
         self.logger = logger or Logger()
-        self.signal_generator = signal_generator
+        self.series_processor = series_processor
         self.evaluator = evaluator
 
         self.signal_model_type = signal_model_type
         if self.signal_model_type == 'torch_signal_model':
             self.model = self.model.to(DEVICE)
+
+        self.processing_fs = processing_fs or 44100  # todo: error
+
+        if self.processing_fs is not None:
+            self.fs_transform = [Resampler(output_fs=22050)]
+        else:
+            self.fs_transform = []
+
+        self.target_signal_length = target_signal_length
         self.output_type = output_type
 
         self.transform: dict = transform
@@ -78,26 +87,29 @@ class SignalModel(abc.ABC):
             logger=x.logger,
         )
 
-    def predict_timeseries(self, ts: TimeSeries, split_by=None, residual_end=True):
-        if split_by is None or split_by >= len(ts):
-            new_ts = apply_transforms(ts, self.transform.get('predict', []))
+    def predict_timeseries(self, ts: TimeSeries, target_length=None, residual_end=True):
+        transforms = self.fs_transform + self.transform.get('predict', [])
+
+        if target_length is None or target_length >= len(ts):
+            new_ts = apply_transforms(ts, transforms)
             new_data_arr = self.predict_batch(np.expand_dims(new_ts.data_arr, 0))[0]
             new_ts = from_numpy(data_arr=new_data_arr, meta=ts.meta, time_map=ts.time_map, logger=ts.logger)
             return apply_transforms(new_ts, self.post_transform.get('predict', []))
         else:
+            length = original_length(target_length, transforms)
             transformed_crops = []
-            for i in range(len(ts) // split_by):
-                new_ts = apply_transforms(ts.crop([i * split_by, (i + 1) * split_by]), self.transform.get('predict', []))
+            for i in range(len(ts) // length):
+                new_ts = apply_transforms(ts.crop([i * length, (i + 1) * length]), transforms)
                 transformed_crops.append(new_ts)
 
-            if len(ts) % split_by > 0 and residual_end:
-                new_ts = apply_transforms(ts.crop([-(len(ts) % split_by), len(ts)]), self.transform.get('predict', []))
+            if len(ts) % length > 0 and residual_end:
+                new_ts = apply_transforms(ts.crop([-(len(ts) % length), len(ts)]), transforms)
                 transformed_crops.append(new_ts)
 
             predicted_crops = map(self._predict_one_timeseries, transformed_crops)
 
-            result = [apply_transforms(_ts, self.post_transform.get('predict', [])).data_arr for _ts in predicted_crops]
-            return from_numpy(np.concatenate(result, axis=-1))
+            result = [apply_transforms(_ts, self.post_transform.get('predict', [])) for _ts in predicted_crops]
+            return MultiSeries(result).stack_series(axis=-1)
 
     @abc.abstractmethod
     def save(self, path, batch_id):
@@ -115,7 +127,10 @@ class SignalModel(abc.ABC):
     def get_criterion(self):
         pass
 
-    def __call__(self, x, split_by: Optional[int] = None, residual_end=True):
+    def __call__(self, x, target_length: Optional[int] = None, residual_end=False):
+        if target_length is None:
+            target_length = self.target_signal_length
+
         if isinstance(x, np.ndarray):
             ts = from_numpy(data_arr=x)
 
@@ -124,4 +139,4 @@ class SignalModel(abc.ABC):
         else:
             raise TypeError(f"X cannot be of type '{type(x)}'.")
 
-        return self.predict_timeseries(ts, split_by=split_by, residual_end=residual_end)
+        return self.predict_timeseries(ts, target_length=target_length, residual_end=residual_end)

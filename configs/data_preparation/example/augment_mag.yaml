@@ -28,7 +28,7 @@ split: [1.,0.,0.]
 processors:
   train:
     to_ram: true
-    target_length: 65536  #32768
+
     tracks:
       t0:
         superclasses:
