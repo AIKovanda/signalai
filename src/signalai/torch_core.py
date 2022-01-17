@@ -23,9 +23,9 @@ class TorchSignalModel(SignalModel):
             losses.append(new_loss)
             mean_loss = np.mean(losses[-self.training_params["average_losses_to_print"]:])
 
-            # stopping rule
-            if mean_loss < 1e-5:
-                break
+            if 'stopping_rule' in self.training_params:
+                if mean_loss < self.training_params["stopping_rule"]:
+                    break
 
             # progress bar update and printing
             batch_indices_generator.set_description(f"Loss: {mean_loss: .08f}")
@@ -69,7 +69,7 @@ class TorchSignalModel(SignalModel):
 
         self.optimizer.zero_grad()
         y_hat = self.model(x_batch)
-        loss_lambda = eval(self.training_params.get('loss_lambda'))
+        loss_lambda = eval(self.training_params.get('loss_lambda', 'lambda _x, _y, crit: crit(_x, _y)'))
         loss = loss_lambda(y_hat, y_batch, self.criterion)
         loss.backward()
         self.optimizer.step()

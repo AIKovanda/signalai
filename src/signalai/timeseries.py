@@ -1,4 +1,5 @@
 import abc
+import json
 import re
 from typing import Union, Optional, List, Iterable, Type, Tuple
 
@@ -42,10 +43,12 @@ class TimeSeries(abc.ABC):
             self.logger.log(f"Unknown signal type {type(data_arr)}.", priority=5)
             raise TypeError(f"Unknown signal type {type(data_arr)}.")
 
-        self._data_arr = data_arr
+        if len(data_arr.shape) == self.full_dimensions - 1:  # channel axis missing
+            data_arr = np.expand_dims(data_arr, axis=0)
 
-        if len(self._data_arr.shape) == self.full_dimensions - 1:  # channel axis missing
-            self._data_arr = np.expand_dims(self._data_arr, axis=0)
+        if len(data_arr.shape) != self.full_dimensions:
+            raise ValueError(f"Type {type(self)} must have {self.full_dimensions} dimensions, not {len(data_arr.shape)}.")
+        self._data_arr = data_arr
 
         if time_map is None:
             self._time_map = np.ones((self._data_arr.shape[0], self._data_arr.shape[-1]), dtype=bool)
@@ -116,7 +119,7 @@ class TimeSeries(abc.ABC):
             logger=self.logger,
         )
 
-    def margin_interval(self, interval_length: Union[int, None] = None, start_id=0):
+    def margin_interval(self, interval_length: int = None, start_id=0):
         if interval_length is None:
             interval_length = len(self)
 
@@ -124,13 +127,14 @@ class TimeSeries(abc.ABC):
             return self
 
         new_data_arr = np.zeros((*self._data_arr.shape[:-1], interval_length), dtype=self._data_arr.dtype)
-
-        new_data_arr[..., max(0, start_id):min(interval_length, start_id + len(self))] = \
-            self._data_arr[..., max(0, -start_id):min(len(self), interval_length - start_id)]
-
         new_time_map = np.zeros((self._data_arr.shape[0], interval_length), dtype=bool)
-        new_time_map[..., max(0, start_id):min(interval_length, start_id + len(self))] = \
-            self._time_map[..., max(0, -start_id):min(len(self), interval_length - start_id)]
+
+        if 0 < len(self) + start_id and start_id < interval_length:
+            new_data_arr[..., max(0, start_id):min(interval_length, start_id + len(self))] = \
+                self._data_arr[..., max(0, -start_id):min(len(self), interval_length - start_id)]
+
+            new_time_map[..., max(0, start_id):min(interval_length, start_id + len(self))] = \
+                self._time_map[..., max(0, -start_id):min(len(self), interval_length - start_id)]
 
         return type(self)(data_arr=new_data_arr, meta=self.meta, time_map=new_time_map, logger=self.logger)
 
@@ -362,7 +366,7 @@ class MultiSeries:
             metas.append(s_series.meta)
 
         return type(series[0])(
-            data_arr=np.expand_dims(np.sum(data_arrays, axis=0), 0),
+            data_arr=np.sum(data_arrays, axis=0),
             time_map=time_map,
             meta=join_dicts(*metas),
             logger=series[0].logger,
@@ -392,7 +396,7 @@ class MultiSeries:
                 metas.append(ts.meta)
             else:
                 data_arrays.append(np.zeros(series_shape))
-                time_maps.append(np.zeros(series_shape, dtype=bool))
+                time_maps.append(np.zeros((series_shape[0], series_shape[-1]), dtype=bool))
 
         return ts_type(
             data_arr=np.concatenate(data_arrays, axis=axis),
@@ -401,14 +405,35 @@ class MultiSeries:
             logger=logger,
         )
 
+    def apply_to_series(self, func):
+        if isinstance(self.series, dict):
+            for key in self.series.keys():
+                self.series[key] = func(self.series[key])
+        else:
+            self.series = list(map(func, self.series))
+
 
 class SeriesClass:
-    def __init__(self, series=None, series_build=None, class_name=None, superclass_name=None, logger=None):
-        self.series = series or []  # list
+    def __init__(self, series: List[TimeSeries] = None, series_build=None,
+                 class_name: str = None, superclass_name: str = None, logger=None):
+        self.series: List[TimeSeries] = series or []  # list
         self.series_build = series_build  # list
         self.class_name = class_name
         self.superclass_name = superclass_name
         self.logger = logger if logger is not None else Logger()
+
+    def stat(self, to_json=False):
+        info_dict = {
+            'series': len(self.series),
+            'class_name': self.class_name,
+            'superclass_name': self.superclass_name,
+            'series_length': [len(i) for i in self.series],
+            'series_shape': [s.data_arr.shape for s in self.series],
+        }
+        if to_json:
+            return json.dumps(info_dict, indent=2)
+
+        return info_dict
 
     def load_to_ram(self) -> None:
         if not self.series:
@@ -458,7 +483,7 @@ class SeriesDataset(AutoParameterObject, abc.ABC):
         self.split_range = split_range
 
     @abc.abstractmethod
-    def get_class_objects(self):
+    def get_class_objects(self) -> list[SeriesClass]:
         pass
 
 
@@ -468,7 +493,7 @@ class SeriesDatasetsKeeper:
         self.split_range = split_range
         self.logger = logger
 
-        self.classes_dict = {}  # class_name: class_obj
+        self.classes_dict: dict[str, SeriesClass] = {}  # class_name: class_obj
         self.superclasses_dict = {}  # superclass_name: [class_name, ...]
 
         for dataset in datasets_config:
@@ -489,6 +514,18 @@ class SeriesDatasetsKeeper:
 
         self.total_lengths = {class_name: class_obj.total_length for class_name, class_obj in self.classes_dict.items()}
 
+    def stat(self, to_json=False):
+        info_dict = {
+            'classes': np.sum([len(val) for key, val in self.superclasses_dict.items()]),
+            'superclasses': self.superclasses_dict,
+            'classes_stats': {key: val.stat() for key, val in self.classes_dict.items()},
+            'total_lengths': self.total_lengths,
+        }
+        if to_json:
+            return json.dumps(info_dict, indent=2)
+
+        return info_dict
+
     def _check_valid_class(self, class_name):
         if class_name not in self.classes_dict:
             self.logger.log(f"Class '{class_name}' cannot be found, see the config.", raise_=ValueError)
@@ -500,9 +537,8 @@ class SeriesDatasetsKeeper:
             self._check_valid_class(class_name)
             self.classes_dict[class_name].load_to_ram()
 
-    def relevant_classes(self, superclasses=None):
-        if superclasses is not None:
-            return set_union(*[set(self.superclasses_dict[i]) for i in superclasses])
+    def relevant_classes(self, superclasses: Iterable) -> list:
+        return [j for i in superclasses for j in self.superclasses_dict[i]]
 
     def get_class(self, class_name):
         self._check_valid_class(class_name)
@@ -748,7 +784,6 @@ class SeriesProcessor:
         y = apply_transforms(
             eval(self.Y_re),
             self.processor_config['transform']['Y'])
-
         return x, y
 
     def next_batch(self, target_length, batch_size=1):
@@ -942,7 +977,7 @@ class Transformer(AutoParameterObject, abc.ABC):
     def __init__(self, **params):
         self.params = params
 
-    def _get_parameter_uniform(self, param_name: str, default: Union[float, int, List[Union[int, float]]]) -> float:
+    def _get_parameter_uniform(self, param_name: str, default: Union[float, List[float]]) -> float:
         param_value = self.params.get(param_name, default)
         if isinstance(param_value, list) or isinstance(param_value, tuple):
             if len(param_value) == 1:
@@ -966,15 +1001,7 @@ class Transformer(AutoParameterObject, abc.ABC):
     def keeps_signal_length(self) -> bool:
         raise NotImplementedError("Keeps length is not implemented for this transformation.")
 
-    def transform(self, x: Union[np.ndarray, TimeSeries]) -> TimeSeries:
-        if isinstance(x, TimeSeries):
-            ts = x
-        elif isinstance(x, np.ndarray):
-            ts = from_numpy(x)
-        else:
-            raise TypeError(
-                f"Transformer got a type of '{type(x)}' which is not supported.")
-
+    def _transform(self, ts: TimeSeries):
         if self.in_dim != ts.full_dimensions:
             raise ValueError(f"Transform '{type(self)}' takes input of dim {self.in_dim}, "
                              f"{type(ts)} has a dim of {ts.full_dimensions}.")
@@ -984,6 +1011,23 @@ class Transformer(AutoParameterObject, abc.ABC):
             return self.transform_timeseries(ts)
 
         return ts
+
+    def transform(self, x: Union[np.ndarray, TimeSeries, MultiSeries]) -> Union[TimeSeries, MultiSeries]:
+        if isinstance(x, TimeSeries):
+            ts = x
+            return self._transform(ts)
+
+        if isinstance(x, MultiSeries):
+            x.apply_to_series(self._transform)
+            return x
+
+        elif isinstance(x, np.ndarray):
+            ts = from_numpy(x)
+            return self._transform(ts)
+
+        else:
+            raise TypeError(
+                f"Transformer got a type of '{type(x)}' which is not supported.")
 
     def __call__(self, x):
         return self.transform(x)
@@ -1020,3 +1064,4 @@ class Resampler(Transformer):
     @property
     def keeps_signal_length(self) -> bool:
         return False
+

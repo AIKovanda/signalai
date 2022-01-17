@@ -29,7 +29,9 @@ class SignalModel(abc.ABC):
 
         self.signal_model_type = signal_model_type
         if self.signal_model_type == 'torch_signal_model':
-            self.model = self.model.to(DEVICE)
+            import torch
+            if DEVICE.startswith('cuda') and torch.cuda.is_available():
+                self.model = self.model.to(DEVICE)
 
         self.processing_fs = processing_fs or 44100  # todo: error
 

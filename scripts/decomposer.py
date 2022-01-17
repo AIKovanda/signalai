@@ -56,7 +56,7 @@ def run(model_config: str, eval_dir: Optional[str], count_step=6000, test=False,
     chain = conf.chain()
     chain.set_log_level('CRITICAL')
 
-    chain.train_model.force()
+    # chain.train_model.force()
     signal_model = chain.trained_model.value
 
     if eval_dir is None:

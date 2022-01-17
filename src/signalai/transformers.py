@@ -209,22 +209,13 @@ class ChannelJoiner(Transformer):
     """
     in_dim = 2
 
-    def transform_npy(self, x: np.ndarray) -> np.ndarray:
+    def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
         choose_channels = self.params.get("choose_channels")
         if choose_channels is not None:
             channels = choose_channels[np.random.choice(len(choose_channels))]
         else:
-            channels = self.params.get("channels", [list(range(x.shape[0]))])
-        return Signal(data_arr=x).take_channels(channels=channels).data_arr
-
-    def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        data_arr = self.transform_npy(x.data_arr)
-        return Signal(
-            data_arr=data_arr,
-            time_map=x.time_map,
-            meta=x.meta,
-            logger=x.logger,
-        )
+            channels = self.params.get("channels", [list(range(x.data_arr.shape[0]))])
+        return x.take_channels(channels=channels)
 
     def original_signal_length(self, length: int) -> int:
         return length

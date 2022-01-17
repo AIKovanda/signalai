@@ -8,22 +8,26 @@ from signalai.tools.utils import set_intersection
 
 
 class AllToneLoader(SeriesDataset):
-    def get_class_objects(self):
+    def get_class_objects(self) -> list[SeriesClass]:
         generated_result = []
         class_structure = self.params["class_structure"]
-        meta = self.params.get("meta", {})
+
         for superclass_name, structure in class_structure.items():
             all_signal = read_audio(structure['filename'], dtype=self.params.get("target_dtype"))
+            all_signal.update_meta(self.params.get("meta", {}))
+
             all_csv = pd.read_csv(structure['classes_file'])
-            for class_name, sub_df in all_csv.groupby('tone'):
+            unique_tones = all_csv['tone'].drop_duplicates().to_list()
+            for unique_tone in unique_tones:
+                sub_df = all_csv.query(f"tone=='{unique_tone}'")
                 signals = []
                 for row in sub_df.itertuples():
                     s = all_signal.crop(interval=(row.sample_start, row.sample_end))
                     s.update_meta({'force': row.force})
                     signals.append(s)
-                    signals.append(meta)
+
                 generated_result.append(SeriesClass(
-                    series=signals, class_name=class_name, superclass_name=superclass_name, logger=self.logger
+                    series=signals, class_name=unique_tone, superclass_name=superclass_name, logger=self.logger
                 ))
 
         return generated_result
@@ -69,7 +73,7 @@ class FileLoader(SeriesDataset):  # todo: remake as MultiSignal
 
         return structured
 
-    def get_class_objects(self):
+    def get_class_objects(self) -> list[SeriesClass]:
         generated_result = []
         structured = self.structurize_files()
         for class_name, channel_structure_list in structured.items():

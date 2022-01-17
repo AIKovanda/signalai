@@ -122,9 +122,9 @@ class TimeFreq2TimeFreqSimple(nn.Module):
         return self.activation_function(joined)
 
 
-class TimeFreq2TimeFreqEXceptionModule(nn.Module):
+class TimeFreq2TimeFreqResNeXtModule(nn.Module):
     def __init__(self, in_channels, kernels, output_channels, activation_function=None, inner_out_channels=4, residual=True):
-        super(TimeFreq2TimeFreqEXceptionModule, self).__init__()
+        super(TimeFreq2TimeFreqResNeXtModule, self).__init__()
         self.in_channels = in_channels
         self.kernels = kernels
         self.output_channels = output_channels
@@ -179,11 +179,11 @@ class TimeFreq2TimeFreqEXceptionModule(nn.Module):
         return processed
 
 
-class TimEXception(nn.Module):
+class TimeResNeXt(nn.Module):
     def __init__(self, in_channels=256, processing_kernels=128, output_channels=1, attention=False,
                  activation='SELU', inner_out_channels=4, residual=(False,)):
 
-        super(TimEXception, self).__init__()
+        super(TimeResNeXt, self).__init__()
         self.in_channels = in_channels
         self.output_channels = output_channels
         self.inner_out_channels = inner_out_channels
@@ -210,7 +210,7 @@ class TimEXception(nn.Module):
         in_out[where_false[-1]:, 1] = self.output_channels
 
         self.processing = Sequential(*[
-            TimeFreq2TimeFreqEXceptionModule(
+            TimeFreq2TimeFreqResNeXtModule(
                 in_channels=in_out[i, 0], kernels=processing_kernels, output_channels=in_out[i, 1],
                 activation_function=self.activation_function, inner_out_channels=inner_out_channels, residual=res,
             ) for i, res in enumerate(self.residual)
@@ -262,19 +262,19 @@ class SEModel(AutoParameterObject, nn.Module):
 
         if self.use_exception:
             self.processing = Sequential(
-                TimeFreq2TimeFreqEXceptionModule(
+                TimeFreq2TimeFreqResNeXtModule(
                     in_channels=len(self.kernel_sizes), kernels=processing_kernels, output_channels=len(self.kernel_sizes),
                     activation_function=self.activation_function, inner_out_channels=inner_out_channels, residual=True,
                 ),
-                TimeFreq2TimeFreqEXceptionModule(
+                TimeFreq2TimeFreqResNeXtModule(
                     in_channels=len(self.kernel_sizes), kernels=processing_kernels, output_channels=inner_out_channels,
                     activation_function=self.activation_function, inner_out_channels=inner_out_channels, residual=False,
                 ),
-                TimeFreq2TimeFreqEXceptionModule(
+                TimeFreq2TimeFreqResNeXtModule(
                     in_channels=inner_out_channels, kernels=processing_kernels, output_channels=len(self.kernel_sizes),
                     activation_function=self.activation_function, inner_out_channels=len(self.kernel_sizes), residual=False,
                 ),
-                TimeFreq2TimeFreqEXceptionModule(
+                TimeFreq2TimeFreqResNeXtModule(
                     in_channels=len(self.kernel_sizes), kernels=processing_kernels, output_channels=len(self.kernel_sizes),
                     activation_function=self.activation_function, inner_out_channels=inner_out_channels, residual=True
                 ),
