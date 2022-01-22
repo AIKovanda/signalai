@@ -225,6 +225,25 @@ class ChannelJoiner(Transformer):
         return True
 
 
+class TimeMapScale(Transformer):
+    """
+    channels: list containing list of integers
+    """
+
+    def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+        target_length = int(self.params.get("target_length", len(x) * self.params.get("scale")))
+        time_map = x.time_map.astype(int)
+        new_time_map = time_map[:, np.round(np.linspace(0, time_map.shape[-1] - 1, target_length)).astype(int)]  # nearest
+        return TimeSeries(time_map=new_time_map, meta=x.meta)
+
+    def original_signal_length(self, length: int) -> int:  # todo: another approach
+        return length
+
+    @property
+    def keeps_signal_length(self) -> bool:
+        return True
+
+
 class STFT(Transformer):
     in_dim = 2
 

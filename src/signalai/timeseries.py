@@ -12,7 +12,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from scipy import signal as scipy_signal
 from signalai.config import LOGS_DIR, LOADING_THREADS
-from signalai.tools.utils import join_dicts, time_now, set_union, original_length, apply_transforms, by_channel
+from signalai.tools.utils import join_dicts, time_now, original_length, apply_transforms, by_channel
 from tqdm import trange, tqdm
 import os
 from pathlib import Path
@@ -22,7 +22,7 @@ from pydub import AudioSegment
 from signalai.config import DTYPE_BYTES
 
 
-class TimeSeries(abc.ABC):
+class TimeSeries:
     """
     Stores either 1D signal or a 2D time-frequency transformation of a signal.
     First axis represents channel axis, the last one time axis.
@@ -33,27 +33,31 @@ class TimeSeries(abc.ABC):
     """
     full_dimensions = None
 
-    def __init__(self, data_arr: np.ndarray, meta=None, time_map=None, logger=None):
+    def __init__(self, data_arr: np.ndarray = None, meta=None, time_map=None, logger=None):
         if meta is None:
             meta = {}
 
         self.logger = logger if logger is not None else Logger()
 
-        if not isinstance(data_arr, np.ndarray):
+        if data_arr is not None and not isinstance(data_arr, np.ndarray):
             self.logger.log(f"Unknown signal type {type(data_arr)}.", priority=5)
             raise TypeError(f"Unknown signal type {type(data_arr)}.")
 
-        if len(data_arr.shape) == self.full_dimensions - 1:  # channel axis missing
-            data_arr = np.expand_dims(data_arr, axis=0)
+        if self.full_dimensions is not None:
+            if len(data_arr.shape) == self.full_dimensions - 1:  # channel axis missing
+                data_arr = np.expand_dims(data_arr, axis=0)
 
-        if len(data_arr.shape) != self.full_dimensions:
-            raise ValueError(f"Type {type(self)} must have {self.full_dimensions} dimensions, not {len(data_arr.shape)}.")
+            if len(data_arr.shape) != self.full_dimensions:
+                raise ValueError(f"Type {type(self)} must have {self.full_dimensions} dimensions, not {len(data_arr.shape)}.")
+
         self._data_arr = data_arr
 
         if time_map is None:
+            if self._data_arr is None:
+                raise ValueError("Time map must be set when data_arr is None.")
             self._time_map = np.ones((self._data_arr.shape[0], self._data_arr.shape[-1]), dtype=bool)
         else:
-            self._time_map = time_map
+            self._time_map = time_map.astype(bool)
 
         if len(self._time_map.shape) == 1:
             self._time_map = np.expand_dims(self._time_map, axis=0)
@@ -324,10 +328,15 @@ class Signal2D(TimeSeries):
 
 class MultiSeries:
     def __init__(self,
-                 series: Union[Iterable, dict],
+                 series: Union[Iterable[TimeSeries], dict[str, TimeSeries]],
                  class_order: Optional[Iterable] = None,  # only usable if series is a dict
                  ):
         assert series is not None and len(series) > 0, "There is no input timeseries, MultiSeries does not make sense."
+        if isinstance(series, dict):
+            assert all([isinstance(val, TimeSeries) for val in series.values()]), [type(x) for x in series.values()]
+        else:
+            assert all([isinstance(val, TimeSeries) for val in series])
+
         self.series = series
         self.class_order = class_order
 
@@ -374,43 +383,71 @@ class MultiSeries:
 
     def stack_series(self, only_valid=False, axis=0):
         series = self._series_list(only_valid=only_valid)
+
+        series_shape = None
+        ts_type = None
+        logger = None
+        time_map_shape = None
+
         for ts in series:
             if ts is not None:
-                series_shape = ts.data_arr.shape
                 logger = ts.logger
                 ts_type = type(ts)
-                break
+                time_map_shape = ts.time_map.shape
+                if ts.data_arr is not None:
+                    series_shape = ts.data_arr.shape
+                    break
         else:
-            raise ValueError(f"At least one timeseries must not be empty while stacking timeseries.")
+            if time_map_shape is None:  # meaning there is no TimeSeries at all
+                raise ValueError(f"At least one timeseries must not be empty while stacking timeseries.")
 
-        assert all([ts.data_arr.shape == series_shape for ts in series if ts is not None]), \
-            'Timeseries must have the same shapes to be joined.'
+        if series_shape is not None:
+            assert all([ts.data_arr.shape == series_shape for ts in series if ts is not None]), \
+                'Timeseries must have the same shapes to be joined.'
+
         data_arrays = []
         time_maps = []
         metas = []
 
         for ts in series:
             if ts is not None:
-                data_arrays.append(ts.data_arr)
+                if series_shape is not None:
+                    data_arrays.append(ts.data_arr)
                 time_maps.append(ts.time_map)
                 metas.append(ts.meta)
             else:
-                data_arrays.append(np.zeros(series_shape))
-                time_maps.append(np.zeros((series_shape[0], series_shape[-1]), dtype=bool))
+                if series_shape is not None:
+                    data_arrays.append(np.zeros(series_shape))
+                time_maps.append(np.zeros(time_map_shape, dtype=bool))
+
+        if series_shape is not None:
+            data_arr = np.concatenate(data_arrays, axis=axis)
+        else:
+            data_arr = None
 
         return ts_type(
-            data_arr=np.concatenate(data_arrays, axis=axis),
+            data_arr=data_arr,
             time_map=np.concatenate(time_maps, axis=0),
             meta=join_dicts(*metas),
             logger=logger,
         )
 
-    def apply_to_series(self, func):
+    def apply_(self, func):
         if isinstance(self.series, dict):
             for key in self.series.keys():
                 self.series[key] = func(self.series[key])
         else:
             self.series = list(map(func, self.series))
+
+    def apply(self, func):
+        if isinstance(self.series, dict):
+            series = {}
+            for key in self.series.keys():
+                series[key] = func(self.series[key])
+        else:
+            series = list(map(func, self.series))
+
+        return MultiSeries(series, class_order=self.class_order)
 
 
 class SeriesClass:
@@ -991,7 +1028,7 @@ class Transformer(AutoParameterObject, abc.ABC):
         return param_value
 
     @abc.abstractmethod
-    def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+    def transform_timeseries(self, x: TimeSeries) -> Union[TimeSeries, np.ndarray]:
         pass
 
     def original_signal_length(self, length: int) -> int:
@@ -1002,7 +1039,7 @@ class Transformer(AutoParameterObject, abc.ABC):
         raise NotImplementedError("Keeps length is not implemented for this transformation.")
 
     def _transform(self, ts: TimeSeries):
-        if self.in_dim != ts.full_dimensions:
+        if self.in_dim is not None and self.in_dim != ts.full_dimensions:
             raise ValueError(f"Transform '{type(self)}' takes input of dim {self.in_dim}, "
                              f"{type(ts)} has a dim of {ts.full_dimensions}.")
 
@@ -1018,8 +1055,7 @@ class Transformer(AutoParameterObject, abc.ABC):
             return self._transform(ts)
 
         if isinstance(x, MultiSeries):
-            x.apply_to_series(self._transform)
-            return x
+            return x.apply(self._transform)
 
         elif isinstance(x, np.ndarray):
             ts = from_numpy(x)

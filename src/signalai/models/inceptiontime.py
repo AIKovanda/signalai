@@ -13,6 +13,21 @@ def pass_through(x):
     return x
 
 
+def get_activation(activation):
+    activation = activation.lower()
+    if activation == "selu":
+        activation_function = nn.SELU()
+    elif activation == "mish":
+        activation_function = nn.Mish()
+    elif activation == "sigmoid":
+        activation_function = nn.Sigmoid()
+    elif activation == "tanh":
+        activation_function = nn.Tanh()
+    else:
+        raise ValueError(f"Activation {activation} unknown!")
+    return activation_function
+
+
 class InceptionModule(AutoParameterObject, nn.Module):
     def __init__(self, in_channels, n_filters, kernel_sizes=None, bottleneck_channels=32, activation=nn.SELU(),
                  return_indices=False):
@@ -167,6 +182,7 @@ class InceptionBlock(nn.Module):
         if self.use_residual:
             Z = Z + self.residual(x)
             Z = self.activation(Z)
+
         if self.return_indices:
             return Z, [i1, i2, i3]
         else:
@@ -299,7 +315,7 @@ class InceptionBlockTranspose(nn.Module):
 
 class InceptionTime(nn.Module):
 
-    def __init__(self, build_config, in_channels=1, outputs=1, activation="SELU"):
+    def __init__(self, build_config, in_channels=1, outputs=1):
         """
         InceptionTime network
         :param build_config: list of dicts
@@ -307,30 +323,47 @@ class InceptionTime(nn.Module):
         :param outputs: None or integer as a number of output classes, negative means output signals
         """
         super().__init__()
-        n_filters = [in_channels] + [node.get("n_filters", 32) for node in build_config]
-        kernel_sizes = [node.get("kernel_sizes", [11, 21, 41]) for node in build_config]
-        bottleneck_channels = [node.get("bottleneck_channels", 32) for node in build_config]
-        use_residuals = [node.get("use_residual", True) for node in build_config]
-        num_of_nodes = len(kernel_sizes)
-        self.outputs = outputs
-        if activation == "SELU":
-            activation_function = nn.SELU()
-        elif activation == "Mish":
-            activation_function = nn.Mish()
-        elif activation == "Tanh":
-            activation_function = nn.Tanh()
-        else:
-            raise ValueError(f"Activation {activation} unknown!")
 
-        self.inception_blocks = ModuleList([InceptionBlock(
-            in_channels=n_filters[i] if i == 0 else n_filters[i] * 4,
-            n_filters=n_filters[i + 1],
-            kernel_sizes=kernel_sizes[i],
-            bottleneck_channels=bottleneck_channels[i],
-            use_residual=use_residuals[i],
-            activation=activation_function
-        ) for i in range(num_of_nodes)])
-        self.in_features = (1 + len(kernel_sizes[-1])) * n_filters[-1] * 1
+        block_list = []
+        self.poolings = []
+        last_kernel_size = None
+        last_n_filters = in_channels
+        for i, node in enumerate(build_config):
+            last_kernel_size = node.get("kernel_sizes", [11, 21, 41])
+            current_n_filters = node.get("n_filters", 32)
+
+            bottleneck_channels = [node.get("bottleneck_channels", 32) for node in build_config]
+            use_residuals = [node.get("use_residual", True) for node in build_config]
+
+            activation_function = get_activation(node.get('activation', 'SELU'))
+            block_list.append(InceptionBlock(
+                in_channels=last_n_filters if i == 0 else last_n_filters * 4,
+                n_filters=current_n_filters,
+                kernel_sizes=last_kernel_size,
+                bottleneck_channels=bottleneck_channels[i],
+                use_residual=use_residuals[i],
+                activation=activation_function
+            ))
+
+            last_n_filters = current_n_filters
+
+            # pooling
+            pooling_size = node.get("pooling_size", None)
+            pooling_type = node.get("pooling_type", 'max')
+
+            if pooling_size is None or pooling_type is None:
+                self.poolings.append(lambda x: x)
+            else:
+                if pooling_type == 'max':
+                    self.poolings.append(nn.MaxPool1d(pooling_size))
+                else:
+                    self.poolings.append(nn.AvgPool1d(pooling_size))
+
+        self.outputs = outputs
+
+        self.inception_blocks = ModuleList(block_list)
+
+        self.in_features = (1 + len(last_kernel_size)) * last_n_filters * 1
         if self.outputs > 0:
             self.adaptive_pool = nn.AdaptiveAvgPool1d(output_size=1)
             self.linear1 = nn.Linear(
@@ -340,9 +373,10 @@ class InceptionTime(nn.Module):
                 self.out_activation = nn.Sigmoid()
             else:
                 self.out_activation = nn.Softmax()
+
         elif self.outputs < 0:
             self.final_conv = nn.Conv1d(
-                in_channels=n_filters[-1] * 4,
+                in_channels=last_n_filters * 4,
                 out_channels=-self.outputs,
                 kernel_size=1,
                 stride=1,
@@ -353,8 +387,10 @@ class InceptionTime(nn.Module):
             raise ValueError(f"Outputs cannot be 0.")
 
     def forward(self, x):
-        for block in self.inception_blocks:
+        for block, pooling in zip(self.inception_blocks, self.poolings):
             x = block(x)
+            x = pooling(x)
+
         if self.outputs > 0:
             x = self.adaptive_pool(x)
             x = x.view(-1, self.in_features)
