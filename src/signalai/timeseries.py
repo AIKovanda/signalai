@@ -910,7 +910,7 @@ def read_audio(filename, file_sample_interval=None, interval=None, dtype=None):
     return Signal(data_arr=data_arr[:, real_start: real_start + interval_length], meta=meta)
 
 
-def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='float32', dtype=None):
+def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='float32', dtype=None, meta=None):
     real_start, interval_length = _get_start_length(file_sample_interval, interval)
     with open(filename, "rb") as f:
         start_byte = int(DTYPE_BYTES[source_dtype] * real_start)
@@ -919,7 +919,7 @@ def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='f
         data_arr = np.expand_dims(np.fromfile(f, dtype=source_dtype, count=interval_length or -1), axis=0)
         if dtype is not None:
             data_arr = data_arr.astype(dtype)
-        return Signal(data_arr=data_arr)
+        return Signal(data_arr=data_arr, meta=meta)
 
 
 def read_npy(filename, file_sample_interval=None, interval=None, dtype=None):

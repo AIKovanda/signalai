@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -39,5 +40,20 @@ def run(config_path, output_img):
 
 
 if __name__ == '__main__':
-    chosen_config_path = config.CONFIGS_DIR / 'models' / 'tahovka' / 'basic_inceptiontime.yaml'
+    p = argparse.ArgumentParser()
+    p.add_argument('--model_config', '-m', type=str)
+    p.add_argument('--eval_dir', '-e', default=None, type=str)
+    p.add_argument('--count_step', '-c', default=6000, type=int)
+    p.add_argument('--test', '-t', default=False, action='store_true')
+    p.add_argument('--processing_fs', '-p', default=None, type=int)
+    args = p.parse_args()
+    run(
+        model_config=args.model_config,
+        eval_dir=args.eval_dir,
+        count_step=args.count_step,
+        test=args.test,
+        processing_fs=args.processing_fs,
+    )
+
+    chosen_config_path = config.CONFIGS_DIR / 'models' / 'tone_identification' / 'piano_inceptiontime.yaml'
     run(chosen_config_path, output_img=f"{Path(__file__).stem}.svg")

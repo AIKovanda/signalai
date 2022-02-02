@@ -11,7 +11,7 @@ from signalai.tools.utils import apply_transforms, original_length
 
 class SignalModel(abc.ABC):
     def __init__(self, model, training_params, save_dir, signal_model_type, target_signal_length: int,
-                 processing_fs=44100, output_type='label', logger=None, series_processor: SeriesProcessor = None,
+                 processing_fs=None, output_type='label', logger=None, series_processor: SeriesProcessor = None,
                  evaluator=None, transform=None, post_transform=None):
         super().__init__()
         if post_transform is None:
@@ -33,16 +33,15 @@ class SignalModel(abc.ABC):
             if DEVICE.startswith('cuda') and torch.cuda.is_available():
                 self.model = self.model.to(DEVICE)
 
-        self.processing_fs = processing_fs or 44100  # todo: error
+        self.processing_fs = processing_fs
 
         if self.processing_fs is not None:
-            self.fs_transform = [Resampler(output_fs=22050)]
+            self.fs_transform = [Resampler(output_fs=self.processing_fs)]
         else:
             self.fs_transform = []
 
         self.target_signal_length = target_signal_length
         self.output_type = output_type
-
         self.transform: dict = transform
         self.post_transform: dict = post_transform
 

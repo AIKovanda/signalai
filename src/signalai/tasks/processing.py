@@ -8,7 +8,7 @@ from signalai.core import SignalModel
 from signalai.torch_core import TorchSignalModel
 
 
-def init_model(signal_model_config, save_dir=None, series_processor=None, processing_fs=44100, **training_params):
+def init_model(signal_model_config, save_dir=None, series_processor=None, processing_fs=None, **training_params):
 
     if signal_model_config['signal_model_type'] == 'torch_signal_model':
         signal_model = TorchSignalModel(

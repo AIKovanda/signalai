@@ -1,0 +1,34 @@
+# these stuffs are necessary for the taskchain library
+tasks: signalai.tasks.processing.*
+uses: "{CONFIGS_DIR}/data_preparation/tensile_test/tensile_test_simple.yaml"
+
+
+signal_model_config:  # wrapper of the torch model
+  signal_model_type: torch_signal_model  # in case there will be tensorflow models in the future
+  output_type: label  # another option is signal
+  target_signal_length: 32768  # signal length coming to the network after all augmentation processes
+  model:
+    class: signalai.models.InceptionTime  # path to the model implementation
+    kwargs:  # arguments of the model
+      build_config:  # network structure
+        - bottleneck_channels: 32
+          kernel_sizes: [11, 21, 41]  # must be odd numbers because of implementation
+          n_filters: 32
+
+      in_channels: 1  # input signal channels
+      outputs: 1  # number of labels; if negative, number of signal channels, e.g. -2 would mean 2 signal channels
+
+
+batch_size: 16
+batches: 5000
+echo_step: 500  # number of steps for nicer printing
+save_step: 1500
+average_losses_to_print: 300  # loss is averaged by this amount of last losses for a better stability
+
+criterion:  # loss function - implemented in torch_core.py
+  name: BCELoss
+
+optimizer:  # optimizer - implemented in torch_core.py
+  name: Adam
+  kwargs:  # arguments of the optimizer
+    lr: 0.01
