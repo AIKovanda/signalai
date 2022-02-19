@@ -13,19 +13,23 @@ def pass_through(x):
     return x
 
 
-def get_activation(activation):
+def get_activation(activation=None):
+    if activation is None:
+        return lambda x: x
+
     activation = activation.lower()
     if activation == "selu":
-        activation_function = nn.SELU()
+        return nn.SELU()
     elif activation == "mish":
-        activation_function = nn.Mish()
+        return nn.Mish()
+    elif activation == "softmax":
+        return nn.Softmax()
     elif activation == "sigmoid":
-        activation_function = nn.Sigmoid()
+        return nn.Sigmoid()
     elif activation == "tanh":
-        activation_function = nn.Tanh()
+        return nn.Tanh()
     else:
         raise ValueError(f"Activation {activation} unknown!")
-    return activation_function
 
 
 class InceptionModule(AutoParameterObject, nn.Module):
@@ -315,7 +319,7 @@ class InceptionBlockTranspose(nn.Module):
 
 class InceptionTime(nn.Module):
 
-    def __init__(self, build_config, in_channels=1, outputs=1):
+    def __init__(self, build_config, out_activation=None, in_channels=1, outputs=1):
         """
         InceptionTime network
         :param build_config: list of dicts
@@ -360,6 +364,8 @@ class InceptionTime(nn.Module):
                     self.poolings.append(nn.AvgPool1d(pooling_size))
 
         self.outputs = outputs
+        self.out_activation = out_activation
+        self.out_activation_function = get_activation(self.out_activation)
 
         self.inception_blocks = ModuleList(block_list)
 
@@ -369,10 +375,6 @@ class InceptionTime(nn.Module):
             self.linear1 = nn.Linear(
                 in_features=self.in_features,
                 out_features=outputs)
-            if self.outputs in [1, 2]:
-                self.out_activation = nn.Sigmoid()
-            else:
-                self.out_activation = nn.Softmax()
 
         elif self.outputs < 0:
             self.final_conv = nn.Conv1d(
@@ -395,8 +397,7 @@ class InceptionTime(nn.Module):
             x = self.adaptive_pool(x)
             x = x.view(-1, self.in_features)
             x = self.linear1(x)
-            x = self.out_activation(x)
         else:
             x = self.final_conv(x)
 
-        return x
+        return self.out_activation_function(x)

@@ -1,18 +1,18 @@
 import abc
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Generator, Tuple
 
 import numpy as np
 from signalai.config import DEVICE
 
-from signalai.timeseries import Logger, from_numpy, TimeSeries, SeriesProcessor, Resampler, MultiSeries
+from signalai.timeseries import Logger, from_numpy, TimeSeries, Resampler, MultiSeries
 from signalai.tools.utils import apply_transforms, original_length
 
 
 class SignalModel(abc.ABC):
-    def __init__(self, model, training_params, save_dir, signal_model_type, target_signal_length: int,
-                 processing_fs=None, output_type='label', logger=None, series_processor: SeriesProcessor = None,
-                 evaluator=None, transform=None, post_transform=None):
+    def __init__(self, model, save_dir, signal_model_type, target_signal_length: int,
+                 processing_fs=None, output_type='label', logger=None, transform=None, post_transform=None):
+
         super().__init__()
         if post_transform is None:
             post_transform = {}
@@ -20,12 +20,9 @@ class SignalModel(abc.ABC):
             transform = {}
 
         self.model = model
-        self.training_params = training_params
         self.save_dir = Path(save_dir) if save_dir is not None else None
 
         self.logger = logger or Logger()
-        self.series_processor = series_processor
-        self.evaluator = evaluator
 
         self.signal_model_type = signal_model_type
         if self.signal_model_type == 'torch_signal_model':
@@ -45,28 +42,21 @@ class SignalModel(abc.ABC):
         self.transform: dict = transform
         self.post_transform: dict = post_transform
 
-        self._criterion = None
-        self._optimizer = None
+        self.criterion = None
+        self.optimizer = None
 
-    @property
-    def optimizer(self):
-        if self._optimizer is None:
-            self._optimizer = self.get_optimizer()
-        return self._optimizer
-
-    @property
-    def criterion(self):
-        if self._criterion is None:
-            self._criterion = self.get_criterion()
-        return self._criterion
-
-    def train_on_generator(self):
+    def train_on_generator(self, series_processor, training_params: dict):
         self.logger.log("Starting training on generator.", priority=1)
-        self.logger.log(f"Training params: {self.training_params}", priority=1)
-        self._train_on_generator()
+        self.logger.log(f"Training params: {training_params}", priority=1)
+        self._train_on_generator(series_processor, training_params)
 
     @abc.abstractmethod
-    def _train_on_generator(self):
+    def _train_on_generator(self, series_processor, training_params: dict):
+        pass
+
+    @abc.abstractmethod
+    def eval_on_generator(self, series_processor, evaluation_params: dict,
+                          ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
         pass
 
     @abc.abstractmethod
@@ -121,11 +111,11 @@ class SignalModel(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_optimizer(self):
+    def set_optimizer(self, optimizer_info: dict):
         pass
 
     @abc.abstractmethod
-    def get_criterion(self):
+    def set_criterion(self, criterion_info: dict):
         pass
 
     def __call__(self, x, target_length: Optional[int] = None, residual_end=False):

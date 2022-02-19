@@ -15,6 +15,7 @@ signal_model_config:  # wrapper of the torch model
           kernel_sizes: [11, 21, 41]  # must be odd numbers because of implementation
           n_filters: 32
 
+      out_activation: sigmoid
       in_channels: 1  # input signal channels
       outputs: 1  # number of labels; if negative, number of signal channels, e.g. -2 would mean 2 signal channels
 

@@ -61,28 +61,28 @@ datasets:
 #        fs: 1562500
 
 
-split: [1.,0.0,0.0]  # train, valid, test - not used here
+trial: [0., 0.05]  # for trial whether it works or not
+
 load_to_ram: true
 
 
-processors:
-  train:
-    to_ram: true
-    strategy: random  # randomly taking intervals of the signal
-    tracks:  # tracks for mixing
-      t0:
-        superclasses:  # taking from these superclasses
-        - tensile_test
-        equal_classes: true  # take all classes with the same probability
-        transform:  # augmentation possible
-          base: []
-          X: []
-          Y: []
+train:
+  to_ram: true
+  strategy: random  # randomly taking intervals of the signal
+  tracks:  # tracks for mixing
+    t0:
+      superclasses:  # taking from these superclasses
+      - tensile_test
+      equal_classes: true  # take all classes with the same probability
+      transform:  # augmentation possible
+        base: []
+        X: []
+        Y: []
 
-    transform:  # transform after combining
-      base: []
-      X: []
-      Y: []
+  transform:  # transform after combining
+    base: []
+    X: []
+    Y: []
 
-    X: t0
-    Y: t0.meta['category']
+  X: t0
+  Y: t0.meta['category']

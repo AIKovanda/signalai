@@ -823,7 +823,7 @@ class SeriesProcessor:
             self.processor_config['transform']['Y'])
         return x, y
 
-    def next_batch(self, target_length, batch_size=1):
+    def next_batch(self, target_length, batch_size=1) -> Tuple[np.ndarray, np.ndarray]:
         x_batch, y_batch = [], []
         for _ in range(batch_size):
             x, y = self.next_one(target_length)
@@ -1012,7 +1012,11 @@ class Transformer(AutoParameterObject, abc.ABC):
     in_dim = None
 
     def __init__(self, **params):
-        self.params = params
+        self.params = {}
+        for key, val in params.items():
+            if isinstance(val, str):
+                val = eval(val)
+            self.params[key] = val
 
     def _get_parameter_uniform(self, param_name: str, default: Union[float, List[float]]) -> float:
         param_value = self.params.get(param_name, default)
