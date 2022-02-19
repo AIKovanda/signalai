@@ -516,8 +516,11 @@ class SeriesDataset(AutoParameterObject, abc.ABC):
     def set_logger(self, logger):
         self.logger = logger
 
-    def set_split_range(self, split_range):
-        self.split_range = split_range
+    def set_split_range(self, split_range=None):
+        if split_range is None:
+            self.split_range = [0., 1.]
+        else:
+            self.split_range = split_range
 
     @abc.abstractmethod
     def get_class_objects(self) -> list[SeriesClass]:

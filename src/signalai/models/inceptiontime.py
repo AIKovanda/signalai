@@ -317,7 +317,7 @@ class InceptionBlockTranspose(nn.Module):
         return Z
 
 
-class InceptionTime(nn.Module):
+class InceptionTime(AutoParameterObject, nn.Module):
 
     def __init__(self, build_config, out_activation=None, in_channels=1, outputs=1):
         """
@@ -330,6 +330,10 @@ class InceptionTime(nn.Module):
 
         block_list = []
         self.poolings = []
+        self.build_config = build_config
+        self.in_channels = in_channels
+        self.outputs = outputs
+
         last_kernel_size = None
         last_n_filters = in_channels
         for i, node in enumerate(build_config):
@@ -363,7 +367,6 @@ class InceptionTime(nn.Module):
                 else:
                     self.poolings.append(nn.AvgPool1d(pooling_size))
 
-        self.outputs = outputs
         self.out_activation = out_activation
         self.out_activation_function = get_activation(self.out_activation)
 
@@ -401,3 +404,12 @@ class InceptionTime(nn.Module):
             x = self.final_conv(x)
 
         return self.out_activation_function(x)
+
+    def weight_reset(self):
+        return type(self)(
+            build_config=self.build_config,
+            out_activation=self.out_activation,
+            in_channels=self.in_channels,
+            outputs=self.outputs,
+        )
+

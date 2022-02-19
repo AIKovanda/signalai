@@ -79,7 +79,7 @@ class TrainedModel(Task):
 
     def run(self, train_model, signal_model_config, processing_fs) -> SignalModel:
         signal_model = init_model(signal_model_config, save_dir=Path(train_model), processing_fs=processing_fs)
-        model_path = Path(train_model) / 'saved_model' / 'epoch_last.pth'
+        model_path = Path(train_model) / 'saved_model' / '0' / 'epoch_last.pth'
         signal_model.load(model_path)
         return signal_model
 
@@ -88,7 +88,7 @@ class EvaluateModel(Task):
     class Meta:
         input_tasks = [TestSeriesProcessor, TrainedModel]
         parameters = [
-            Parameter('evaluator'),
+            Parameter('evaluator', default=None),
             Parameter('eval_batches', default=None),
             Parameter('eval_batch_size', default=1),
             Parameter('processing_fs', default=None),

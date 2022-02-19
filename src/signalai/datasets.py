@@ -34,7 +34,7 @@ class AllToneLoader(SeriesDataset):
 
 
 class FileLoader(SeriesDataset):  # todo: remake as MultiSignal
-    def structurize_files(self):
+    def structurize_files(self) -> dict:
         num_channels = len(self.params["channels"])
         base_dir = Path(self.params["base_dir"])
         class_structure = self.params["class_structure"]
@@ -71,6 +71,7 @@ class FileLoader(SeriesDataset):  # todo: remake as MultiSignal
                 else:
                     raise ValueError(f"Not recognized path type '{path_type}' in dataset config.")
 
+        assert len(structured) > 0, "FileLoader did not find any files."
         return structured
 
     def get_class_objects(self) -> list[SeriesClass]:

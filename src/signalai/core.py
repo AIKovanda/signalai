@@ -10,7 +10,7 @@ from signalai.tools.utils import apply_transforms, original_length
 
 
 class SignalModel(abc.ABC):
-    def __init__(self, model, save_dir, signal_model_type, target_signal_length: int,
+    def __init__(self, model, save_dir, signal_model_type, target_signal_length: int, model_count=1,
                  processing_fs=None, output_type='label', logger=None, transform=None, post_transform=None):
 
         super().__init__()
@@ -38,20 +38,22 @@ class SignalModel(abc.ABC):
             self.fs_transform = []
 
         self.target_signal_length = target_signal_length
+        self.model_count = model_count
         self.output_type = output_type
         self.transform: dict = transform
         self.post_transform: dict = post_transform
 
         self.criterion = None
         self.optimizer = None
+        self.optimizer_info = None
 
-    def train_on_generator(self, series_processor, training_params: dict):
+    def train_on_generator(self, series_processor, training_params: dict, models: list = None):
         self.logger.log("Starting training on generator.", priority=1)
         self.logger.log(f"Training params: {training_params}", priority=1)
-        self._train_on_generator(series_processor, training_params)
+        self._train_on_generator(series_processor, training_params, models)
 
     @abc.abstractmethod
-    def _train_on_generator(self, series_processor, training_params: dict):
+    def _train_on_generator(self, series_processor, training_params: dict, models: list = None):
         pass
 
     @abc.abstractmethod

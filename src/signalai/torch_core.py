@@ -12,35 +12,45 @@ from signalai.config import DEVICE
 
 class TorchSignalModel(SignalModel):
 
-    def _train_on_generator(self, series_processor, training_params: dict):
-        batch_indices_generator = trange(training_params["batches"])
-        losses = []
-        output_dir = self.save_dir / "saved_model"
-        output_dir.mkdir(parents=True, exist_ok=True)
+    def _train_on_generator(self, series_processor, training_params: dict, models: list = None):
+        if models is None:
+            models = range(self.model_count)
+        else:
+            models = filter(lambda z: z < self.model_count, models)
 
-        batch_id = 0
+        for i, model_id in enumerate(models):
+            if i > 0:
+                self.model = self.model.weight_reset().to(DEVICE)
+                self.new_optimizer()
+                # torch.cuda.empty_cache()
 
-        for batch_id in batch_indices_generator:
-            x, y = series_processor.next_batch(self.target_signal_length, training_params.get("batch_size", 1))
-            new_loss = self.train_on_batch(x, y, training_params)
-            losses.append(new_loss)
-            mean_loss = np.mean(losses[-training_params["average_losses_to_print"]:])
+            print(f"Training model {model_id}...")
+            batch_indices_generator = trange(training_params["batches"])
+            losses = []
 
-            if 'stopping_rule' in training_params:
-                if mean_loss < training_params["stopping_rule"]:
-                    break
+            batch_id = 0
 
-            # progress bar update and printing
-            batch_indices_generator.set_description(f"Loss: {mean_loss: .08f}")
-            if batch_id % training_params["echo_step"] == 0 and batch_id != 0:
-                print()
+            for batch_id in batch_indices_generator:
+                x, y = series_processor.next_batch(self.target_signal_length, training_params.get("batch_size", 1))
+                new_loss = self.train_on_batch(x, y, training_params)
+                losses.append(new_loss)
+                mean_loss = np.mean(losses[-training_params["average_losses_to_print"]:])
 
-            if batch_id % training_params["save_step"] == 0 and batch_id != 0:
-                self.save(output_dir, batch_id=batch_id)
+                if 'stopping_rule' in training_params:
+                    if mean_loss < training_params["stopping_rule"]:
+                        break
 
-        self.save(output_dir=output_dir, batch_id=batch_id)
+                # progress bar update and printing
+                batch_indices_generator.set_description(f"Loss: {mean_loss: .08f}")
+                if batch_id % training_params["echo_step"] == 0 and batch_id != 0:
+                    print()
 
-    def eval_on_generator(self, series_processor: SeriesProcessor, evaluation_params: dict,
+                if batch_id % training_params["save_step"] == 0 and batch_id != 0:
+                    self.save(model_id=model_id, batch_id=batch_id)
+
+            self.save(model_id=model_id, batch_id=batch_id)
+
+    def eval_on_generator(self, series_processor: SeriesProcessor, evaluation_params: dict
                           ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
 
         for _ in range(evaluation_params["batches"]):
@@ -48,9 +58,11 @@ class TorchSignalModel(SignalModel):
             y_hat = self.predict_batch(x)
             yield y_true, y_hat
 
-    def save(self, output_dir, batch_id):
-        latest_file = (output_dir / f"epoch_last.pth").absolute()
-        output_file = (output_dir / f"epoch_{batch_id}.pth").absolute()
+    def save(self, model_id=0, batch_id=0):
+        model_dir = self.save_dir / "saved_model" / f"{model_id}"
+        model_dir.mkdir(exist_ok=True, parents=True)
+        latest_file = (model_dir / f"epoch_last.pth").absolute()
+        output_file = (model_dir / f"epoch_{batch_id}.pth").absolute()
 
         if not str(output_file).endswith(".pth"):
             output_file = str(output_file) + ".pth"
@@ -88,11 +100,12 @@ class TorchSignalModel(SignalModel):
             self.model.train()
             return y_hat
 
-    def load(self, path=None, batch=None):
-        if batch is not None:
-            path = self.save_dir / "saved_model" / f"epoch_{batch}.pth"
+    def load(self, path=None, batch=None, model_id=0):
         if path is None:
-            path = self.save_dir / "saved_model" / "epoch_last.pth"
+            if batch is not None:
+                path = self.save_dir / "saved_model" / f"{model_id}" / f"epoch_{batch}.pth"
+            else:
+                path = self.save_dir / "saved_model" / f"{model_id}" / "epoch_last.pth"
 
         self.model.load_state_dict(torch.load(path))
         self.logger.log(f"Weights from {path} loaded successfully.", priority=4)
@@ -112,10 +125,14 @@ class TorchSignalModel(SignalModel):
             raise NotImplementedError(f"Criterion '{criterion_name}' not implemented yet!!")
 
     def set_optimizer(self, optimizer_info: dict):
-        optimizer_name = optimizer_info["name"]
+        self.optimizer_info = optimizer_info
+        self.new_optimizer()
+
+    def new_optimizer(self):
+        optimizer_name = self.optimizer_info["name"]
         self.logger.log(f"Generating optimizer '{optimizer_name}'.")
 
-        kwargs = optimizer_info.get("kwargs", {})
+        kwargs = self.optimizer_info.get("kwargs", {})
         if optimizer_name == "Adam":
             self.optimizer = optim.Adam(self.model.parameters(), **kwargs)
         else:

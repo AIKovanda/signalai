@@ -15,6 +15,7 @@ class TaskSeriesProcessor(Task):
             split_name = self.meta.split_name
             split_range = self.parameters['split'].get(split_name)
 
+        assert self.parameters.get(split_name) is not None, f"Config missing for {split_name}"
         logger = Logger(name=f"{split_name.capitalize()}SignalGenerator", verbose=0)
         keeper = SeriesDatasetsKeeper(
             datasets_config=self.parameters['datasets'],
@@ -36,7 +37,7 @@ class TrainSeriesProcessor(TaskSeriesProcessor):
         data_class = InMemoryData
         parameters = [
             Parameter("datasets"),
-            Parameter("train"),
+            Parameter("train", default=None),
             Parameter("load_to_ram", default=False, ignore_persistence=True),
             Parameter("split", default={}),
             Parameter("tryout", default=False),
@@ -50,7 +51,7 @@ class ValidSeriesProcessor(TaskSeriesProcessor):
         data_class = InMemoryData
         parameters = [
             Parameter("datasets"),
-            Parameter("valid"),
+            Parameter("valid", default=None),
             Parameter("load_to_ram", default=False, ignore_persistence=True),
             Parameter("split", default={}),
             Parameter("tryout", default=False),
@@ -64,7 +65,7 @@ class TestSeriesProcessor(TaskSeriesProcessor):
         data_class = InMemoryData
         parameters = [
             Parameter("datasets"),
-            Parameter("test"),
+            Parameter("test", default=None),
             Parameter("load_to_ram", default=False, ignore_persistence=True),
             Parameter("split", default={}),
             Parameter("tryout", default=False),

@@ -7,6 +7,7 @@ signal_model_config:  # wrapper of the torch model
   signal_model_type: torch_signal_model  # in case there will be tensorflow models in the future
   output_type: label  # another option is signal
   target_signal_length: 32768  # signal length coming to the network after all augmentation processes
+  model_count: 5  # number of individual models that will be trained from random state
   model:
     class: signalai.models.InceptionTime  # path to the model implementation
     kwargs:  # arguments of the model
@@ -21,7 +22,7 @@ signal_model_config:  # wrapper of the torch model
 
 
 batch_size: 16
-batches: 5000
+batches: 600
 echo_step: 500  # number of steps for nicer printing
 save_step: 1500
 average_losses_to_print: 300  # loss is averaged by this amount of last losses for a better stability
