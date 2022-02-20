@@ -15,6 +15,10 @@ signal_model_config:  # wrapper of the torch model
         - bottleneck_channels: 32
           kernel_sizes: [11, 21, 41]  # must be odd numbers because of implementation
           n_filters: 32
+          # pooling_size: 8
+          # pooling_type: max
+          use_batch_norm: true
+          activation: sigmoid
 
       out_activation: sigmoid
       in_channels: 1  # input signal channels

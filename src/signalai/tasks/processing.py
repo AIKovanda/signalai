@@ -86,6 +86,7 @@ class TrainedModel(Task):
 
 class EvaluateModel(Task):
     class Meta:
+        data_class = InMemoryData
         input_tasks = [TestSeriesProcessor, TrainedModel]
         parameters = [
             Parameter('evaluator', default=None),

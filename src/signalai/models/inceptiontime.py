@@ -34,7 +34,7 @@ def get_activation(activation=None):
 
 class InceptionModule(AutoParameterObject, nn.Module):
     def __init__(self, in_channels, n_filters, kernel_sizes=None, bottleneck_channels=32, activation=nn.SELU(),
-                 return_indices=False):
+                 use_batch_norm=True, return_indices=False):
         """
         in_channels				Number of input channels (input features)
         n_filters				Number of filters per convolution layer => out_channels = 4*n_filters
@@ -53,6 +53,7 @@ class InceptionModule(AutoParameterObject, nn.Module):
         self.kernel_sizes = kernel_sizes
         self.bottleneck_channels = bottleneck_channels
         self.activation = activation
+        self.use_batch_norm = use_batch_norm
         self.return_indices = return_indices
 
         if kernel_sizes is None:
@@ -120,7 +121,10 @@ class InceptionModule(AutoParameterObject, nn.Module):
         Z4 = self.conv_from_maxpool(Z_maxpool)
         # step 3
         Z = torch.cat([Z1, Z2, Z3, Z4], axis=1)
-        Z = self.activation(self.batch_norm(Z))
+        if self.use_batch_norm:
+            Z = self.batch_norm(Z)
+
+        Z = self.activation(Z)
         if self.return_indices:
             return Z, indices
         else:
@@ -129,19 +133,22 @@ class InceptionModule(AutoParameterObject, nn.Module):
 
 class InceptionBlock(nn.Module):
     def __init__(self, in_channels, n_filters=32, kernel_sizes=None, bottleneck_channels=32, use_residual=True,
-                 activation=nn.SELU(), return_indices=False):
+                 use_batch_norm=True, activation=nn.SELU(), return_indices=False):
         super(InceptionBlock, self).__init__()
         if kernel_sizes is None:
             kernel_sizes = [9, 19, 39]
+
         self.use_residual = use_residual
         self.return_indices = return_indices
         self.activation = activation
+        self.use_batch_norm = use_batch_norm
         self.inception_1 = InceptionModule(
             in_channels=in_channels,
             n_filters=n_filters,
             kernel_sizes=kernel_sizes,
             bottleneck_channels=bottleneck_channels,
             activation=activation,
+            use_batch_norm=self.use_batch_norm,
             return_indices=return_indices,
         )
         self.inception_2 = InceptionModule(
@@ -150,6 +157,7 @@ class InceptionBlock(nn.Module):
             kernel_sizes=kernel_sizes,
             bottleneck_channels=bottleneck_channels,
             activation=activation,
+            use_batch_norm=self.use_batch_norm,
             return_indices=return_indices,
         )
         self.inception_3 = InceptionModule(
@@ -158,6 +166,7 @@ class InceptionBlock(nn.Module):
             kernel_sizes=kernel_sizes,
             bottleneck_channels=bottleneck_channels,
             activation=activation,
+            use_batch_norm=self.use_batch_norm,
             return_indices=return_indices,
         )
         if self.use_residual:
@@ -350,6 +359,7 @@ class InceptionTime(AutoParameterObject, nn.Module):
                 kernel_sizes=last_kernel_size,
                 bottleneck_channels=bottleneck_channels[i],
                 use_residual=use_residuals[i],
+                use_batch_norm=node.get("use_batch_norm", True),
                 activation=activation_function
             ))
 
