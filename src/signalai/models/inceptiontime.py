@@ -3,6 +3,8 @@ import torch.nn as nn
 from taskchain.parameter import AutoParameterObject
 from torch.nn import ModuleList
 
+from models.tools import get_activation
+
 
 def correct_sizes(sizes):
     corrected_sizes = [s if s % 2 != 0 else s - 1 for s in sizes]
@@ -11,25 +13,6 @@ def correct_sizes(sizes):
 
 def pass_through(x):
     return x
-
-
-def get_activation(activation=None):
-    if activation is None:
-        return lambda x: x
-
-    activation = activation.lower()
-    if activation == "selu":
-        return nn.SELU()
-    elif activation == "mish":
-        return nn.Mish()
-    elif activation == "softmax":
-        return nn.Softmax()
-    elif activation == "sigmoid":
-        return nn.Sigmoid()
-    elif activation == "tanh":
-        return nn.Tanh()
-    else:
-        raise ValueError(f"Activation {activation} unknown!")
 
 
 class InceptionModule(AutoParameterObject, nn.Module):

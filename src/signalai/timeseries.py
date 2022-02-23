@@ -48,7 +48,8 @@ class TimeSeries:
                 data_arr = np.expand_dims(data_arr, axis=0)
 
             if len(data_arr.shape) != self.full_dimensions:
-                raise ValueError(f"Type {type(self)} must have {self.full_dimensions} dimensions, not {len(data_arr.shape)}.")
+                raise ValueError(f"Type {type(self)} must have {self.full_dimensions} dimensions, not "
+                                 f"{len(data_arr.shape)}.")
 
         self._data_arr = data_arr
 
@@ -371,7 +372,7 @@ class MultiSeries:
         for ts in series[1:]:
             s_series = ts.take_channels(channels)
             data_arrays.append(s_series.data_arr)
-            time_map = np.logical_and(time_map, s_series.time_map)
+            time_map = np.logical_or(time_map, s_series.time_map)
             metas.append(s_series.meta)
 
         return type(series[0])(
@@ -668,47 +669,43 @@ class SeriesTaker:
                     break
 
 
-class SeriesTrack:
-    def __init__(self, name, keeper, superclasses, logger=None,
-                 equal_classes=False, strategy: Union[str, dict] = 'random', stride=0,
-                 transform: Optional[dict] = None):
+class SeriesTrack(AutoParameterObject, abc.ABC):
+    def __init__(self, transform: Optional[dict] = None, **params):
         if transform is None:
             transform = {}
 
-        self.name = name
-        self.keeper = keeper
-        self.superclasses = superclasses
-        self.logger: Logger = logger or Logger()
+        self.keeper = None
+        self.superclasses = None
+        self.relevant_classes = None
+        self.logger = None
 
-        self.equal_classes = equal_classes
-        self.strategy = strategy
-        self.stride = stride
+        self.params = params
         self.transform = transform
-
         self.takers = {}
-        self.relevant_classes: List[str] = list(keeper.relevant_classes(superclasses=superclasses))
+
+    def set_logger(self, logger):
+        self.logger: Logger = logger
+
+    def set_keeper(self, keeper):
+        self.keeper = keeper
+        self.relevant_classes: List[str] = list(keeper.relevant_classes(superclasses=self.params['superclasses']))
         for relevant_class in self.relevant_classes:
-            if isinstance(self.strategy, dict):
-                taker_strategy = self.strategy.get('inner_strategy', 'start')
-            else:
-                taker_strategy = self.strategy
             self.takers[relevant_class] = SeriesTaker(
                 keeper=keeper,
                 class_name=relevant_class,
-                strategy=taker_strategy,
-                stride=self.stride,
+                strategy=self.params['strategy'],
+                stride=self.params.get('stride', 0),
                 logger=self.logger,
             )
-            self.logger.log(f"Taker of '{relevant_class}' successfully initialized.", priority=2)
 
     def _choose_class(self) -> str:
         if len(self.relevant_classes) == 0:
-            self.logger.log(f"There is no class defined for track '{self.name}'.", raise_=ValueError)
+            raise ValueError(f"There is no class defined for track.")
 
         if len(self.relevant_classes) == 1:
             return self.relevant_classes[0]
 
-        if self.equal_classes:
+        if self.params['equal_classes']:
             p = np.ones(len(self.relevant_classes))
         else:
             p = np.array([self.keeper.total_lengths[i] for i in self.relevant_classes])
@@ -716,55 +713,9 @@ class SeriesTrack:
         p = p / np.sum(p)
         return np.random.choice(self.relevant_classes, p=p)
 
+    @abc.abstractmethod
     def next(self, length: int) -> Union[TimeSeries, MultiSeries]:
-        if isinstance(self.strategy, str):
-            chosen_class = self._choose_class()
-            return self.takers[chosen_class].next(length=length)
-        if isinstance(self.strategy, dict):
-            return self._next_compose(length)
-        raise TypeError(f"Strategy type of '{type(self.strategy)}' is not supported.")
-
-    def _next_compose(self, length: int) -> MultiSeries:
-        """
-        Tone compose, randomly taking tones into a MultiSeries.
-        """
-        count_min, count_max = self.strategy.get('tones_count_range', (0, 10))
-        tones_count = np.random.choice(range(count_min, count_max + 1))
-        chosen_classes = [np.random.choice(self.relevant_classes) for _ in range(tones_count)]
-
-        possible_starting_index = np.arange(*self.strategy.get('start_arange', [1]))
-        possible_tone_length = np.arange(*self.strategy.get('tone_length_arange', [length]))
-
-        series_dict = {}
-        for class_name in self.relevant_classes:
-            class_count = chosen_classes.count(class_name)
-            if class_count == 0:
-                continue
-
-            final_intervals = []
-
-            for i in range(class_count):
-                starting_index = np.random.choice(possible_starting_index)
-                tone_length = np.random.choice(possible_tone_length)
-                ending_index = starting_index + tone_length
-                for j, interval in enumerate(final_intervals):
-                    if interval[0] < starting_index < interval[1]:
-                        break
-                    if interval[0] < ending_index < interval[1]:
-                        break
-                else:
-                    final_intervals.append([starting_index, ending_index])
-
-            assert len(final_intervals) > 0, "Something is wrong with chosen tone intervals."
-            series_dict[class_name] = MultiSeries(
-                series=[
-                    self.takers[class_name].next(interval[1] - interval[0]).margin_interval(
-                        interval_length=length,
-                        start_id=interval[0],
-                    ) for interval in final_intervals]
-            ).sum_channels()
-
-        return MultiSeries(series=series_dict, class_order=self.relevant_classes)
+        pass
 
 
 class SeriesProcessor:
@@ -785,12 +736,10 @@ class SeriesProcessor:
         self.x_original_length = {}
         self.y_original_length = {}
 
-        for track_name, track_config in self.processor_config['tracks'].items():
-            self.tracks[track_name] = SeriesTrack(
-                name=track_name,
-                keeper=self.keeper,
-                logger=self.logger,
-                **track_config)
+        for track_name, track_obj in self.processor_config['tracks'].items():
+            self.tracks[track_name] = track_obj
+            self.tracks[track_name].set_logger(self.logger)
+            self.tracks[track_name].set_keeper(self.keeper)
             self.logger.log(f"Track '{track_name}' successfully initialized.", priority=2)
 
             self.X_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1track_buffer_x['\2']\3", self.X_re)
@@ -1011,7 +960,7 @@ def _get_start_length(file_sample_interval, interval) -> Tuple[int, int]:
 # todo: build_generator somehow
 
 
-class Transformer(AutoParameterObject, abc.ABC):
+class Transformer(AutoParameterObject):
     in_dim = None
 
     def __init__(self, **params):
@@ -1034,7 +983,6 @@ class Transformer(AutoParameterObject, abc.ABC):
 
         return param_value
 
-    @abc.abstractmethod
     def transform_timeseries(self, x: TimeSeries) -> Union[TimeSeries, np.ndarray]:
         pass
 
@@ -1107,4 +1055,3 @@ class Resampler(Transformer):
     @property
     def keeps_signal_length(self) -> bool:
         return False
-
