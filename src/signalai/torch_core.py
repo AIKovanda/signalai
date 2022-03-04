@@ -27,21 +27,24 @@ class TorchSignalModel(SignalModel):
             print(f"Training model {model_id}...")
             batch_indices_generator = trange(training_params["batches"])
             losses = []
+            trues = []
 
             batch_id = 0
 
             for batch_id in batch_indices_generator:
                 x, y = series_processor.next_batch(self.target_signal_length, training_params.get("batch_size", 1))
-                new_loss = self.train_on_batch(x, y, training_params)
+                new_loss, y_hat = self.train_on_batch(x, y, training_params)
                 losses.append(new_loss)
+                trues.append(int(torch.sum(y_hat > .5)))
                 mean_loss = np.mean(losses[-training_params["average_losses_to_print"]:])
+                mean_true = np.mean(trues[-training_params["average_losses_to_print"]:])
 
                 if 'stopping_rule' in training_params:
                     if mean_loss < training_params["stopping_rule"]:
                         break
 
                 # progress bar update and printing
-                batch_indices_generator.set_description(f"Loss: {mean_loss: .08f}")
+                batch_indices_generator.set_description(f"Loss: {mean_loss: .06f}, total_true: {mean_true}")
                 if batch_id % training_params["echo_step"] == 0 and batch_id != 0:
                     print()
 
@@ -75,7 +78,7 @@ class TorchSignalModel(SignalModel):
     def train_on_batch(self, x: np.ndarray, y: np.ndarray, training_params=None):
         if training_params is None:
             training_params = {}
-            
+
         self.model.train()
         x_batch = torch.from_numpy(x).type(torch.float32).to(DEVICE)
         if self.output_type == "label":
@@ -89,7 +92,7 @@ class TorchSignalModel(SignalModel):
         loss = loss_lambda(y_hat, y_batch, self.criterion)
         loss.backward()
         self.optimizer.step()
-        return loss.item()
+        return loss.item(), y_hat
 
     def predict_batch(self, x: np.ndarray):
         with torch.no_grad():

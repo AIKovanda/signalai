@@ -24,8 +24,8 @@ class Standardizer(Transformer):
     in_dim = 2
 
     def transform_npy(self, x: np.ndarray) -> np.ndarray:
-        mean = self.params.get('mean', 0)
-        std = self.params.get('std', 1)
+        mean = self.evaluated_params.get('mean', 0)
+        std = self.evaluated_params.get('std', 1)
 
         new_x = (x - np.mean(x)) / np.std(x)
         return (new_x * std) + mean
@@ -181,8 +181,8 @@ class BandPassFilter(Transformer):
 
     @by_channel
     def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
-        low_cut = self.params.get('low_cut')
-        high_cut = self.params.get('high_cut')
+        low_cut = self.evaluated_params.get('low_cut')
+        high_cut = self.evaluated_params.get('high_cut')
 
         return butter_bandpass_filter(x, low_cut, high_cut, fs)
 
@@ -210,11 +210,11 @@ class ChannelJoiner(Transformer):
     in_dim = 2
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        choose_channels = self.params.get("choose_channels")
+        choose_channels = self.evaluated_params.get("choose_channels")
         if choose_channels is not None:
             channels = choose_channels[np.random.choice(len(choose_channels))]
         else:
-            channels = self.params.get("channels", [list(range(x.data_arr.shape[0]))])
+            channels = self.evaluated_params.get("channels", [list(range(x.data_arr.shape[0]))])
         return x.take_channels(channels=channels)
 
     def original_signal_length(self, length: int) -> int:
@@ -231,7 +231,7 @@ class Lambda(Transformer):
     """
 
     def transform(self, x: TimeSeries) -> TimeSeries:
-        return self.params.get("lambda")(x)
+        return self.evaluated_params.get("lambda")(x)
 
     def original_signal_length(self, length: int) -> int:
         return length
@@ -247,9 +247,9 @@ class TimeMapScale(Transformer):
     """
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        target_length = self.params.get("target_length")
+        target_length = self.evaluated_params.get("target_length")
         if target_length is None:
-            target_length = len(x) * self.params.get("scale")
+            target_length = len(x) * self.evaluated_params.get("scale")
 
         time_map = x.time_map.astype(int)
         # nearest
@@ -270,9 +270,9 @@ class STFT(Transformer):
     @by_channel
     def transform_npy(self, x: np.ndarray, split_complex=False) -> np.ndarray:
         # fs = x.meta['fs']
-        center = self.params.get('center', False)
-        n_fft = self.params.get('n_fft', 256)
-        hop_length = self.params.get('hop_length')
+        center = self.evaluated_params.get('center', False)
+        n_fft = self.evaluated_params.get('n_fft', 256)
+        hop_length = self.evaluated_params.get('hop_length')
         # _, _, Zxx = scipy_signal.stft(x[0], fs=fs)
         Zxx = librosa.stft(x[0], center=center, n_fft=n_fft, hop_length=hop_length)
         if split_complex:
@@ -281,7 +281,7 @@ class STFT(Transformer):
         return np.expand_dims(Zxx, 0)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        if self.params.get('phase_as_meta', True):
+        if self.evaluated_params.get('phase_as_meta', True):
             Zxx = self.transform_npy(x.data_arr, split_complex=False)
             data_arr = np.abs(Zxx)  # magnitude
             meta = x.meta.copy() | {'phase': np.angle(Zxx)}
@@ -310,8 +310,8 @@ class ISTFT(Transformer):
     @by_channel
     def transform_npy(self, x: np.ndarray) -> np.ndarray:
         # return scipy_signal.istft(x)[1]
-        center = self.params.get('center', False)
-        hop_length = self.params.get('hop_length')
+        center = self.evaluated_params.get('center', False)
+        hop_length = self.evaluated_params.get('hop_length')
         return np.expand_dims(librosa.istft(x[0], hop_length=hop_length, center=center), 0)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
@@ -319,7 +319,7 @@ class ISTFT(Transformer):
         phase = meta.pop('phase', None)
         data_arr = x.data_arr
 
-        if self.params.get('phase_as_meta', True):
+        if self.evaluated_params.get('phase_as_meta', True):
             assert phase is not None, "Phase must be included in the input information"
             Zxx = data_arr * np.exp(1j * phase)
         else:

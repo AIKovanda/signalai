@@ -59,6 +59,5 @@ class ToneStrategy(SeriesTrack):
             # print(np.sum(series_dict[class_name].time_map))
             # print(np.sum(series_dict[class_name].data_arr[0] != 0)*2)
             # print(np.sum(series_dict[class_name].data_arr[1] != 0)*2)
-            assert (np.all(series_dict[class_name].time_map[0] == series_dict[class_name].time_map[1]))
 
         return MultiSeries(series=series_dict, class_order=self.relevant_classes)

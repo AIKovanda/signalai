@@ -35,6 +35,7 @@ class TaskSeriesProcessor(Task):
 class TrainSeriesProcessor(TaskSeriesProcessor):
     class Meta:
         data_class = InMemoryData
+        input_tasks = []
         parameters = [
             Parameter("datasets"),
             Parameter("train", default=None),
@@ -49,6 +50,7 @@ class TrainSeriesProcessor(TaskSeriesProcessor):
 class ValidSeriesProcessor(TaskSeriesProcessor):
     class Meta:
         data_class = InMemoryData
+        input_tasks = []
         parameters = [
             Parameter("datasets"),
             Parameter("valid", default=None),
@@ -63,6 +65,7 @@ class ValidSeriesProcessor(TaskSeriesProcessor):
 class TestSeriesProcessor(TaskSeriesProcessor):
     class Meta:
         data_class = InMemoryData
+        input_tasks = []
         parameters = [
             Parameter("datasets"),
             Parameter("test", default=None),

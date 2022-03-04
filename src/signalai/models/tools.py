@@ -18,3 +18,5 @@ def get_activation(activation=None):
         return nn.Tanh()
     else:
         raise ValueError(f"Activation {activation} unknown!")
+
+

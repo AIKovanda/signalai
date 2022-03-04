@@ -3,7 +3,7 @@ import torch.nn as nn
 from taskchain.parameter import AutoParameterObject
 from torch.nn import ModuleList
 
-from models.tools import get_activation
+from signalai.models.tools import get_activation
 
 
 def correct_sizes(sizes):

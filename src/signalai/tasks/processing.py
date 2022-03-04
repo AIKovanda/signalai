@@ -104,7 +104,7 @@ class EvaluateModel(Task):
             'batch_size': eval_batch_size,
             'batches': eval_batches,
         }
-        for y_pair in tqdm(trained_model.eval_on_generator(test_series_processor, evaluation_params)):
+        for y_pair in tqdm(trained_model.eval_on_generator(test_series_processor, evaluation_params), total=eval_batches):
             evaluator.add_batch(*y_pair)
 
         return evaluator.stat

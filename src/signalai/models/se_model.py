@@ -3,14 +3,10 @@ from typing import List
 import numpy as np
 import torch
 import torch.nn as nn
+from signalai.models.tools import get_activation
 from taskchain.parameter import AutoParameterObject
 from torch.nn import ModuleList, Sequential
 import torch.nn.functional as F
-
-
-ACTIVATIONS = {
-    'SELU': nn.SELU(),
-}
 
 
 class Signal2TimeFreq(nn.Module):
@@ -193,7 +189,7 @@ class TimeResNeXt(nn.Module):
         if activation is None:
             self.activation_function = lambda x: x
         else:
-            self.activation_function = ACTIVATIONS.get(activation, lambda x: x)
+            self.activation_function = get_activation(activation)
 
         # First and second columns represent input and output channels, respectively. Each row stands for a module.
         in_out = np.ones((len(residual), 2), dtype=int) * self.inner_out_channels
@@ -217,7 +213,7 @@ class TimeResNeXt(nn.Module):
         ])
 
         if self.attention:
-            self.attention_conv = self.con2D = nn.Conv2d(
+            self.attention_conv = nn.Conv2d(
                 in_channels=self.output_channels,
                 out_channels=self.output_channels,
                 kernel_size=5,
@@ -256,7 +252,7 @@ class SEModel(AutoParameterObject, nn.Module):
         if activation is None:
             self.activation_function = lambda x: x
         else:
-            self.activation_function = ACTIVATIONS.get(activation, lambda x: x)
+            self.activation_function = get_activation(activation)
 
         self.signal2time_freq = Signal2TimeFreq(kernel_sizes=self.kernel_sizes, output_channels=self.n_filters)
 

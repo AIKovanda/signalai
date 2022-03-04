@@ -713,7 +713,6 @@ class SeriesTrack(AutoParameterObject, abc.ABC):
         p = p / np.sum(p)
         return np.random.choice(self.relevant_classes, p=p)
 
-    @abc.abstractmethod
     def next(self, length: int) -> Union[TimeSeries, MultiSeries]:
         pass
 
@@ -964,14 +963,15 @@ class Transformer(AutoParameterObject):
     in_dim = None
 
     def __init__(self, **params):
-        self.params = {}
+        self.params = params
+        self.evaluated_params = {}
         for key, val in params.items():
             if isinstance(val, str):
                 val = eval(val)
-            self.params[key] = val
+            self.evaluated_params[key] = val
 
     def _get_parameter_uniform(self, param_name: str, default: Union[float, List[float]]) -> float:
-        param_value = self.params.get(param_name, default)
+        param_value = self.evaluated_params.get(param_name, default)
         if isinstance(param_value, list) or isinstance(param_value, tuple):
             if len(param_value) == 1:
                 return param_value[0]
@@ -998,7 +998,7 @@ class Transformer(AutoParameterObject):
             raise ValueError(f"Transform '{type(self)}' takes input of dim {self.in_dim}, "
                              f"{type(ts)} has a dim of {ts.full_dimensions}.")
 
-        transform_chance = self.params.get('transform_chance', 1.)
+        transform_chance = self.evaluated_params.get('transform_chance', 1.)
         if np.random.rand() < transform_chance:
             return self.transform_timeseries(ts)
 
@@ -1035,7 +1035,7 @@ class Resampler(Transformer):
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
         input_fs = x.meta['fs']
-        output_fs = self.params.get('output_fs')
+        output_fs = self.evaluated_params.get('output_fs')
         if input_fs == output_fs:
             return x
 
@@ -1050,7 +1050,7 @@ class Resampler(Transformer):
         return s
 
     def original_signal_length(self, length: int) -> int:
-        return int(length * self.params.get('input_fs', 44100) / self.params.get('output_fs'))  # todo: this is error
+        return int(length * self.evaluated_params.get('input_fs', 44100) / self.evaluated_params.get('output_fs'))  # todo: this is error
 
     @property
     def keeps_signal_length(self) -> bool:
