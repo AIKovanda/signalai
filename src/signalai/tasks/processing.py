@@ -86,16 +86,15 @@ class TrainedModel(Task):
 
 class EvaluateModel(Task):
     class Meta:
-        data_class = InMemoryData
         input_tasks = [TestSeriesProcessor, TrainedModel]
         parameters = [
-            Parameter('evaluator', default=None),
+            Parameter('evaluators', default=[]),
             Parameter('eval_batches', default=None),
             Parameter('eval_batch_size', default=1),
             Parameter('processing_fs', default=None),
         ]
 
-    def run(self, test_series_processor, trained_model: SignalModel, evaluator: SignalEvaluator,
+    def run(self, test_series_processor, trained_model: SignalModel, evaluators: list[SignalEvaluator],
             eval_batches, eval_batch_size, processing_fs) -> dict:
 
         test_series_processor.set_processing_fs(processing_fs)
@@ -104,7 +103,12 @@ class EvaluateModel(Task):
             'batch_size': eval_batch_size,
             'batches': eval_batches,
         }
-        for y_pair in tqdm(trained_model.eval_on_generator(test_series_processor, evaluation_params), total=eval_batches):
-            evaluator.add_batch(*y_pair)
+        items = [y_pair for y_pair in tqdm(
+                trained_model.eval_on_generator(
+                    test_series_processor, evaluation_params, post_transform=True,
+                ), total=eval_batches)]
 
-        return evaluator.stat
+        for evaluator in evaluators:
+            evaluator.set_items(items)
+
+        return {evaluator.name: evaluator.stat for evaluator in evaluators}

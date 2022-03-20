@@ -22,7 +22,7 @@ class SignalModel(abc.ABC):
         self.model = model
         self.save_dir = Path(save_dir) if save_dir is not None else None
 
-        self.logger = logger or Logger()
+        self.logger = logger or Logger(verbose=0, save=False)
 
         self.signal_model_type = signal_model_type
         if self.signal_model_type == 'torch_signal_model':
@@ -57,7 +57,7 @@ class SignalModel(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def eval_on_generator(self, series_processor, evaluation_params: dict,
+    def eval_on_generator(self, series_processor, evaluation_params: dict, post_transform: bool,
                           ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
         pass
 
@@ -129,6 +129,7 @@ class SignalModel(abc.ABC):
 
         elif isinstance(x, TimeSeries):
             ts = x
+
         else:
             raise TypeError(f"X cannot be of type '{type(x)}'.")
 

@@ -529,7 +529,7 @@ class SeriesDataset(AutoParameterObject, abc.ABC):
 
 
 class SeriesDatasetsKeeper:
-    def __init__(self, datasets_config, split_range, logger):
+    def __init__(self, datasets_config, logger, split_range=None):
         self.datasets_config = datasets_config
         self.split_range = split_range
         self.logger = logger
@@ -798,13 +798,14 @@ class SeriesProcessor:
 
 
 class Logger:
-    def __init__(self, file=None, name=None, verbose=0):
+    def __init__(self, file=None, name=None, verbose=0, save=True):
         if file is None:
             self.file = LOGS_DIR / f"{time_now(millisecond=False)} - {name}.log"
         else:
             self.file = file
 
         self.verbose = verbose
+        self.save = save
 
     def log(self, message, priority=0, raise_: Optional[Type[Exception]] = None):
         if raise_ is not None:
@@ -812,8 +813,9 @@ class Logger:
 
         space = "\t" * (5 - priority)
         message = f"{time_now(millisecond=True)} - {priority} {space}- {message}\n"
-        with open(self.file, "a") as f:
-            f.write(message)
+        if self.save:
+            with open(self.file, "a") as f:
+                f.write(message)
 
         if raise_ is not None:
             raise raise_(message)
@@ -1055,3 +1057,5 @@ class Resampler(Transformer):
     @property
     def keeps_signal_length(self) -> bool:
         return False
+
+# todo: only load datasets that is needed

@@ -1,6 +1,8 @@
 import os
 from typing import Generator, Tuple
 
+from signalai.tools.utils import apply_transforms
+
 from signalai import SeriesProcessor
 from signalai.core import SignalModel
 from torch import nn, optim
@@ -35,7 +37,10 @@ class TorchSignalModel(SignalModel):
                 x, y = series_processor.next_batch(self.target_signal_length, training_params.get("batch_size", 1))
                 new_loss, y_hat = self.train_on_batch(x, y, training_params)
                 losses.append(new_loss)
-                trues.append(int(torch.sum(y_hat > .5)))
+                if isinstance(y_hat, tuple):
+                    trues.append(int(torch.sum(y_hat[0] > .5)))
+                else:
+                    trues.append(int(torch.sum(y_hat > .5)))
                 mean_loss = np.mean(losses[-training_params["average_losses_to_print"]:])
                 mean_true = np.mean(trues[-training_params["average_losses_to_print"]:])
 
@@ -53,13 +58,18 @@ class TorchSignalModel(SignalModel):
 
             self.save(model_id=model_id, batch_id=batch_id)
 
-    def eval_on_generator(self, series_processor: SeriesProcessor, evaluation_params: dict
+    def eval_on_generator(self, series_processor: SeriesProcessor, evaluation_params: dict, post_transform: bool,
                           ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
 
         for _ in range(evaluation_params["batches"]):
             x, y_true = series_processor.next_batch(self.target_signal_length, evaluation_params.get("batch_size", 1))
             y_hat = self.predict_batch(x)
-            yield y_true, y_hat
+            for one_y_true, one_y_hat in zip(y_true, y_hat):
+                if post_transform and len(self.post_transform.get('predict', [])) > 0:
+                    one_y_hat = apply_transforms(one_y_hat, self.post_transform.get('predict')).data_arr
+                    one_y_true = apply_transforms(one_y_true, self.post_transform.get('predict')).data_arr
+
+                yield one_y_true, one_y_hat
 
     def save(self, model_id=0, batch_id=0):
         model_dir = self.save_dir / "saved_model" / f"{model_id}"
