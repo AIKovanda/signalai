@@ -31,6 +31,8 @@ class TrainModel(Task):
             Parameter('batches'),
             Parameter('criterion'),
             Parameter('optimizer'),
+            Parameter('early_stopping_at', default=None),
+            Parameter('early_stopping_regression', default=None),
             Parameter('batch_size', default=1),
             Parameter('echo_step', default=500, ignore_persistence=True),
             Parameter('save_step', default=1000, ignore_persistence=True),
@@ -42,7 +44,7 @@ class TrainModel(Task):
 
     def run(self,
             train_series_processor, signal_model_config,
-            batches, criterion, optimizer,
+            batches, criterion, optimizer, early_stopping_at, early_stopping_regression,
             batch_size, echo_step, save_step, average_losses_to_print, loss_lambda, test, processing_fs,
             ) -> DirData:
         if test:
@@ -64,7 +66,12 @@ class TrainModel(Task):
         signal_model.set_criterion(criterion)
         signal_model.set_optimizer(optimizer)
 
-        signal_model.train_on_generator(train_series_processor, training_params)
+        signal_model.train_on_generator(
+            train_series_processor,
+            training_params=training_params,
+            early_stopping_at=early_stopping_at,
+            early_stopping_regression=early_stopping_regression,
+        )
         return dir_data
 
 
@@ -86,17 +93,20 @@ class TrainedModel(Task):
 
 class EvaluateModel(Task):
     class Meta:
+        data_class = InMemoryData
         input_tasks = [TestSeriesProcessor, TrainedModel]
         parameters = [
-            Parameter('evaluators', default=[]),
+            Parameter('evaluators'),
             Parameter('eval_batches', default=None),
             Parameter('eval_batch_size', default=1),
+            Parameter('eval_post_transform', default=True),
             Parameter('processing_fs', default=None),
         ]
 
     def run(self, test_series_processor, trained_model: SignalModel, evaluators: list[SignalEvaluator],
-            eval_batches, eval_batch_size, processing_fs) -> dict:
+            eval_batches, eval_batch_size, eval_post_transform, processing_fs) -> dict:
 
+        assert len(evaluators) > 0, "There is no evaluator!"
         test_series_processor.set_processing_fs(processing_fs)
 
         evaluation_params = {
@@ -105,8 +115,8 @@ class EvaluateModel(Task):
         }
         items = [y_pair for y_pair in tqdm(
                 trained_model.eval_on_generator(
-                    test_series_processor, evaluation_params, post_transform=True,
-                ), total=eval_batches)]
+                    test_series_processor, evaluation_params, post_transform=eval_post_transform,
+                ), total=eval_batches*eval_batch_size)]
 
         for evaluator in evaluators:
             evaluator.set_items(items)

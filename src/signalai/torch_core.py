@@ -1,6 +1,8 @@
 import os
 from typing import Generator, Tuple
 
+from sklearn.linear_model import LinearRegression
+
 from signalai.tools.utils import apply_transforms
 
 from signalai import SeriesProcessor
@@ -14,7 +16,8 @@ from signalai.config import DEVICE
 
 class TorchSignalModel(SignalModel):
 
-    def _train_on_generator(self, series_processor, training_params: dict, models: list = None):
+    def _train_on_generator(self, series_processor, training_params: dict, models: list = None,
+                            early_stopping_at=None, early_stopping_regression=None):
         if models is None:
             models = range(self.model_count)
         else:
@@ -44,12 +47,19 @@ class TorchSignalModel(SignalModel):
                 mean_loss = np.mean(losses[-training_params["average_losses_to_print"]:])
                 mean_true = np.mean(trues[-training_params["average_losses_to_print"]:])
 
-                if 'stopping_rule' in training_params:
-                    if mean_loss < training_params["stopping_rule"]:
+                if early_stopping_at is not None:
+                    if mean_loss < early_stopping_at:
+                        break
+
+                if (early_stopping_regression is not None and batch_id >= early_stopping_regression and
+                        batch_id % int(early_stopping_regression / 3) == 0):
+                    model = LinearRegression().fit(np.arange(early_stopping_regression).reshape(-1, 1),
+                                                   np.array(losses[-early_stopping_regression:]).reshape(-1, 1))
+                    if model.coef_[0][0] >= 0:
                         break
 
                 # progress bar update and printing
-                batch_indices_generator.set_description(f"Loss: {mean_loss: .06f}, total_true: {mean_true}")
+                batch_indices_generator.set_description(f"Loss: {mean_loss: .06f}, total_true: {int(mean_true)}")
                 if batch_id % training_params["echo_step"] == 0 and batch_id != 0:
                     print()
 
@@ -60,7 +70,7 @@ class TorchSignalModel(SignalModel):
 
     def eval_on_generator(self, series_processor: SeriesProcessor, evaluation_params: dict, post_transform: bool,
                           ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
-
+        np.random.seed(13)
         for _ in range(evaluation_params["batches"]):
             x, y_true = series_processor.next_batch(self.target_signal_length, evaluation_params.get("batch_size", 1))
             y_hat = self.predict_batch(x)
@@ -68,7 +78,6 @@ class TorchSignalModel(SignalModel):
                 if post_transform and len(self.post_transform.get('predict', [])) > 0:
                     one_y_hat = apply_transforms(one_y_hat, self.post_transform.get('predict')).data_arr
                     one_y_true = apply_transforms(one_y_true, self.post_transform.get('predict')).data_arr
-
                 yield one_y_true, one_y_hat
 
     def save(self, model_id=0, batch_id=0):

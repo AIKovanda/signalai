@@ -92,14 +92,19 @@ class TimeSeries:
         return self._time_map
 
     def __len__(self):
-        return self._data_arr.shape[-1]
+        if self._data_arr is not None:
+            return self._data_arr.shape[-1]
+
+        return self._time_map.shape[-1]
 
     def astype_(self, dtype):
         self._data_arr = self._data_arr.astype(dtype)
 
     @property
     def channels_count(self):
-        return self._data_arr.shape[0]
+        if self._data_arr is not None:
+            return self._data_arr.shape[0]
+        return self._time_map.shape[0]
 
     def take_channels(self, channels: Optional[List[Union[List[int], int]]] = None):
         if channels is None:

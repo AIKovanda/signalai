@@ -1,5 +1,7 @@
 import librosa
 import numpy as np
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_curve, auc
+
 from signalai.transformers import STFT
 from taskchain.parameter import AutoParameterObject
 
@@ -119,4 +121,32 @@ class MELSpectrogramL2(SignalEvaluator):
         return {
             'all': float(np.mean(l2)),
             **by_one
+        }
+
+
+class Binary(SignalEvaluator):
+    name = 'binary'
+
+    def __init__(self, params=None):
+        super().__init__(params)
+        self.name = f'binary-{self.params.get("threshold", .5)}'
+
+    @property
+    def stat(self) -> dict[str, float]:
+        print(self.name)
+        mp = np.concatenate([i[0] for i in self.items], axis=1)
+        pred = np.concatenate([i[1] for i in self.items], axis=1)
+        th = self.params.get('threshold', .5)
+
+        fpr, tpr, _ = roc_curve(mp.reshape(-1), pred.reshape(-1))
+        roc_auc = auc(fpr, tpr)
+
+        precision = precision_score(mp.reshape(-1) > .5, pred.reshape(-1) > th, zero_division=1)
+        recall = recall_score(mp.reshape(-1) > .5, pred.reshape(-1) > th)
+        return {
+            'accuracy': accuracy_score(mp.reshape(-1) > .5, pred.reshape(-1) > th),
+            'precision': precision,
+            'recall': recall,
+            'F1': 2 * precision * recall / (precision + recall),
+            'roc_auc': roc_auc,
         }

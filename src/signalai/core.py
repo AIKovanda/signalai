@@ -47,13 +47,14 @@ class SignalModel(abc.ABC):
         self.optimizer = None
         self.optimizer_info = None
 
-    def train_on_generator(self, series_processor, training_params: dict, models: list = None):
+    def train_on_generator(self, series_processor, training_params: dict, models: list = None, **kwargs):
         self.logger.log("Starting training on generator.", priority=1)
         self.logger.log(f"Training params: {training_params}", priority=1)
-        self._train_on_generator(series_processor, training_params, models)
+        self._train_on_generator(series_processor, training_params, models, **kwargs)
 
     @abc.abstractmethod
-    def _train_on_generator(self, series_processor, training_params: dict, models: list = None):
+    def _train_on_generator(self, series_processor, training_params: dict, models: list = None,
+                            early_stopping_at=None, early_stopping_regression=None):
         pass
 
     @abc.abstractmethod
