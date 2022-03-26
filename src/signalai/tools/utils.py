@@ -92,11 +92,11 @@ def apply_transforms(ts, transforms=()):
     return ts
 
 
-def original_length(target_length, transforms=()):
+def original_length(target_length, transforms=(), fs=None):
     if len(transforms) == 0:
         return target_length
     for t in transforms[::-1]:
-        target_length = t.original_signal_length(target_length)
+        target_length = t.original_signal_length(target_length, fs=fs)
     assert target_length is not None and target_length > 0, "Output of chosen transformations does not make sense."
     return target_length
 

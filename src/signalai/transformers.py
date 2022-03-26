@@ -38,7 +38,7 @@ class Standardizer(Transformer):
             logger=x.logger,
         )
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property
@@ -66,7 +66,7 @@ class Gain(Transformer):
             logger=x.logger,
         )
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property
@@ -93,7 +93,7 @@ class Phaser(Transformer):
             logger=x.logger,
         )
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property
@@ -121,7 +121,7 @@ class Chorus(Transformer):
             logger=x.logger,
         )
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property
@@ -164,7 +164,7 @@ class Reverb(Transformer):
             logger=x.logger,
         )
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property
@@ -195,7 +195,7 @@ class BandPassFilter(Transformer):
             logger=x.logger,
         )
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property
@@ -217,7 +217,7 @@ class ChannelJoiner(Transformer):
             channels = self.evaluated_params.get("channels", [list(range(x.data_arr.shape[0]))])
         return x.take_channels(channels=channels)
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property
@@ -233,7 +233,7 @@ class Lambda(Transformer):
     def transform(self, x: TimeSeries) -> TimeSeries:
         return self.evaluated_params.get("lambda")(x)
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property
@@ -256,7 +256,7 @@ class TimeMapScale(Transformer):
         new_time_map = time_map[:, np.round(np.linspace(0, time_map.shape[-1] - 1, int(target_length))).astype(int)]
         return TimeSeries(time_map=new_time_map, meta=x.meta)
 
-    def original_signal_length(self, length: int) -> int:  # todo: another approach
+    def original_signal_length(self, length: int, fs: int = None) -> int:  # todo: another approach
         return length
 
     @property
@@ -296,7 +296,7 @@ class STFT(Transformer):
             logger=x.logger,
         )
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property
@@ -333,7 +333,7 @@ class ISTFT(Transformer):
             logger=x.logger,
         )
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         return length
 
     @property

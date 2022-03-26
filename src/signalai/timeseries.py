@@ -6,6 +6,7 @@ from typing import Union, Optional, List, Iterable, Type, Tuple
 import librosa
 from librosa import resample
 from librosa.display import specshow
+from pydub.utils import mediainfo
 from taskchain.parameter import AutoParameterObject
 import pandas as pd
 import seaborn as sns
@@ -33,7 +34,7 @@ class TimeSeries:
     """
     full_dimensions = None
 
-    def __init__(self, data_arr: np.ndarray = None, meta=None, time_map=None, logger=None):
+    def __init__(self, data_arr: np.ndarray = None, meta=None, time_map=None, logger=None, fs: int = None):
         if meta is None:
             meta = {}
 
@@ -67,6 +68,7 @@ class TimeSeries:
             raise ValueError(f"Data map must have one or two axes, not {len(self._time_map.shape)}.")
 
         self.meta = meta.copy()
+        self.fs = fs
 
     def crop(self, interval=None):
         if interval is None:
@@ -81,6 +83,7 @@ class TimeSeries:
             time_map=time_map,
             meta=self.meta,
             logger=self.logger,
+            fs=self.fs,
         )
 
     @property
@@ -127,6 +130,7 @@ class TimeSeries:
             time_map=np.vstack(time_maps),
             meta=self.meta,
             logger=self.logger,
+            fs=self.fs,
         )
 
     def margin_interval(self, interval_length: int = None, start_id=0):
@@ -146,7 +150,13 @@ class TimeSeries:
             new_time_map[..., max(0, start_id):min(interval_length, start_id + len(self))] = \
                 self._time_map[..., max(0, -start_id):min(len(self), interval_length - start_id)]
 
-        return type(self)(data_arr=new_data_arr, meta=self.meta, time_map=new_time_map, logger=self.logger)
+        return type(self)(
+            data_arr=new_data_arr,
+            meta=self.meta,
+            time_map=new_time_map,
+            logger=self.logger,
+            fs=self.fs,
+        )
 
     def __add__(self, other):
         if isinstance(other, type(self)):
@@ -165,6 +175,7 @@ class TimeSeries:
             meta=new_info,
             time_map=new_time_map,
             logger=self.logger,
+            fs=self.fs,
         )
 
     def __or__(self, other):
@@ -184,26 +195,36 @@ class TimeSeries:
             meta=new_info,
             time_map=new_time_map,
             logger=self.logger,
+            fs=self.fs,
         )
 
     def __mul__(self, other):
-        return type(self)(data_arr=self._data_arr * other, meta=self.meta, time_map=self._time_map, logger=self.logger)
+        return type(self)(
+            data_arr=self._data_arr * other,
+            meta=self.meta,
+            time_map=self._time_map,
+            logger=self.logger,
+            fs=self.fs,
+        )
 
     def __truediv__(self, other):
-        return type(self)(data_arr=self._data_arr / other, meta=self.meta, time_map=self._time_map, logger=self.logger)
+        return type(self)(
+            data_arr=self._data_arr / other,
+            meta=self.meta,
+            time_map=self._time_map,
+            logger=self.logger,
+            fs=self.fs,
+        )
 
     def __repr__(self):
         return str(pd.DataFrame.from_dict(
-            self.meta | {'length': len(self), 'channels': self.channels_count},
+            self.meta | {'length': len(self), 'channels': self.channels_count, 'fs': self.fs},
             orient='index', columns=['value'],
         ))
 
     def update_meta(self, dict_):
         self.meta = self.meta.copy()
         self.meta.update(dict_)
-
-    def apply(self, func):
-        pass  # todo: transforms
 
     def __iter__(self):
         self.n = 0
@@ -218,6 +239,7 @@ class TimeSeries:
                 meta=self.meta,
                 time_map=self.time_map,
                 logger=self.logger,
+                fs=self.fs,
             )
         else:
             raise StopIteration
@@ -226,15 +248,14 @@ class TimeSeries:
 class Signal(TimeSeries):
     full_dimensions = 2
 
-    def show(self, channels=None, figsize=(16, 3), save_as=None, show=True, split=False, title=None,
-             spectrogram_freq=None):
+    def show(self, channels=None, figsize=(16, 3), save_as=None, show=True, split=False, title=None):
         if channels is None:
             channels = range(self.channels_count)
         elif isinstance(channels, int):
             channels = [channels]
 
         if split:
-            if spectrogram_freq is None:
+            if self.fs is None:
                 with plt.style.context('seaborn-darkgrid'):
                     fig, axes = plt.subplots(self.channels_count, 1, figsize=figsize, squeeze=False)
                     for channel_id in channels:
@@ -243,19 +264,19 @@ class Signal(TimeSeries):
             else:
                 fig, axes = plt.subplots(self.channels_count, 1, figsize=figsize, squeeze=False)
                 for channel_id in channels:
-                    f, t, Sxx = scipy_signal.spectrogram(self._data_arr[channel_id], spectrogram_freq)
+                    f, t, Sxx = scipy_signal.spectrogram(self._data_arr[channel_id], self.fs)
                     axes[channel_id, 0].pcolormesh(t, f, Sxx, shading='gouraud')
         else:
-            if spectrogram_freq is None:
+            if self.fs is None:
                 with plt.style.context('seaborn-darkgrid'):
                     fig = plt.figure(figsize=figsize)
                     for channel_id in channels:
-                        if spectrogram_freq is None:
+                        if self.fs is None:
                             y = self._data_arr[channel_id]
                             sns.lineplot(x=range(len(y)), y=y)
             else:
                 fig = plt.figure(figsize=figsize)
-                f, t, Sxx = scipy_signal.spectrogram(self._data_arr[0], spectrogram_freq)
+                f, t, Sxx = scipy_signal.spectrogram(self._data_arr[0], self.fs)
                 plt.pcolormesh(t, f, Sxx, shading='gouraud')
 
         fig.patch.set_facecolor('white')
@@ -267,18 +288,16 @@ class Signal(TimeSeries):
         if show:
             plt.show()
 
-    def show_all(self, spectrogram_freq, title=None):
+    def show_all(self, title=None):
         self.show(figsize=(18, 1.5 * self.channels_count), split=True, title=title)
-        self.show(figsize=(18, 1.5 * self.channels_count), split=True, title=title, spectrogram_freq=spectrogram_freq)
-
         self.margin_interval(interval_length=150).show(
             figsize=(18, 1.5 * self.channels_count), split=True,
             title=f"{title} - first 150 samples")
         self.play()
 
-    def spectrogram(self, fs=44100, figsize=(16, 9), save_as=None, show=True):
+    def spectrogram(self, figsize=(16, 9), save_as=None, show=True):
         plt.figure(figsize=figsize)
-        f, t, Sxx = scipy_signal.spectrogram(self._data_arr[0], fs)
+        f, t, Sxx = scipy_signal.spectrogram(self._data_arr[0], self.fs)
         Sxx = np.sqrt(Sxx)
         plt.pcolormesh(t, f, Sxx, shading='gouraud')
         plt.ylabel('Frequency [Hz]')
@@ -288,7 +307,7 @@ class Signal(TimeSeries):
         if show:
             plt.show()
 
-    def spectrogram3(self, fs=44100, figsize=(16, 9), save_as=None, show=True):
+    def spectrogram3(self, figsize=(16, 9), save_as=None, show=True):
         plt.figure(figsize=figsize)
         Sxx = np.abs(librosa.stft(self._data_arr[0, ::2], center=False, n_fft=2048, hop_length=1024))
         Sxx = Sxx / np.max(Sxx)
@@ -301,17 +320,18 @@ class Signal(TimeSeries):
         if show:
             plt.show()
 
-    def spectrogram2(self, fs=44100, figsize=(16, 9), save_as=None, show=True):
+    def spectrogram2(self):
         S = np.abs(librosa.stft(self._data_arr[0]))
         fig, ax = plt.subplots()
 
         img = specshow(librosa.amplitude_to_db(S, ref=np.max),
-                       y_axis='log', x_axis='time', sr=fs, ax=ax)
+                       y_axis='log', x_axis='time', sr=self.fs, ax=ax)
         ax.set_title('Power spectrogram')
         fig.colorbar(img, ax=ax, format="%+2.0f dB")
 
-    def play(self, channel_id=0, fs=44100, volume=32):
+    def play(self, channel_id=0, fs: int = None, volume=32):
         import sounddevice as sd
+        fs = fs or self.fs
         sd.play(volume * self._data_arr[channel_id].astype('float32'), fs)
         sd.wait()
 
@@ -321,7 +341,8 @@ class Signal(TimeSeries):
             y = np.int16(self._data_arr.T * 2 ** 15)
         else:
             y = np.int16(self._data_arr.T)
-        song = pydub.AudioSegment(y.tobytes(), frame_rate=self.meta['fs'], sample_width=2, channels=channels)
+
+        song = pydub.AudioSegment(y.tobytes(), frame_rate=self.fs, sample_width=2, channels=channels)
         song.export(file, format="mp3", bitrate="320k")
 
 
@@ -364,6 +385,7 @@ class MultiSeries:
         series = self._series_list(only_valid=True)
         series_length = len(series[0])
         assert all([len(ts) == series_length for ts in series]), 'Timeseries must have a same length to be joined.'
+        assert len({ts.fs for ts in series}) == 1, 'Timeseries must have the same sampling frequency.'
         if channels is None:
             series_channels = series[0].channels_count
             assert all([ts.channels_count == series_channels for ts in series]), \
@@ -380,11 +402,13 @@ class MultiSeries:
             time_map = np.logical_or(time_map, s_series.time_map)
             metas.append(s_series.meta)
 
+        assert series[0].fs is not None, series
         return type(series[0])(
             data_arr=np.sum(data_arrays, axis=0),
             time_map=time_map,
             meta=join_dicts(*metas),
             logger=series[0].logger,
+            fs=series[0].fs,
         )
 
     def stack_series(self, only_valid=False, axis=0):
@@ -413,12 +437,14 @@ class MultiSeries:
 
         data_arrays = []
         time_maps = []
+        fss = []
         metas = []
 
         for ts in series:
             if ts is not None:
                 if series_shape is not None:
                     data_arrays.append(ts.data_arr)
+                fss.append(ts.fs)
                 time_maps.append(ts.time_map)
                 metas.append(ts.meta)
             else:
@@ -431,11 +457,13 @@ class MultiSeries:
         else:
             data_arr = None
 
+        assert len(set(fss)) == 1, fss  # todo: check if this works good
         return ts_type(
             data_arr=data_arr,
             time_map=np.concatenate(time_maps, axis=0),
             meta=join_dicts(*metas),
             logger=logger,
+            fs=fss[0],
         )
 
     def apply_(self, func):
@@ -451,7 +479,7 @@ class MultiSeries:
             for key in self.series.keys():
                 series[key] = func(self.series[key])
         else:
-            series = list(map(func, self.series))
+            series = [func(ts) for ts in self.series]
 
         return MultiSeries(series, class_order=self.class_order)
 
@@ -464,6 +492,7 @@ class SeriesClass:
         self.class_name = class_name
         self.superclass_name = superclass_name
         self.logger = logger if logger is not None else Logger()
+        self.fs = None
 
     def stat(self, to_json=False):
         info_dict = {
@@ -491,6 +520,10 @@ class SeriesClass:
                 pool.join()  # solving memory leaks
                 self.logger.log(f"Signals loaded to RAM.", priority=1)
 
+        fss = [ts.fs for ts in self.series]
+        assert len(set(fss)) == 1, 'Signals in SeriesClass must have the same sample frequency!'
+        self.fs = fss[0]  # todo: without loading to ram
+
     def get_index_map(self) -> List:
         return [len(i) for i in self.series]
 
@@ -499,6 +532,7 @@ class SeriesClass:
             return self.series[individual_id].crop(interval=(start_id, start_id + length))
         if self.series_build is None:
             self.logger.log(f"Signal cannot be built, there is no information how to do so.", raise_=ValueError)
+
         return build_series(self.series_build[individual_id], interval=(start_id, start_id + length))
 
     @property
@@ -559,6 +593,7 @@ class SeriesDatasetsKeeper:
                     self.superclasses_dict[superclass_name] = [class_name]
 
         self.total_lengths = {class_name: class_obj.total_length for class_name, class_obj in self.classes_dict.items()}
+        self.fs = None
 
     def stat(self, to_json=False):
         info_dict = {
@@ -582,6 +617,14 @@ class SeriesDatasetsKeeper:
         for class_name in classes_name:
             self._check_valid_class(class_name)
             self.classes_dict[class_name].load_to_ram()
+
+        fss = []
+        for class_name, class_obj in self.classes_dict.items():
+            fss.append(class_obj.fs)
+
+        assert len(set(fss)) == 1, 'Datasets must have the same sample frequency!'
+        assert fss[0] is not None
+        self.fs = fss[0]
 
     def relevant_classes(self, superclasses: Iterable) -> list:
         return [j for i in superclasses for j in self.superclasses_dict[i]]
@@ -687,12 +730,14 @@ class SeriesTrack(AutoParameterObject, abc.ABC):
         self.params = params
         self.transform = transform
         self.takers = {}
+        self.fs = None
 
     def set_logger(self, logger):
         self.logger: Logger = logger
 
     def set_keeper(self, keeper):
         self.keeper = keeper
+        self.fs = keeper.fs
         self.relevant_classes: List[str] = list(keeper.relevant_classes(superclasses=self.params['superclasses']))
         for relevant_class in self.relevant_classes:
             self.takers[relevant_class] = SeriesTaker(
@@ -751,7 +796,7 @@ class SeriesProcessor:
 
     def set_processing_fs(self, processing_fs: int):
         if processing_fs is not None:
-            self.fs_transform = [Resampler(output_fs=22050)]
+            self.fs_transform = [Resampler(output_fs=processing_fs)]
 
     def next_one(self, target_length):
         track_buffer_x = {}
@@ -760,7 +805,8 @@ class SeriesProcessor:
         for track_name, track_obj in self.tracks.items():
             all_track_transforms = self.fs_transform + track_obj.transform['base'] + track_obj.transform['X']
             track_buffer = track_obj.next(
-                length=original_length(target_length, all_track_transforms + self.processor_config['transform']['X']),
+                length=original_length(target_length, all_track_transforms + self.processor_config['transform']['X'],
+                                       fs=track_obj.fs),
             )
             transformed_buffer = apply_transforms(
                 track_buffer,
@@ -839,7 +885,7 @@ def pydub2numpy(audio: pydub.AudioSegment) -> (np.ndarray, int):
             1 << (8 * audio.sample_width - 1)), audio.frame_rate
 
 
-def audio_file2numpy(file):
+def audio_file2numpy(file) -> tuple[np.ndarray, int]:
     file = Path(file)
     suffix = file.suffix
     file = str(file.absolute())
@@ -852,23 +898,24 @@ def audio_file2numpy(file):
     else:
         raise TypeError(f"Suffix '{suffix}' is not supported yet!")
 
-    return pydub2numpy(audio)[0].T
+    return pydub2numpy(audio)[0].T, int(mediainfo(file)['sample_rate'])
 
 
 def read_audio(filename, file_sample_interval=None, interval=None, dtype=None):
     real_start, interval_length = _get_start_length(file_sample_interval, interval)
-    data_arr = audio_file2numpy(filename)
-    meta = {'fs': 44100}  # todo: automatically
+    data_arr, fs = audio_file2numpy(filename)
     if dtype is not None:
         data_arr = data_arr.astype(dtype)
     if not real_start:
-        return Signal(data_arr=data_arr, meta=meta)
+        return Signal(data_arr=data_arr, fs=fs)
     if not file_sample_interval:
-        return Signal(data_arr=data_arr[:, real_start:], meta=meta)
-    return Signal(data_arr=data_arr[:, real_start: real_start + interval_length], meta=meta)
+        return Signal(data_arr=data_arr[:, real_start:], fs=fs)
+
+    return Signal(data_arr=data_arr[:, real_start: real_start + interval_length], fs=fs)
 
 
-def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='float32', dtype=None, meta=None):
+def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='float32', dtype=None, meta=None,
+             fs: int = None):
     real_start, interval_length = _get_start_length(file_sample_interval, interval)
     with open(filename, "rb") as f:
         start_byte = int(DTYPE_BYTES[source_dtype] * real_start)
@@ -877,10 +924,10 @@ def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='f
         data_arr = np.expand_dims(np.fromfile(f, dtype=source_dtype, count=interval_length or -1), axis=0)
         if dtype is not None:
             data_arr = data_arr.astype(dtype)
-        return Signal(data_arr=data_arr, meta=meta)
+        return Signal(data_arr=data_arr, meta=meta, fs=fs)
 
 
-def read_npy(filename, file_sample_interval=None, interval=None, dtype=None):
+def read_npy(filename, file_sample_interval=None, interval=None, dtype=None, fs: int = None):
     real_start, interval_length = _get_start_length(file_sample_interval, interval)
     full_data_arr = np.load(filename)
     if len(full_data_arr.shape) == 1:
@@ -890,19 +937,19 @@ def read_npy(filename, file_sample_interval=None, interval=None, dtype=None):
         data_arr = data_arr.astype(dtype)
 
     if len(full_data_arr.shape) == 2:
-        return Signal(data_arr=data_arr)
+        return Signal(data_arr=data_arr, fs=fs)
     elif len(full_data_arr.shape) == 3:
-        return Signal2D(data_arr=data_arr)
+        return Signal2D(data_arr=data_arr, fs=fs)
     else:
         raise ValueError(f"Loaded array '{filename}' has {len(full_data_arr.shape)} channels, maximum is 3.")
 
 
-def from_numpy(data_arr: np.ndarray, meta=None, time_map=None, logger=None) -> TimeSeries:
+def from_numpy(data_arr: np.ndarray, meta=None, time_map=None, logger=None, fs: int = None) -> TimeSeries:
     assert isinstance(data_arr, np.ndarray), f"data_arr must be a numpy.ndarray, not '{type(data_arr)}'"
     if len(data_arr.shape) in [1, 2]:
-        return Signal(data_arr=data_arr, meta=meta, time_map=time_map, logger=logger)
+        return Signal(data_arr=data_arr, meta=meta, time_map=time_map, logger=logger, fs=fs)
     elif len(data_arr.shape) == 3:
-        return Signal2D(data_arr=data_arr)
+        return Signal2D(data_arr=data_arr, fs=fs)
     else:
         raise ValueError(f"data_arr has unsupported dimension {len(data_arr.shape)}.")
 
@@ -928,7 +975,6 @@ def build_series(build_dict: dict, interval: Optional[Iterable[int]] = None) -> 
         new_series.astype_(build_dict['target_dtype'])
         new_series.update_meta(build_dict['meta'])
 
-    assert 'fs' in new_series.meta
     return new_series
 
 
@@ -963,6 +1009,7 @@ def _get_start_length(file_sample_interval, interval) -> Tuple[int, int]:
         interval_length = int(interval_length)
     return int(real_start), interval_length
 
+
 # todo: build_generator somehow
 
 
@@ -993,7 +1040,7 @@ class Transformer(AutoParameterObject):
     def transform_timeseries(self, x: TimeSeries) -> Union[TimeSeries, np.ndarray]:
         pass
 
-    def original_signal_length(self, length: int) -> int:
+    def original_signal_length(self, length: int, fs: int = None) -> int:
         raise NotImplementedError("Original length is not implemented for this transformation.")
 
     @property
@@ -1041,26 +1088,27 @@ class Resampler(Transformer):
         ).astype(x.dtype), 0)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        input_fs = x.meta['fs']
+        input_fs = x.fs
+        assert input_fs is not None, 'Missing info about sampling frequency!'
         output_fs = self.evaluated_params.get('output_fs')
         if input_fs == output_fs:
             return x
 
         data_arr = self.transform_npy(x.data_arr, input_fs=input_fs, output_fs=output_fs)
-        s = Signal(
+        return Signal(
             data_arr=data_arr,
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
+            fs=output_fs,
         )
-        s.update_meta({'fs': output_fs})
-        return s
 
-    def original_signal_length(self, length: int) -> int:
-        return int(length * self.evaluated_params.get('input_fs', 44100) / self.evaluated_params.get('output_fs'))  # todo: this is error
+    def original_signal_length(self, length: int, fs: int = None) -> int:
+        return int(length * fs / self.evaluated_params.get('output_fs'))
 
     @property
     def keeps_signal_length(self) -> bool:
         return False
+
 
 # todo: only load datasets that is needed

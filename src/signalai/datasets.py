@@ -14,6 +14,7 @@ class AllToneLoader(SeriesDataset):
 
         for superclass_name, structure in class_structure.items():
             all_signal = read_audio(structure['filename'], dtype=self.params.get("target_dtype"))
+            assert all_signal.fs is not None
             all_signal.update_meta(self.params.get("meta", {}))
 
             all_csv = pd.read_csv(structure['classes_file'])

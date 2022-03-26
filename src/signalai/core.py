@@ -90,7 +90,7 @@ class SignalModel(abc.ABC):
             new_ts = from_numpy(data_arr=new_data_arr, meta=ts.meta, time_map=ts.time_map, logger=ts.logger)
             return apply_transforms(new_ts, self.post_transform.get('predict', []))
         else:
-            length = original_length(target_length, transforms)
+            length = original_length(target_length, transforms, fs=ts.fs)
             transformed_crops = []
             for i in range(len(ts) // length):
                 new_ts = apply_transforms(ts.crop([i * length, (i + 1) * length]), transforms)
