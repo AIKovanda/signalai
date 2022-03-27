@@ -1,5 +1,6 @@
 import librosa
 import numpy as np
+from scipy.signal import convolve2d
 from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_curve, auc
 
 from signalai.transformers import STFT
@@ -129,24 +130,58 @@ class Binary(SignalEvaluator):
 
     def __init__(self, params=None):
         super().__init__(params)
-        self.name = f'binary-{self.params.get("threshold", .5)}'
+        self.name = f'binary-t{self.params.get("threshold", .5)}'
 
     @property
     def stat(self) -> dict[str, float]:
         print(self.name)
-        mp = np.concatenate([i[0] for i in self.items], axis=1)
-        pred = np.concatenate([i[1] for i in self.items], axis=1)
+        true = np.concatenate([i[0] for i in self.items], axis=1).reshape(-1)
+        pred = np.concatenate([i[1] for i in self.items], axis=1).reshape(-1)
         th = self.params.get('threshold', .5)
 
-        fpr, tpr, _ = roc_curve(mp.reshape(-1), pred.reshape(-1))
+        fpr, tpr, _ = roc_curve(true, pred)
         roc_auc = auc(fpr, tpr)
 
-        precision = precision_score(mp.reshape(-1) > .5, pred.reshape(-1) > th, zero_division=1)
-        recall = recall_score(mp.reshape(-1) > .5, pred.reshape(-1) > th)
+        true_map = true > .5
+        pred_map = pred > th
+
+        precision = precision_score(true_map, pred_map, zero_division=1)
+        recall = recall_score(true_map, pred_map)
         return {
-            'accuracy': accuracy_score(mp.reshape(-1) > .5, pred.reshape(-1) > th),
+            'accuracy': accuracy_score(true_map, pred_map),
             'precision': precision,
             'recall': recall,
             'F1': 2 * precision * recall / (precision + recall),
             'roc_auc': roc_auc,
+        }
+
+
+class EBinary(Binary):
+    name = 'e-binary'
+
+    def __init__(self, params=None):
+        super().__init__(params)
+        self.name = (f'e-binary-t{self.params.get("threshold", .5)}-' 
+                     f's{self.params.get("size", 5)}t{self.params.get("conv_threshold", 3)}')
+
+    @property
+    def stat(self) -> dict[str, float]:
+        print(self.name)
+        true = np.concatenate([i[0] for i in self.items], axis=1)
+        pred = np.concatenate([i[1] for i in self.items], axis=1)
+        th = self.params.get('threshold', .5)
+        size = self.params.get("size", 5)
+        conv_threshold = self.params.get("conv_threshold", 3)
+
+        pred_map = convolve2d((pred > th).astype(int), np.ones((1, size)), 'same').reshape(-1) >= conv_threshold
+        true_map = true.reshape(-1) > .5
+
+        precision = precision_score(true_map, pred_map, zero_division=1)
+        recall = recall_score(true_map, pred_map)
+
+        return {
+            'accuracy': accuracy_score(true_map, pred_map),
+            'precision': precision,
+            'recall': recall,
+            'F1': 2 * precision * recall / (precision + recall),
         }

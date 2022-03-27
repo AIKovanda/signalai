@@ -133,6 +133,25 @@ class TimeSeries:
             fs=self.fs,
         )
 
+    def trim(self, threshold=1e-5):
+        first = np.min(np.argmax(np.abs(self._data_arr) > threshold, axis=1))
+        last = np.min(np.argmax(np.abs(self._data_arr[:, ::-1]) > threshold, axis=1))
+        new_data_arr = self._data_arr[:, first:-last-1]
+        new_time_map = self._time_map[:, first:-last-1]
+        return type(self)(
+            data_arr=new_data_arr.copy(),
+            time_map=new_time_map.copy(),
+            meta=self.meta.copy(),
+            logger=self.logger,
+            fs=self.fs,
+        )
+
+    def trim_(self, threshold=1e-5):
+        first = np.min(np.argmax(np.abs(self._data_arr) > threshold, axis=1))
+        last = np.min(np.argmax(np.abs(self._data_arr[:, ::-1]) > threshold, axis=1))
+        self._data_arr = self._data_arr[:, first:-last-1]
+        self._time_map = self._time_map[:, first:-last-1]
+
     def margin_interval(self, interval_length: int = None, start_id=0):
         if interval_length is None:
             interval_length = len(self)
@@ -385,7 +404,8 @@ class MultiSeries:
         series = self._series_list(only_valid=True)
         series_length = len(series[0])
         assert all([len(ts) == series_length for ts in series]), 'Timeseries must have a same length to be joined.'
-        assert len({ts.fs for ts in series}) == 1, 'Timeseries must have the same sampling frequency.'
+        fs_set = {ts.fs for ts in series}
+        assert len(fs_set) == 1, f'Timeseries must have the same sampling frequency. {fs_set}'
         if channels is None:
             series_channels = series[0].channels_count
             assert all([ts.channels_count == series_channels for ts in series]), \
@@ -529,11 +549,14 @@ class SeriesClass:
 
     def get_individual_series(self, individual_id, start_id, length):
         if self.series is not None:
-            return self.series[individual_id].crop(interval=(start_id, start_id + length))
+            ts = self.series[individual_id].crop(interval=(start_id, start_id + length))
+            # print(ts.meta)
+            return ts
         if self.series_build is None:
             self.logger.log(f"Signal cannot be built, there is no information how to do so.", raise_=ValueError)
 
         return build_series(self.series_build[individual_id], interval=(start_id, start_id + length))
+
 
     @property
     def total_length(self):
@@ -573,7 +596,7 @@ class SeriesDatasetsKeeper:
         self.split_range = split_range
         self.logger = logger
 
-        self.classes_dict: dict[str, SeriesClass] = {}  # class_name: class_obj
+        self.classes_dict: dict[tuple[str, str], SeriesClass] = {}  # (superclass, class_name): class_obj
         self.superclasses_dict = {}  # superclass_name: [class_name, ...]
 
         for dataset in datasets_config:
@@ -582,17 +605,17 @@ class SeriesDatasetsKeeper:
             for class_obj in dataset.get_class_objects():
                 class_name = class_obj.class_name
                 superclass_name = class_obj.superclass_name
-                if class_name in self.classes_dict:
-                    self.logger.log(f"Class '{class_name}' is defined multiple times. This is not allowed.",
-                                    raise_=ValueError)
+                if (superclass_name, class_name) in self.classes_dict:
+                    raise ValueError(f"Class '{class_name}' is defined multiple times for superclass "
+                                     f"'{superclass_name}'. This is not allowed.")
 
-                self.classes_dict[class_name] = class_obj
+                self.classes_dict[(superclass_name, class_name)] = class_obj
                 if superclass_name in self.superclasses_dict:
                     self.superclasses_dict[superclass_name].append(class_name)
                 else:
                     self.superclasses_dict[superclass_name] = [class_name]
 
-        self.total_lengths = {class_name: class_obj.total_length for class_name, class_obj in self.classes_dict.items()}
+        self.total_lengths = {class_key: class_obj.total_length for class_key, class_obj in self.classes_dict.items()}
         self.fs = None
 
     def stat(self, to_json=False):
@@ -607,31 +630,34 @@ class SeriesDatasetsKeeper:
 
         return info_dict
 
-    def _check_valid_class(self, class_name):
-        if class_name not in self.classes_dict:
-            self.logger.log(f"Class '{class_name}' cannot be found, see the config.", raise_=ValueError)
+    def _check_valid_class(self, class_key):
+        if class_key not in self.classes_dict:
+            raise ValueError(f"Class '{class_key[1]}' of superclass '{class_key[0]}' cannot be found, see the config.")
 
-    def load_to_ram(self, classes_name=None) -> None:
-        if classes_name is None:
-            classes_name = list(self.classes_dict.keys())
-        for class_name in classes_name:
-            self._check_valid_class(class_name)
-            self.classes_dict[class_name].load_to_ram()
+    def load_to_ram(self, classes_keys=None) -> None:
+        if classes_keys is None:
+            classes_keys = self.classes_dict.keys()
+
+        for class_key in classes_keys:
+            self._check_valid_class(class_key)
+            self.classes_dict[class_key].load_to_ram()
 
         fss = []
-        for class_name, class_obj in self.classes_dict.items():
+        for _, class_obj in self.classes_dict.items():
             fss.append(class_obj.fs)
 
         assert len(set(fss)) == 1, 'Datasets must have the same sample frequency!'
         assert fss[0] is not None
         self.fs = fss[0]
 
-    def relevant_classes(self, superclasses: Iterable) -> list:
-        return [j for i in superclasses for j in self.superclasses_dict[i]]
+    def relevant_classes(self, superclasses: Iterable) -> list[tuple[str, str]]:
+        return [(superclass, class_name)
+                for superclass in superclasses
+                for class_name in self.superclasses_dict[superclass]]
 
-    def get_class(self, class_name):
-        self._check_valid_class(class_name)
-        return self.classes_dict[class_name]
+    def get_class(self, class_name, superclass):
+        self._check_valid_class((superclass, class_name))
+        return self.classes_dict[(superclass, class_name)]
 
 
 class EndOfDataset(Exception):
@@ -648,15 +674,16 @@ class SeriesTaker:
     zero_padding: True - no error, makes zero padding if needed, False - error when length is higher than available
     """
 
-    def __init__(self, keeper, class_name, strategy, logger=None, stride=0, zero_padding=True):
+    def __init__(self, keeper, superclass, class_name, strategy, logger=None, stride=0, zero_padding=True):
         self.keeper = keeper
         self.class_name = class_name
+        self.superclass = superclass
         self.strategy = strategy
         self.logger: Logger = logger or Logger()
         self.stride = stride
         self.zero_padding = zero_padding  # todo
 
-        self.taken_class = self.keeper.get_class(self.class_name)
+        self.taken_class = self.keeper.get_class(self.class_name, superclass=self.superclass)
         self.index_map = self.taken_class.get_index_map()
 
         self.id_next = [0, 0]
@@ -738,17 +765,18 @@ class SeriesTrack(AutoParameterObject, abc.ABC):
     def set_keeper(self, keeper):
         self.keeper = keeper
         self.fs = keeper.fs
-        self.relevant_classes: List[str] = list(keeper.relevant_classes(superclasses=self.params['superclasses']))
-        for relevant_class in self.relevant_classes:
-            self.takers[relevant_class] = SeriesTaker(
+        self.relevant_classes: List[Tuple[str, str]] = keeper.relevant_classes(superclasses=self.params['superclasses'])
+        for relevant_superclass, relevant_class in self.relevant_classes:
+            self.takers[(relevant_superclass, relevant_class)] = SeriesTaker(
                 keeper=keeper,
+                superclass=relevant_superclass,
                 class_name=relevant_class,
                 strategy=self.params['strategy'],
                 stride=self.params.get('stride', 0),
                 logger=self.logger,
             )
 
-    def _choose_class(self) -> str:
+    def _choose_class_key(self) -> str:
         if len(self.relevant_classes) == 0:
             raise ValueError(f"There is no class defined for track.")
 
@@ -761,7 +789,7 @@ class SeriesTrack(AutoParameterObject, abc.ABC):
             p = np.array([self.keeper.total_lengths[i] for i in self.relevant_classes])
 
         p = p / np.sum(p)
-        return np.random.choice(self.relevant_classes, p=p)
+        return self.relevant_classes[np.random.choice(len(self.relevant_classes), p=p)]
 
     def next(self, length: int) -> Union[TimeSeries, MultiSeries]:
         pass

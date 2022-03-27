@@ -36,6 +36,7 @@ class Standardizer(Transformer):
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
+            fs=x.fs,
         )
 
     def original_signal_length(self, length: int, fs: int = None) -> int:
@@ -58,12 +59,12 @@ class Gain(Transformer):
         return PBGain(gain_db=gain_db)(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=fs),
+            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
+            fs=x.fs,
         )
 
     def original_signal_length(self, length: int, fs: int = None) -> int:
@@ -85,12 +86,12 @@ class Phaser(Transformer):
         return PBPhaser()(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=fs),
+            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
+            fs=x.fs,
         )
 
     def original_signal_length(self, length: int, fs: int = None) -> int:
@@ -113,12 +114,12 @@ class Chorus(Transformer):
         return PBChorus(centre_delay_ms=centre_delay_ms)(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=fs),
+            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
+            fs=x.fs,
         )
 
     def original_signal_length(self, length: int, fs: int = None) -> int:
@@ -156,12 +157,12 @@ class Reverb(Transformer):
         )(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=fs),
+            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
+            fs=x.fs,
         )
 
     def original_signal_length(self, length: int, fs: int = None) -> int:
@@ -187,12 +188,12 @@ class BandPassFilter(Transformer):
         return butter_bandpass_filter(x, low_cut, high_cut, fs)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
-        fs = x.meta['fs']
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=fs),
+            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             logger=x.logger,
+            fs=x.fs,
         )
 
     def original_signal_length(self, length: int, fs: int = None) -> int:
@@ -269,7 +270,6 @@ class STFT(Transformer):
 
     @by_channel
     def transform_npy(self, x: np.ndarray, split_complex=False) -> np.ndarray:
-        # fs = x.meta['fs']
         center = self.evaluated_params.get('center', False)
         n_fft = self.evaluated_params.get('n_fft', 256)
         hop_length = self.evaluated_params.get('hop_length')
@@ -294,6 +294,7 @@ class STFT(Transformer):
             time_map=x.time_map,  # todo
             meta=meta,
             logger=x.logger,
+            fs=x.fs,
         )
 
     def original_signal_length(self, length: int, fs: int = None) -> int:
@@ -331,6 +332,7 @@ class ISTFT(Transformer):
             time_map=x.time_map,  # todo
             meta=meta,
             logger=x.logger,
+            fs=x.fs,
         )
 
     def original_signal_length(self, length: int, fs: int = None) -> int:

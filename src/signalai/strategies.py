@@ -6,8 +6,8 @@ from signalai.timeseries import SeriesTrack, TimeSeries, MultiSeries
 class SimpleStrategy(SeriesTrack):
 
     def next(self, length: int) -> Union[TimeSeries, MultiSeries]:
-        chosen_class = self._choose_class()
-        return self.takers[chosen_class].next(length=length)
+        chosen_key = self._choose_class_key()
+        return self.takers[chosen_key].next(length=length)
 
 
 class ToneStrategy(SeriesTrack):
@@ -18,7 +18,8 @@ class ToneStrategy(SeriesTrack):
         """
         count_min, count_max = self.params.get('tones_count_range', (0, 10))
         tones_count = np.random.choice(range(count_min, count_max + 1))
-        chosen_classes = [np.random.choice(self.relevant_classes) for _ in range(tones_count)]
+        chosen_classes = [self.relevant_classes[np.random.choice(len(self.relevant_classes))]
+                          for _ in range(tones_count)]
 
         possible_starting_index = np.arange(*self.params.get('start_arange', [1]))
         possible_tone_length = np.arange(*self.params.get('tone_length_arange', [length]))
