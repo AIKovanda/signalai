@@ -32,6 +32,7 @@ class TrainModel(Task):
             Parameter('criterion'),
             Parameter('optimizer'),
             Parameter('early_stopping_at', default=None),
+            Parameter('early_stopping_min', default=0, dont_persist_default_value=True),
             Parameter('early_stopping_regression', default=None),
             Parameter('batch_size', default=1),
             Parameter('echo_step', default=500, ignore_persistence=True),
@@ -44,7 +45,7 @@ class TrainModel(Task):
 
     def run(self,
             train_series_processor, signal_model_config,
-            batches, criterion, optimizer, early_stopping_at, early_stopping_regression,
+            batches, criterion, optimizer, early_stopping_at, early_stopping_min, early_stopping_regression,
             batch_size, echo_step, save_step, average_losses_to_print, loss_lambda, test, processing_fs,
             ) -> DirData:
         if test:
@@ -70,6 +71,7 @@ class TrainModel(Task):
             train_series_processor,
             training_params=training_params,
             early_stopping_at=early_stopping_at,
+            early_stopping_min=early_stopping_min,
             early_stopping_regression=early_stopping_regression,
         )
         return dir_data
@@ -122,3 +124,16 @@ class EvaluateModel(Task):
             evaluator.set_items(items)
 
         return {evaluator.name: evaluator.stat for evaluator in evaluators}
+
+
+class EchoInfo(Task):
+    class Meta:
+        data_class = InMemoryData
+        input_tasks = []
+        parameters = [
+            Parameter("signal_model_config"),
+            Parameter("processing_fs", default=None),
+        ]
+
+    def run(self, processing_fs, signal_model_config) -> tuple[int, int]:
+        return signal_model_config['target_signal_length'], processing_fs

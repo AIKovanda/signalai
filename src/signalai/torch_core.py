@@ -17,7 +17,7 @@ from signalai.config import DEVICE
 class TorchSignalModel(SignalModel):
 
     def _train_on_generator(self, series_processor, training_params: dict, models: list = None,
-                            early_stopping_at=None, early_stopping_regression=None):
+                            early_stopping_at=None, early_stopping_min=0, early_stopping_regression=None):
         if models is None:
             models = range(self.model_count)
         else:
@@ -51,7 +51,8 @@ class TorchSignalModel(SignalModel):
                     if mean_loss < early_stopping_at:
                         break
 
-                if (early_stopping_regression is not None and batch_id >= early_stopping_regression and
+                if (early_stopping_regression is not None and
+                        batch_id >= max(early_stopping_regression, early_stopping_min) and
                         batch_id % int(early_stopping_regression / 3) == 0):
                     model = LinearRegression().fit(np.arange(early_stopping_regression).reshape(-1, 1),
                                                    np.array(losses[-early_stopping_regression:]).reshape(-1, 1))

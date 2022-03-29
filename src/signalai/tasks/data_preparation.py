@@ -69,4 +69,3 @@ class TestSeriesProcessor(TaskSeriesProcessor):
             Parameter("load_to_ram", default=False, ignore_persistence=True),
         ]
         split_name = 'test'
-

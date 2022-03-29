@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 
 
-def plot_piano_tones(y, x_max=1000 * 131584 / 48000, savefigs=(), figsize=(7, 4), yshift=2.9):
+def plot_piano_tones(y, x_max=1000 * 131584 / 48000, savefigs=(), figsize=(7, 4), yshift=2.9, show=True):
     all_tones = ['$C_0$', '$C^{\\#}_0$', '$D_0$', '$D^{\\#}_0$', '$E_0$', '$F_0$', '$F^{\\#}_0$', '$G_0$',
                  '$G^{\\#}_0$', '$A_0$', '$A^{\\#}_0$', '$B_0$', '$C_1$', '$C^{\\#}_1$', '$D_1$', '$D^{\\#}_1$',
                  '$E_1$', '$F_1$', '$F^{\\#}_1$', '$G_1$', '$G^{\\#}_1$', '$A_1$', '$A^{\\#}_1$', '$B_1$', '$C_2$',
@@ -43,4 +43,8 @@ def plot_piano_tones(y, x_max=1000 * 131584 / 48000, savefigs=(), figsize=(7, 4)
     plt.ylabel('Tone id')
     for i in savefigs:
         plt.savefig(i, bbox_inches='tight', pad_inches=0.)
-    plt.show()
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
