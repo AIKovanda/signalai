@@ -1,10 +1,11 @@
 import librosa
 import numpy as np
 from scipy.signal import convolve2d
-from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_curve, auc
+from sklearn.metrics import (accuracy_score, auc, precision_score,
+                             recall_score, roc_curve)
+from taskchain.parameter import AutoParameterObject
 
 from signalai.transformers import STFT
-from taskchain.parameter import AutoParameterObject
 
 
 class SignalEvaluator(AutoParameterObject):

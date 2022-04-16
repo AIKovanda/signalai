@@ -1,9 +1,9 @@
 import torch
+from taskchain.parameter import AutoParameterObject
+from torch import nn
 from torch.nn import ModuleList
 
 from signalai.models.tools import get_activation
-from taskchain.parameter import AutoParameterObject
-from torch import nn
 
 
 class Spec2Map(AutoParameterObject, nn.Module):

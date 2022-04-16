@@ -1,15 +1,13 @@
 import argparse
 import pathlib
 from itertools import count
-from typing import Union, Optional
+from typing import Optional, Union
 
-from signalai.timeseries import MultiSeries
-
-from signalai.core import SignalModel
-
-from signalai import config, read_audio
 from taskchain.task import Config
 
+from signalai import config, read_audio
+from signalai.core import SignalModel
+from signalai.timeseries import MultiSeries
 
 SUFFIXES = [".mp3", ".aac", ".wav"]
 

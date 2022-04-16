@@ -1,4 +1,4 @@
-from taskchain import Parameter, InMemoryData, Task
+from taskchain import InMemoryData, Parameter, Task
 
 
 class DatasetManipulator(Task):

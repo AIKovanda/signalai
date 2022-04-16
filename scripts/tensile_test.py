@@ -1,10 +1,10 @@
 import numpy as np
-from matplotlib import pyplot as plt
 import seaborn as sns
-
-from signalai.config import DATA_DIR
-from signalai import config, read_bin
+from matplotlib import pyplot as plt
 from taskchain.task import Config
+
+from signalai import config, read_bin
+from signalai.config import DATA_DIR
 from signalai.tools.filters import gauss_convolve
 
 

@@ -1,18 +1,20 @@
 import librosa
 import numpy as np
+from pedalboard import \
+    Chorus as PBChorus  # in the magnitude frequency response
+from pedalboard import \
+    Gain as \
+    PBGain  # Increase or decrease the volume of a signal by applying a gain value (in decibels).
+from pedalboard import \
+    Phaser as \
+    PBPhaser  # A 6 stage phaser that modulates first order all-pass filters to create sweeping notches
+from pedalboard import \
+    Reverb as \
+    PBReverb  # Performs a simple reverb effect on a stream of audio data.
 
 from signalai.timeseries import Signal, Signal2D, TimeSeries, Transformer
 from signalai.tools.filters import butter_bandpass_filter
 from signalai.tools.utils import by_channel
-
-from pedalboard import (
-    Chorus as PBChorus,
-    Gain as PBGain,  # Increase or decrease the volume of a signal by applying a gain value (in decibels).
-    Reverb as PBReverb,  # Performs a simple reverb effect on a stream of audio data.
-    Phaser as PBPhaser,  # A 6 stage phaser that modulates first order all-pass filters to create sweeping notches
-                         # in the magnitude frequency response
-)
-
 
 RETURN_CLASS = {
     2: Signal,

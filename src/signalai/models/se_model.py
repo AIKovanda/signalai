@@ -3,10 +3,11 @@ from typing import List
 import numpy as np
 import torch
 import torch.nn as nn
-from signalai.models.tools import get_activation
+import torch.nn.functional as F
 from taskchain.parameter import AutoParameterObject
 from torch.nn import ModuleList, Sequential
-import torch.nn.functional as F
+
+from signalai.models.tools import get_activation
 
 
 class Signal2TimeFreq(nn.Module):

@@ -1,11 +1,12 @@
 import abc
 from pathlib import Path
-from typing import Optional, Generator, Tuple
+from typing import Generator, Optional, Tuple
 
 import numpy as np
-from signalai.config import DEVICE
 
-from signalai.timeseries import Logger, from_numpy, TimeSeries, Resampler, MultiSeries
+from signalai.config import DEVICE
+from signalai.timeseries import (Logger, MultiSeries, Resampler, TimeSeries,
+                                 from_numpy)
 from signalai.tools.utils import apply_transforms, original_length
 
 

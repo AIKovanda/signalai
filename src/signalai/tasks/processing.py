@@ -1,13 +1,14 @@
 from pathlib import Path
 
-from taskchain import Parameter, InMemoryData, DirData
+from taskchain import DirData, InMemoryData, Parameter
 from taskchain.task import Task
 from tqdm import tqdm
 
-from signalai.tasks.data_preparation import TrainSeriesProcessor, TestSeriesProcessor
 from signalai.core import SignalModel
-from signalai.torch_core import TorchSignalModel
 from signalai.evaluators import SignalEvaluator
+from signalai.tasks.data_preparation import (TestSeriesProcessor,
+                                             TrainSeriesProcessor)
+from signalai.torch_core import TorchSignalModel
 
 
 def init_model(signal_model_config, save_dir=None, processing_fs=None):

@@ -1,6 +1,8 @@
 from typing import Union
+
 import numpy as np
-from signalai.timeseries import SeriesTrack, TimeSeries, MultiSeries
+
+from signalai.timeseries import MultiSeries, SeriesTrack, TimeSeries
 
 
 class SimpleStrategy(SeriesTrack):
