@@ -664,10 +664,9 @@ class SeriesDatasetsKeeper:
         self.fs = fss[0]
 
     def free_ram(self, purpose=None):
-        for class_key, class_instance in self.classes_dict.items():
-            if purpose is None or class_instance.purpose == purpose:
+        for class_key in list(self.classes_dict.keys()):
+            if purpose is None or self.classes_dict[class_key].purpose == purpose:
                 del self.classes_dict[class_key]
-                print(class_key, 'deleted')
 
     def relevant_classes(self, superclasses: Iterable) -> list[tuple[str, str]]:
         return [(superclass, class_name)
