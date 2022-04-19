@@ -41,6 +41,7 @@ class AllToneLoader(SeriesDataset):
                 assert len(signals) > 0, 'Something went wrong here!'
                 generated_result.append(SeriesClass(
                     series=signals, class_name=unique_tone, superclass_name=superclass_name, logger=self.logger,
+                    purpose=self.purpose,
                 ))
 
         return generated_result
@@ -124,7 +125,8 @@ class FileLoader(SeriesDataset):  # todo: remake as MultiSignal
                     signals_build.append(build_dict)
 
             generated_result.append(SeriesClass(
-                series_build=signals_build, class_name=class_name, superclass_name=superclass_name, logger=self.logger
+                series_build=signals_build, class_name=class_name, superclass_name=superclass_name, logger=self.logger,
+                purpose=self.purpose,
             ))
 
         return generated_result

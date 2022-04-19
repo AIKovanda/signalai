@@ -7,9 +7,8 @@ from signalai.timeseries import TorchDataset
 from sklearn.linear_model import LinearRegression
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from tqdm import trange, tqdm
+from tqdm import tqdm
 
-from signalai import SeriesProcessor
 from signalai.config import DEVICE
 from signalai.core import SignalModel
 from signalai.tools.utils import apply_transforms

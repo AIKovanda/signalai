@@ -51,7 +51,8 @@ class TrainModel(Task):
             ) -> DirData:
         if test:
             batches = 10
-
+        train_series_processor.load_to_ram(purpose='train')
+        train_series_processor.load_to_ram(purpose='valid')
         train_series_processor.set_processing_fs(processing_fs)
         dir_data = self.get_data_object()
         signal_model = init_model(
@@ -75,6 +76,8 @@ class TrainModel(Task):
             early_stopping_min=early_stopping_min,
             early_stopping_regression=early_stopping_regression,
         )
+        train_series_processor.free_ram(purpose='train')
+        train_series_processor.free_ram(purpose='valid')
         return dir_data
 
 
@@ -110,8 +113,8 @@ class EvaluateModel(Task):
             eval_batches, eval_batch_size, eval_post_transform, processing_fs) -> dict:
 
         assert len(evaluators) > 0, "There is no evaluator!"
+        test_series_processor.load_to_ram(purpose='test')
         test_series_processor.set_processing_fs(processing_fs)
-
         evaluation_params = {
             'batch_size': eval_batch_size,
             'batches': eval_batches,
@@ -124,6 +127,7 @@ class EvaluateModel(Task):
         for evaluator in evaluators:
             evaluator.set_items(items)
 
+        test_series_processor.free_ram(purpose='test')
         return {evaluator.name: evaluator.stat for evaluator in evaluators}
 
 

@@ -19,7 +19,7 @@ from pydub.utils import mediainfo
 from scipy import signal as scipy_signal
 from taskchain.parameter import AutoParameterObject
 from torch.utils.data import Dataset
-from tqdm import tqdm, trange
+from tqdm import tqdm
 
 from signalai.config import DTYPE_BYTES, LOADING_THREADS, LOGS_DIR
 from signalai.tools.utils import (apply_transforms, by_channel, join_dicts,
@@ -509,11 +509,12 @@ class MultiSeries:
 
 
 class SeriesClass:
-    def __init__(self, series: List[TimeSeries] = None, series_build=None,
+    def __init__(self, series: List[TimeSeries] = None, series_build=None, purpose=None,
                  class_name: str = None, superclass_name: str = None, logger=None):
         self.series: List[TimeSeries] = series or []  # list
         self.series_build = series_build  # list
         self.class_name = class_name
+        self.purpose = purpose
         self.superclass_name = superclass_name
         self.logger = logger if logger is not None else Logger()
         self.fs = None
@@ -554,13 +555,11 @@ class SeriesClass:
     def get_individual_series(self, individual_id, start_id, length):
         if self.series is not None:
             ts = self.series[individual_id].crop(interval=(start_id, start_id + length))
-            # print(ts.meta)
             return ts
         if self.series_build is None:
             self.logger.log(f"Signal cannot be built, there is no information how to do so.", raise_=ValueError)
 
         return build_series(self.series_build[individual_id], interval=(start_id, start_id + length))
-
 
     @property
     def total_length(self):
@@ -575,13 +574,17 @@ class SeriesDataset(AutoParameterObject, abc.ABC):
     split_range: tuple of two floats in range of [0,1]
     """
 
-    def __init__(self, split_range: tuple = (0., 1.), **params):
+    def __init__(self, split_range: tuple = (0., 1.), purpose=None, **params):
         self.logger = None
         self.split_range = split_range
+        self.purpose = purpose
         self.params = params
 
     def set_logger(self, logger):
         self.logger = logger
+
+    def ignore_persistence_args(self):
+        return ['purpose']
 
     def set_split_range(self, split_range=None):
         if split_range is None:
@@ -601,7 +604,7 @@ class SeriesDatasetsKeeper:
         self.logger = logger
 
         self.classes_dict: dict[tuple[str, str], SeriesClass] = {}  # (superclass, class_name): class_obj
-        self.superclasses_dict = {}  # superclass_name: [class_name, ...]
+        self.superclasses_dict = {}  # superclass_name: [class_name_0, ...]
 
         for dataset in datasets_config:
             dataset.set_logger(self.logger)
@@ -638,21 +641,33 @@ class SeriesDatasetsKeeper:
         if class_key not in self.classes_dict:
             raise ValueError(f"Class '{class_key[1]}' of superclass '{class_key[0]}' cannot be found, see the config.")
 
-    def load_to_ram(self, classes_keys=None) -> None:
+    def load_to_ram(self, classes_keys=None, purpose=None) -> None:
         if classes_keys is None:
             classes_keys = self.classes_dict.keys()
 
+        fss = []
         for class_key in classes_keys:
             self._check_valid_class(class_key)
-            self.classes_dict[class_key].load_to_ram()
+            if purpose is not None:
+                if self.classes_dict[class_key].purpose is None or self.classes_dict[class_key].purpose == purpose:
+                    self.classes_dict[class_key].load_to_ram()
+                    fss.append(self.classes_dict[class_key].fs)
 
-        fss = []
-        for _, class_obj in self.classes_dict.items():
-            fss.append(class_obj.fs)
+        if len(fss) == 0:
+            return
 
         assert len(set(fss)) == 1, 'Datasets must have the same sample frequency!'
         assert fss[0] is not None
+        if self.fs is not None:
+            assert self.fs == fss[0], 'Datasets must have the same sample frequency!'
+
         self.fs = fss[0]
+
+    def free_ram(self, purpose=None):
+        for class_key, class_instance in self.classes_dict.items():
+            if purpose is None or class_instance.purpose == purpose:
+                del self.classes_dict[class_key]
+                print(class_key, 'deleted')
 
     def relevant_classes(self, superclasses: Iterable) -> list[tuple[str, str]]:
         return [(superclass, class_name)
@@ -687,13 +702,19 @@ class SeriesTaker:
         self.stride = stride
         self.zero_padding = zero_padding  # todo
 
-        self.taken_class = self.keeper.get_class(self.class_name, superclass=self.superclass)
-        self.index_map = self.taken_class.get_index_map()
+        self.taken_class = None
+        self.index_map = None
 
         self.id_next = [0, 0]
         self.individual_now = 0
 
+    def init_from_keeper(self):
+        if self.taken_class is None or self.index_map is None:
+            self.taken_class = self.keeper.get_class(self.class_name, superclass=self.superclass)
+            self.index_map = self.taken_class.get_index_map()
+
     def next(self, length) -> TimeSeries:
+        self.init_from_keeper()
         index_map_clean = [max(0, j - length) for i, j in enumerate(self.index_map)]
         if self.strategy == 'random' or self.strategy == 'start':
             p = np.array(index_map_clean) / np.sum(index_map_clean)
@@ -761,14 +782,16 @@ class SeriesTrack(AutoParameterObject, abc.ABC):
         self.params = params
         self.transform = transform
         self.takers = {}
-        self.fs = None
+
+    @property
+    def fs(self):
+        return self.keeper.fs
 
     def set_logger(self, logger):
         self.logger: Logger = logger
 
     def set_keeper(self, keeper):
         self.keeper = keeper
-        self.fs = keeper.fs
         self.relevant_classes: List[Tuple[str, str]] = keeper.relevant_classes(superclasses=self.params['superclasses'])
         for relevant_superclass, relevant_class in self.relevant_classes:
             self.takers[(relevant_superclass, relevant_class)] = SeriesTaker(
@@ -844,6 +867,7 @@ class TorchDataset(Dataset):
 
         for track_name, track_obj in self.tracks.items():
             all_track_transforms = self.fs_transform + track_obj.transform['base'] + track_obj.transform['X']
+            assert track_obj.fs is not None
             track_buffer = track_obj.next(
                 length=original_length(self.target_length, all_track_transforms + self.processor_config['transform']['X'],
                                        fs=track_obj.fs),
@@ -875,89 +899,11 @@ class TorchDataset(Dataset):
         if processing_fs is not None:
             self.fs_transform = [Resampler(output_fs=processing_fs)]
 
-    def load_to_ram(self):
-        self.keeper.load_to_ram()
+    def load_to_ram(self, purpose=None):
+        self.keeper.load_to_ram(purpose=purpose)
 
-
-class SeriesProcessor:
-    def __init__(self, processor_config, keeper, logger=None):
-        self.processor_config = processor_config
-
-        self.keeper = keeper
-        self.logger: Logger = logger or Logger()
-
-        self.fs_transform = []
-
-        self.tracks = {}
-        self.transform = self.processor_config.get('transform', [])
-
-        self.X_re = self.processor_config['X']
-        self.Y_re = self.processor_config['Y']
-
-        self.x_original_length = {}
-        self.y_original_length = {}
-
-        for track_name, track_obj in self.processor_config['tracks'].items():
-            self.tracks[track_name] = track_obj
-            self.tracks[track_name].set_logger(self.logger)
-            self.tracks[track_name].set_keeper(self.keeper)
-            self.logger.log(f"Track '{track_name}' successfully initialized.", priority=2)
-
-            self.X_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1track_buffer_x['\2']\3", self.X_re)
-            self.Y_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1track_buffer_y['\2']\3", self.Y_re)
-
-    def set_processing_fs(self, processing_fs: int):
-        if processing_fs is not None:
-            self.fs_transform = [Resampler(output_fs=processing_fs)]
-
-    def next_one(self, target_length):
-        track_buffer_x = {}
-        track_buffer_y = {}
-
-        for track_name, track_obj in self.tracks.items():
-            all_track_transforms = self.fs_transform + track_obj.transform['base'] + track_obj.transform['X']
-            track_buffer = track_obj.next(
-                length=original_length(target_length, all_track_transforms + self.processor_config['transform']['X'],
-                                       fs=track_obj.fs),
-            )
-            transformed_buffer = apply_transforms(
-                track_buffer,
-                self.fs_transform + track_obj.transform['base'])
-
-            track_buffer_x[track_name] = apply_transforms(
-                transformed_buffer, track_obj.transform['X'])
-            track_buffer_y[track_name] = apply_transforms(
-                transformed_buffer, track_obj.transform['Y'])
-
-        x = apply_transforms(
-            eval(self.X_re),
-            self.processor_config['transform']['X'])
-        y = apply_transforms(
-            eval(self.Y_re),
-            self.processor_config['transform']['Y'])
-        return x, y
-
-    def next_batch(self, target_length, batch_size=1) -> Tuple[np.ndarray, np.ndarray]:
-        x_batch, y_batch = [], []
-        for _ in range(batch_size):
-            x, y = self.next_one(target_length)
-            if isinstance(x, TimeSeries):
-                x_batch.append(x.data_arr)
-            else:
-                x_batch.append(x)
-            if isinstance(y, TimeSeries):
-                y_batch.append(y.data_arr)
-            else:
-                y_batch.append(y)
-
-        return np.array(x_batch), np.array(y_batch)
-
-    def benchmark(self, target_length, batch_size=1, num=1000):
-        for _ in trange(num):
-            _ = self.next_batch(target_length, batch_size)
-
-    def load_to_ram(self):
-        self.keeper.load_to_ram()
+    def free_ram(self, purpose=None):
+        self.keeper.free_ram(purpose=purpose)
 
 
 class Logger:

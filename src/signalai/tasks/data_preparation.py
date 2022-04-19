@@ -1,7 +1,7 @@
 from taskchain import InMemoryData, Parameter, Task
 
 from signalai.tasks.datasets import DatasetManipulator
-from signalai.timeseries import Logger, SeriesDatasetsKeeper, SeriesProcessor, TorchDataset
+from signalai.timeseries import Logger, SeriesDatasetsKeeper, TorchDataset
 
 
 class KeeperLoader(Task):
@@ -18,8 +18,6 @@ class KeeperLoader(Task):
             datasets_config=self.input_tasks['dataset_manipulator'].value,
             logger=logger,
         )
-        if self.parameters['load_to_ram']:
-            keeper.load_to_ram()
 
         return keeper
 
