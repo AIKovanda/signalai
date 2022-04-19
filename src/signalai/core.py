@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Generator, Optional, Tuple
 
 import numpy as np
+import torch
 
 from signalai.config import DEVICE
 from signalai.timeseries import (Logger, MultiSeries, Resampler, TimeSeries,
@@ -68,11 +69,15 @@ class SignalModel(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def predict_batch(self, x: np.ndarray) -> np.ndarray:
+    def predict_batch(self, x):
+        pass
+
+    @abc.abstractmethod
+    def predict_numpy_batch(self, x: np.ndarray) -> np.ndarray:
         pass
 
     def _predict_one_timeseries(self, x: TimeSeries) -> TimeSeries:
-        new_data_arr = self.predict_batch(
+        new_data_arr = self.predict_numpy_batch(
             np.expand_dims(x.data_arr, 0)
         )[0]
         return type(x)(
@@ -87,7 +92,7 @@ class SignalModel(abc.ABC):
 
         if target_length is None or target_length >= len(ts):
             new_ts = apply_transforms(ts, transforms)
-            new_data_arr = self.predict_batch(np.expand_dims(new_ts.data_arr, 0))[0]
+            new_data_arr = self.predict_numpy_batch(np.expand_dims(new_ts.data_arr, 0))[0]
             new_ts = from_numpy(data_arr=new_data_arr, meta=ts.meta, time_map=ts.time_map, logger=ts.logger)
             return apply_transforms(new_ts, self.post_transform.get('predict', []))
         else:

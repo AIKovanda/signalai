@@ -93,10 +93,20 @@ class TimeFreq2TimeFreqSimple(nn.Module):
         self.in_channels = in_channels
         self.kernels = kernels
         self.output_channels = output_channels
-        self.activation_function = activation_function
+        if activation_function is not None:
+            self.activation_function = activation_function
+        else:
+            self.activation_function = lambda x: x
 
         self.con2D = nn.Conv2d(
             in_channels=self.in_channels,
+            out_channels=self.kernels,
+            kernel_size=7,
+            padding='same',
+            bias=True,
+        )
+        self.con2D2 = nn.Conv2d(
+            in_channels=self.kernels,
             out_channels=self.kernels,
             kernel_size=7,
             padding='same',
@@ -111,12 +121,9 @@ class TimeFreq2TimeFreqSimple(nn.Module):
         )
 
     def forward(self, x):
-        transformed = self.con2D(x)
-        joined = self.join_conv(transformed)
-        if self.activation_function is not None:
-            return joined
-
-        return self.activation_function(joined)
+        transformed = self.activation_function(self.con2D(x))
+        transformed = self.activation_function(self.con2D2(transformed))
+        return self.activation_function(self.join_conv(transformed))
 
 
 class TimeFreq2TimeFreqResNeXtModule(nn.Module):
@@ -139,13 +146,15 @@ class TimeFreq2TimeFreqResNeXtModule(nn.Module):
                 kernel_size=1,
                 padding='same',
                 bias=True,
-            ), nn.Conv2d(
+            ), self.activation_function,
+            nn.Conv2d(
                 in_channels=self.inner_out_channels,
                 out_channels=self.inner_out_channels,
                 kernel_size=3,
                 padding='same',
                 bias=True,
-            ), nn.Conv2d(
+            ), self.activation_function,
+            nn.Conv2d(
                 in_channels=self.inner_out_channels,
                 out_channels=self.output_channels,
                 kernel_size=1,
@@ -176,11 +185,11 @@ class TimeFreq2TimeFreqResNeXtModule(nn.Module):
         return processed
 
 
-class TimeResNeXt(nn.Module):
+class SpecResNeXt(nn.Module):
     def __init__(self, in_channels=256, processing_kernels=128, output_channels=1, attention=False,
                  activation='SELU', inner_out_channels=4, residual=(False,)):
 
-        super(TimeResNeXt, self).__init__()
+        super(SpecResNeXt, self).__init__()
         self.in_channels = in_channels
         self.output_channels = output_channels
         self.inner_out_channels = inner_out_channels
@@ -223,6 +232,7 @@ class TimeResNeXt(nn.Module):
             )
 
     def forward(self, x):
+        print(f'Input tensor has a shape of {x.shape}')
         processed = self.processing(x)
 
         if self.attention:
@@ -307,14 +317,14 @@ class SEModel(AutoParameterObject, nn.Module):
             )
 
     def forward(self, x):
+        print(f'Input tensor has a shape of {x.shape}')
         time_freq = self.signal2time_freq(x)
+        print(f'Processed tensor has a shape of {time_freq.shape}')
         processed = self.processing(time_freq)
 
         if self.attention:
             processed = processed * self.attention_conv(processed)
 
-        processed = self.activation_function(processed)
-        
         if self.output_separately:
             single_signals = [conv(processed) for conv in self.time_freq2signal]
             return torch.cat(single_signals, axis=1)

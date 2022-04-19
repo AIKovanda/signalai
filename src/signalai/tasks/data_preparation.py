@@ -1,6 +1,7 @@
+from taskchain import InMemoryData, Parameter, Task
+
 from signalai.tasks.datasets import DatasetManipulator
-from signalai.timeseries import SeriesDatasetsKeeper, SeriesProcessor, Logger
-from taskchain import Parameter, InMemoryData, Task
+from signalai.timeseries import Logger, SeriesDatasetsKeeper, SeriesProcessor, TorchDataset
 
 
 class KeeperLoader(Task):
@@ -27,11 +28,11 @@ class TaskSeriesProcessor(Task):
     class Meta:
         abstract = True
 
-    def run(self) -> SeriesProcessor:
+    def run(self) -> TorchDataset:
         split_name = self.meta.split_name
         logger = Logger(name=f"{split_name.capitalize()}SignalGenerator", verbose=0, save=False)
 
-        return SeriesProcessor(
+        return TorchDataset(
             processor_config=self.parameters[split_name],
             keeper=self.input_tasks['keeper_loader'].value,
             logger=logger,

@@ -1,27 +1,35 @@
 import os
 from typing import Generator, Tuple
 
+import numpy as np
+import torch
+from signalai.timeseries import TorchDataset
 from sklearn.linear_model import LinearRegression
-
-from signalai.tools.utils import apply_transforms
+from torch import nn, optim
+from torch.utils.data import DataLoader
+from tqdm import trange, tqdm
 
 from signalai import SeriesProcessor
-from signalai.core import SignalModel
-from torch import nn, optim
-import torch
-from tqdm import trange
-import numpy as np
 from signalai.config import DEVICE
+from signalai.core import SignalModel
+from signalai.tools.utils import apply_transforms
 
 
 class TorchSignalModel(SignalModel):
 
-    def _train_on_generator(self, series_processor, training_params: dict, models: list = None,
+    def _train_on_generator(self, series_processor: TorchDataset, training_params: dict, models: list = None,
                             early_stopping_at=None, early_stopping_min=0, early_stopping_regression=None):
         if models is None:
             models = range(self.model_count)
         else:
             models = filter(lambda z: z < self.model_count, models)
+
+        batch_size = training_params.get("batch_size", 1)
+
+        series_processor.set_target_length(self.target_signal_length)
+        series_processor.set_len(training_params["batches"] * batch_size)
+
+        train_loader = DataLoader(series_processor, batch_size=batch_size, shuffle=False, num_workers=os.cpu_count())
 
         for i, model_id in enumerate(models):
             if i > 0:
@@ -30,20 +38,20 @@ class TorchSignalModel(SignalModel):
                 # torch.cuda.empty_cache()
 
             print(f"Training model {model_id}...")
-            batch_indices_generator = trange(training_params["batches"])
+            batch_indices_generator = tqdm(train_loader)
             losses = []
             trues = []
 
             batch_id = 0
 
-            for batch_id in batch_indices_generator:
-                x, y = series_processor.next_batch(self.target_signal_length, training_params.get("batch_size", 1))
+            for batch_id, (x, y) in enumerate(batch_indices_generator):
+                # print(x.shape, y.shape)
                 new_loss, y_hat = self.train_on_batch(x, y, training_params)
                 losses.append(new_loss)
                 if isinstance(y_hat, tuple):
-                    trues.append(int(torch.sum(y_hat[0] > .5)))
+                    trues.append(int(torch.sum(y_hat[0] > .5) / batch_size))
                 else:
-                    trues.append(int(torch.sum(y_hat > .5)))
+                    trues.append(int(torch.sum(y_hat > .5) / batch_size))
                 mean_loss = np.mean(losses[-training_params["average_losses_to_print"]:])
                 mean_true = np.mean(trues[-training_params["average_losses_to_print"]:])
 
@@ -69,12 +77,21 @@ class TorchSignalModel(SignalModel):
 
             self.save(model_id=model_id, batch_id=batch_id)
 
-    def eval_on_generator(self, series_processor: SeriesProcessor, evaluation_params: dict, post_transform: bool,
+    def eval_on_generator(self, series_processor: TorchDataset, evaluation_params: dict, post_transform: bool,
                           ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
         np.random.seed(13)
-        for _ in range(evaluation_params["batches"]):
-            x, y_true = series_processor.next_batch(self.target_signal_length, evaluation_params.get("batch_size", 1))
+
+        batch_size = evaluation_params.get("batch_size", 1)
+        series_processor.set_target_length(self.target_signal_length)
+        series_processor.set_len(evaluation_params["batches"] * batch_size)
+
+        eval_loader = DataLoader(series_processor, batch_size=batch_size, shuffle=False, num_workers=os.cpu_count())
+
+        for x, y_true in eval_loader:
             y_hat = self.predict_batch(x)
+            y_true = y_true.detach().cpu().numpy()
+            y_hat = y_hat.detach().cpu().numpy()
+
             for one_y_true, one_y_hat in zip(y_true, y_hat):
                 if post_transform and len(self.post_transform.get('predict', [])) > 0:
                     one_y_hat = apply_transforms(one_y_hat, self.post_transform.get('predict')).data_arr
@@ -95,16 +112,16 @@ class TorchSignalModel(SignalModel):
         os.system(f'ln -f "{output_file}" "{latest_file}"')
         self.logger.log(f"Model saved at {output_file}.", priority=2)
 
-    def train_on_batch(self, x: np.ndarray, y: np.ndarray, training_params=None):
+    def train_on_batch(self, x: torch.Tensor, y: torch.Tensor, training_params=None):
         if training_params is None:
             training_params = {}
 
         self.model.train()
-        x_batch = torch.from_numpy(x).type(torch.float32).to(DEVICE)
+        x_batch = x.type(torch.float32).to(DEVICE)
         if self.output_type == "label":
-            y_batch = torch.from_numpy(y).type(torch.float32).unsqueeze(1).to(DEVICE)
+            y_batch = y.type(torch.float32).unsqueeze(1).to(DEVICE)
         else:
-            y_batch = torch.from_numpy(y).type(torch.float32).to(DEVICE)
+            y_batch = y.type(torch.float32).to(DEVICE)
 
         self.optimizer.zero_grad()
         y_hat = self.model(x_batch)
@@ -114,14 +131,17 @@ class TorchSignalModel(SignalModel):
         self.optimizer.step()
         return loss.item(), y_hat
 
-    def predict_batch(self, x: np.ndarray):
+    def predict_batch(self, x: torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
             self.model.eval()
-            inputs = torch.from_numpy(x).type(torch.float32).to(DEVICE)
+            inputs = x.type(torch.float32).to(DEVICE)
 
-            y_hat = self.model(inputs).detach().cpu().numpy()
+            y_hat = self.model(inputs)
             self.model.train()
             return y_hat
+
+    def predict_numpy_batch(self, x: np.ndarray) -> np.ndarray:
+        return self.predict_batch(torch.from_numpy(x)).detach().cpu().numpy()
 
     def load(self, path=None, batch=None, model_id=0):
         if path is None:

@@ -1,26 +1,29 @@
 import abc
 import json
+import os
 import re
-from typing import Union, Optional, List, Iterable, Type, Tuple
+from pathlib import Path
+from typing import Iterable, List, Optional, Tuple, Type, Union
 
 import librosa
+import numpy as np
+import pandas as pd
+import pydub
+import seaborn as sns
+import torch
 from librosa import resample
 from librosa.display import specshow
-from pydub.utils import mediainfo
-from taskchain.parameter import AutoParameterObject
-import pandas as pd
-import seaborn as sns
 from matplotlib import pyplot as plt
-from scipy import signal as scipy_signal
-from signalai.config import LOGS_DIR, LOADING_THREADS
-from signalai.tools.utils import join_dicts, time_now, original_length, apply_transforms, by_channel
-from tqdm import trange, tqdm
-import os
-from pathlib import Path
-import numpy as np
-import pydub
 from pydub import AudioSegment
-from signalai.config import DTYPE_BYTES
+from pydub.utils import mediainfo
+from scipy import signal as scipy_signal
+from taskchain.parameter import AutoParameterObject
+from torch.utils.data import Dataset
+from tqdm import tqdm, trange
+
+from signalai.config import DTYPE_BYTES, LOADING_THREADS, LOGS_DIR
+from signalai.tools.utils import (apply_transforms, by_channel, join_dicts,
+                                  original_length, time_now)
 
 
 class TimeSeries:
@@ -360,7 +363,8 @@ class Signal(TimeSeries):
             y = np.int16(self._data_arr.T * 2 ** 15)
         else:
             y = np.int16(self._data_arr.T)
-
+        print("FS:", self.fs)
+        self.fs = 44100
         song = pydub.AudioSegment(y.tobytes(), frame_rate=self.fs, sample_width=2, channels=channels)
         song.export(file, format="mp3", bitrate="320k")
 
@@ -793,6 +797,86 @@ class SeriesTrack(AutoParameterObject, abc.ABC):
 
     def next(self, length: int) -> Union[TimeSeries, MultiSeries]:
         pass
+
+
+class TorchDataset(Dataset):
+    def __init__(self, processor_config, keeper, logger=None, target_length=None):
+        self.processor_config = processor_config
+
+        self.keeper = keeper
+        self.logger: Logger = logger or Logger()
+
+        self.fs_transform = []
+
+        self.tracks = {}
+        self.transform = self.processor_config.get('transform', [])
+
+        self.X_re = self.processor_config['X']
+        self.Y_re = self.processor_config['Y']
+
+        self.x_original_length = {}
+        self.y_original_length = {}
+
+        for track_name, track_obj in self.processor_config['tracks'].items():
+            self.tracks[track_name] = track_obj
+            self.tracks[track_name].set_logger(self.logger)
+            self.tracks[track_name].set_keeper(self.keeper)
+            self.logger.log(f"Track '{track_name}' successfully initialized.", priority=2)
+
+            self.X_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1track_buffer_x['\2']\3", self.X_re)
+            self.Y_re = re.sub(fr"(^|[\W])({track_name})($|[\W])", fr"\1track_buffer_y['\2']\3", self.Y_re)
+
+        self.target_length = target_length
+        self.total_len = 0
+
+    def set_target_length(self, target_length):
+        self.target_length = target_length
+
+    def set_len(self, len_):
+        self.total_len = len_
+
+    def __len__(self):
+        return self.total_len
+
+    def __getitem__(self, idx):
+        track_buffer_x = {}
+        track_buffer_y = {}
+
+        for track_name, track_obj in self.tracks.items():
+            all_track_transforms = self.fs_transform + track_obj.transform['base'] + track_obj.transform['X']
+            track_buffer = track_obj.next(
+                length=original_length(self.target_length, all_track_transforms + self.processor_config['transform']['X'],
+                                       fs=track_obj.fs),
+            )
+            transformed_buffer = apply_transforms(
+                track_buffer,
+                self.fs_transform + track_obj.transform['base'])
+
+            track_buffer_x[track_name] = apply_transforms(
+                transformed_buffer, track_obj.transform['X'])
+            track_buffer_y[track_name] = apply_transforms(
+                transformed_buffer, track_obj.transform['Y'])
+
+        x = apply_transforms(
+            eval(self.X_re),
+            self.processor_config['transform']['X'])
+        y = apply_transforms(
+            eval(self.Y_re),
+            self.processor_config['transform']['Y'])
+
+        if isinstance(x, TimeSeries):
+            x = x.data_arr
+        if isinstance(y, TimeSeries):
+            y = y.data_arr
+
+        return torch.from_numpy(x).type(torch.float32), torch.from_numpy(y).type(torch.float32)
+
+    def set_processing_fs(self, processing_fs: int):
+        if processing_fs is not None:
+            self.fs_transform = [Resampler(output_fs=processing_fs)]
+
+    def load_to_ram(self):
+        self.keeper.load_to_ram()
 
 
 class SeriesProcessor:

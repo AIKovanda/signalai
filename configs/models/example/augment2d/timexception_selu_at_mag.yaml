@@ -7,7 +7,7 @@ signal_model_config:
   output_type: signal
 
   model:
-    class: signalai.models.TimEXception
+    class: signalai.models.SpecResNeXt
     kwargs:
       in_channels: 1
       processing_kernels: 128

@@ -41,8 +41,8 @@ data only contains three songs 10 seconds long. All these configs are set to tra
 on 30 batches which is too little for any good model.
 
 ```bash
-python scripts/decomposer.py --model_config example/augment2d/timexception_selu_at_magpha.yaml --eval_dir data/example/predict
-python scripts/decomposer.py --model_config example/augment2d/timexception_selu_noat_mag.yaml --eval_dir data/example/predict
+python scripts/decomposer.py --model_config example/augment2d/SpecResNeXt_selu_at_magpha.yaml --eval_dir data/example/predict
+python scripts/decomposer.py --model_config example/augment2d/SpecResNeXt_selu_noat_mag.yaml --eval_dir data/example/predict
 
 python scripts/decomposer.py --model_config example/augment/decomposer1L255_nores_bot64_n64.yaml --eval_dir data/example/predict
 python scripts/decomposer.py --model_config example/augment/se_simple_noat_sep.yaml --eval_dir data/example/predict
