@@ -270,52 +270,10 @@ class TimeSeries:
 class Signal(TimeSeries):
     full_dimensions = 2
 
-    def show(self, channels=None, figsize=(16, 3), save_as=None, show=True, split=False, title=None):
-        if channels is None:
-            channels = range(self.channels_count)
-        elif isinstance(channels, int):
-            channels = [channels]
-
-        if split:
-            if self.fs is None:
-                with plt.style.context('seaborn-darkgrid'):
-                    fig, axes = plt.subplots(self.channels_count, 1, figsize=figsize, squeeze=False)
-                    for channel_id in channels:
-                        y = self._data_arr[channel_id]
-                        sns.lineplot(x=range(len(y)), y=y, ax=axes[channel_id, 0])
-            else:
-                fig, axes = plt.subplots(self.channels_count, 1, figsize=figsize, squeeze=False)
-                for channel_id in channels:
-                    f, t, Sxx = scipy_signal.spectrogram(self._data_arr[channel_id], self.fs)
-                    axes[channel_id, 0].pcolormesh(t, f, Sxx, shading='gouraud')
-        else:
-            if self.fs is None:
-                with plt.style.context('seaborn-darkgrid'):
-                    fig = plt.figure(figsize=figsize)
-                    for channel_id in channels:
-                        if self.fs is None:
-                            y = self._data_arr[channel_id]
-                            sns.lineplot(x=range(len(y)), y=y)
-            else:
-                fig = plt.figure(figsize=figsize)
-                f, t, Sxx = scipy_signal.spectrogram(self._data_arr[0], self.fs)
-                plt.pcolormesh(t, f, Sxx, shading='gouraud')
-
-        fig.patch.set_facecolor('white')
-        if title is not None:
-            fig.suptitle(title)
-
-        if save_as is not None:
-            plt.savefig(save_as)
-        if show:
-            plt.show()
-
-    def show_all(self, title=None):
-        self.show(figsize=(18, 1.5 * self.channels_count), split=True, title=title)
-        self.margin_interval(interval_length=150).show(
-            figsize=(18, 1.5 * self.channels_count), split=True,
-            title=f"{title} - first 150 samples")
-        self.play()
+    def show(self, channels=0, figsize=(16, 3)):
+        plt.figure(figsize=figsize)
+        plt.plot(self.data_arr[channels])
+        plt.show()
 
     def spectrogram(self, figsize=(16, 9), save_as=None, show=True):
         plt.figure(figsize=figsize)
@@ -511,6 +469,7 @@ class MultiSeries:
 class SeriesClass:
     def __init__(self, series: List[TimeSeries] = None, series_build=None, purpose=None,
                  class_name: str = None, superclass_name: str = None, logger=None):
+        assert series or series_build, f'There is no information! superclass: {superclass_name}, class name: {class_name}'
         self.series: List[TimeSeries] = series or []  # list
         self.series_build = series_build  # list
         self.class_name = class_name
@@ -545,9 +504,11 @@ class SeriesClass:
                 pool.join()  # solving memory leaks
                 self.logger.log(f"Signals loaded to RAM.", priority=1)
 
+        assert self.series, self.series
         fss = [ts.fs for ts in self.series]
-        assert len(set(fss)) == 1, 'Signals in SeriesClass must have the same sample frequency!'
-        self.fs = fss[0]  # todo: without loading to ram
+        assert all([fs is not None for fs in fss]), 'Some signals do not have fs'
+        assert len(set(fss)) == 1, f'Signals in SeriesClass must have the same sample frequency! {set(fss)}'
+        self.fs = fss[0]
 
     def get_index_map(self) -> List:
         return [len(i) for i in self.series]
@@ -651,13 +612,15 @@ class SeriesDatasetsKeeper:
             if purpose is not None:
                 if self.classes_dict[class_key].purpose is None or self.classes_dict[class_key].purpose == purpose:
                     self.classes_dict[class_key].load_to_ram()
-                    fss.append(self.classes_dict[class_key].fs)
+                    class_fs = self.classes_dict[class_key].fs
+                    assert class_fs is not None, f'{class_key} does not have a fs'
+                    fss.append(class_fs)
 
         if len(fss) == 0:
             return
 
         assert len(set(fss)) == 1, 'Datasets must have the same sample frequency!'
-        assert fss[0] is not None
+        assert fss[0] is not None, fss
         if self.fs is not None:
             assert self.fs == fss[0], 'Datasets must have the same sample frequency!'
 
@@ -714,7 +677,7 @@ class SeriesTaker:
 
     def next(self, length) -> TimeSeries:
         self.init_from_keeper()
-        index_map_clean = [max(0, j - length) for i, j in enumerate(self.index_map)]
+        index_map_clean = [max(0, j - length + 1) for i, j in enumerate(self.index_map)]
         if self.strategy == 'random' or self.strategy == 'start':
             p = np.array(index_map_clean) / np.sum(index_map_clean)
             individual_id = np.random.choice(len(p), p=p)
@@ -866,7 +829,6 @@ class TorchDataset(Dataset):
 
         for track_name, track_obj in self.tracks.items():
             all_track_transforms = self.fs_transform + track_obj.transform['base'] + track_obj.transform['X']
-            assert track_obj.fs is not None
             track_buffer = track_obj.next(
                 length=original_length(self.target_length, all_track_transforms + self.processor_config['transform']['X'],
                                        fs=track_obj.fs),
@@ -1019,6 +981,7 @@ def build_series(build_dict: dict, interval: Optional[Iterable[int]] = None) -> 
     loaded_channels = []
     assert len(build_dict['files']) > 0, f"There is no file to be loaded."
     for file_dict in build_dict['files']:
+        assert 'fs' in file_dict, list(file_dict.keys())
         suffix = str(file_dict['filename'])[-4:]
         if suffix in [".aac", ".wav", ".mp3"]:
             loaded_channels.append(read_audio(interval=interval, **file_dict))

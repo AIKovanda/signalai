@@ -232,7 +232,6 @@ class SpecResNeXt(nn.Module):
             )
 
     def forward(self, x):
-        print(f'Input tensor has a shape of {x.shape}')
         processed = self.processing(x)
 
         if self.attention:
@@ -317,9 +316,7 @@ class SEModel(AutoParameterObject, nn.Module):
             )
 
     def forward(self, x):
-        print(f'Input tensor has a shape of {x.shape}')
         time_freq = self.signal2time_freq(x)
-        print(f'Processed tensor has a shape of {time_freq.shape}')
         processed = self.processing(time_freq)
 
         if self.attention:

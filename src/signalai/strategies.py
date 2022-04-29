@@ -2,7 +2,7 @@ from typing import Union
 
 import numpy as np
 
-from signalai.timeseries import MultiSeries, SeriesTrack, TimeSeries
+from signalai.timeseries import MultiSeries, SeriesTrack, TimeSeries, Signal
 
 
 class SimpleStrategy(SeriesTrack):
@@ -62,5 +62,9 @@ class ToneStrategy(SeriesTrack):
             # print(np.sum(series_dict[class_name].time_map))
             # print(np.sum(series_dict[class_name].data_arr[0] != 0)*2)
             # print(np.sum(series_dict[class_name].data_arr[1] != 0)*2)
+
+        # if len(series_dict) == 0:  # todo: zero signals
+        #     print(len(self.relevant_classes))
+        #     return MultiSeries(series=[Signal(data_arr=np.zeros((len(self.relevant_classes), length)), fs=self.fs)], class_order=self.relevant_classes)
 
         return MultiSeries(series=series_dict, class_order=self.relevant_classes)

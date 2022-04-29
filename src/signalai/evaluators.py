@@ -1,21 +1,23 @@
 import librosa
 import numpy as np
+import torch
 from scipy.signal import convolve2d
 from sklearn.metrics import (accuracy_score, auc, precision_score,
                              recall_score, roc_curve)
 from taskchain.parameter import AutoParameterObject
+from taskchain.task import Config
 
+from signalai import config
 from signalai.transformers import STFT
 
 
 class SignalEvaluator(AutoParameterObject):
     name = 'evaluator'
 
-    def __init__(self, params=None):
-        if params is None:
-            params = {}
+    def __init__(self, **params):
         self.params = params
         self.items = []
+        self._transform = None
 
     def add_item(self, y_hat, y_true):
         self.items.append((y_hat, y_true))
@@ -36,101 +38,91 @@ class ItemsEcho(SignalEvaluator):
         return self.items
 
 
-class SpectrogramL1(SignalEvaluator):
-    name = 'spectrogram_L1'
+class L12(SignalEvaluator):
+    name = 'L12'
+
+    def _transform_channels(self, pred_channel: np.ndarray, true_channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return pred_channel, true_channel
 
     @property
-    def stat(self) -> dict[str, float]:
+    def stat(self) -> dict[str, dict[str, float]]:
         print(self.name)
         l1 = []
-        period = None
-        stft = STFT(phase_as_meta=True, n_fft=2048, hop_length=1024)
-        for y_pred, y_true in self.items:
-            period = len(y_pred)
-            for pred_channel, true_channel in zip(y_pred, y_true):
-                pred_arr = stft(pred_channel).data_arr
-                true_arr = stft(true_channel).data_arr
-                l1.append(np.sum(np.abs(pred_arr - true_arr)))
-
-        by_one = {str(i): float(np.mean(l1[i::period])) for i in range(period)}
-        return {
-            'all': float(np.mean(l1)),
-            **by_one
-        }
-
-
-class SpectrogramL2(SignalEvaluator):
-    name = 'spectrogram_L2'
-
-    @property
-    def stat(self) -> dict[str, float]:
-        print(self.name)
         l2 = []
         period = None
-        stft = STFT(phase_as_meta=True, n_fft=2048, hop_length=1024)
-        for y_pred, y_true in self.items:
+        zero_front = self.params.get('zero_front', 0)
+        zero_end = self.params.get('zero_end', 0)
+        for y_true, y_pred in self.items:
             period = len(y_pred)
             for pred_channel, true_channel in zip(y_pred, y_true):
-                pred_arr = stft(pred_channel).data_arr
-                true_arr = stft(true_channel).data_arr
-                l2.append(np.sum((pred_arr - true_arr) ** 2))
+                pred_channel[:zero_front] = 0
+                true_channel[:zero_front] = 0
+                pred_channel[-zero_end-1:] = 0
+                true_channel[-zero_end-1:] = 0
+                pred_arr, true_arr = self._transform_channels(pred_channel, true_channel)
+                l1.append(np.mean(np.abs(pred_arr - true_arr)))
+                l2.append(np.mean((pred_arr - true_arr) ** 2))
 
-        by_one = {str(i): float(np.mean(l2[i::period])) for i in range(period)}
+        by_one_l1 = {str(i): float(np.mean(l1[i::period])) for i in range(period)}
+        by_one_l2 = {str(i): float(np.mean(l2[i::period])) for i in range(period)}
         return {
-            'all': float(np.mean(l2)),
-            **by_one
+            'l1': {'all': float(np.mean(l1)), **by_one_l1},
+            'l2': {'all': float(np.mean(l2)), **by_one_l2},
         }
 
 
-class MELSpectrogramL1(SignalEvaluator):
-    name = 'mel_spectrogram_L1'
+class SpectrogramL12(L12):
+    name = 'spectrogram_L12'
 
-    @property
-    def stat(self) -> dict[str, float]:
-        print(self.name)
-        l1 = []
-        period = None
-        for y_pred, y_true in self.items:
-            period = len(y_pred)
-            for pred_channel, true_channel in zip(y_pred, y_true):
-                pred_arr = librosa.feature.melspectrogram(y=pred_channel, sr=44100)
-                true_arr = librosa.feature.melspectrogram(y=true_channel, sr=44100)
-                l1.append(np.sum(np.abs(pred_arr - true_arr)))
+    def __init__(self, **params):
+        super().__init__(**params)
+        self._transform = STFT(phase_as_meta=True, n_fft=2048, hop_length=1024)
 
-        by_one = {str(i): float(np.mean(l1[i::period])) for i in range(period)}
-        return {
-            'all': float(np.mean(l1)),
-            **by_one
-        }
+    def _transform_channels(self, pred_channel: np.ndarray, true_channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return self._transform(pred_channel).data_arr, self._transform(true_channel).data_arr
 
 
-class MELSpectrogramL2(SignalEvaluator):
-    name = 'mel_spectrogram_L2'
+class MELSpectrogramL12(L12):
+    name = 'mel_spectrogram_L12'
 
-    @property
-    def stat(self) -> dict[str, float]:
-        print(self.name)
-        l2 = []
-        period = None
-        for y_pred, y_true in self.items:
-            period = len(y_pred)
-            for pred_channel, true_channel in zip(y_pred, y_true):
-                pred_arr = librosa.feature.melspectrogram(y=pred_channel, sr=44100)
-                true_arr = librosa.feature.melspectrogram(y=true_channel, sr=44100)
-                l2.append(np.sum((pred_arr - true_arr) ** 2))
+    def _transform_channels(self, pred_channel: np.ndarray, true_channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return (librosa.feature.melspectrogram(y=pred_channel, sr=44100),
+                librosa.feature.melspectrogram(y=true_channel, sr=44100))
 
-        by_one = {str(i): float(np.mean(l2[i::period])) for i in range(period)}
-        return {
-            'all': float(np.mean(l2)),
-            **by_one
-        }
+
+class AutoEncoderL12(L12):
+    name = 'AutoEncoderL12'
+
+    def __init__(self, **params):
+        super().__init__(**params)
+        config_path = config.CONFIGS_DIR / 'models' / 'autoencoder' / '1.yaml'
+
+        conf = Config(
+            config.TASKS_DIR,  # where Taskchain data should be stored
+            config_path,
+            global_vars=config,  # set global variables
+        )
+        chain = conf.chain()
+        chain.set_log_level('CRITICAL')
+
+        signal_model = chain.trained_model.value
+        signal_model.load(batch='last')
+
+        self._transform = signal_model.model.encoder
+        self._transform.to(config.DEVICE).eval()
+
+    def _transform_channels(self, pred_channel: np.ndarray, true_channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        with torch.no_grad():
+            x = torch.from_numpy(pred_channel).type(torch.float32).unsqueeze(0).unsqueeze(0).to(config.DEVICE)
+            y = torch.from_numpy(true_channel).type(torch.float32).unsqueeze(0).unsqueeze(0).to(config.DEVICE)
+            return self._transform(x)[0][0].detach().cpu().numpy(), self._transform(y)[0][0].detach().cpu().numpy()
 
 
 class Binary(SignalEvaluator):
     name = 'binary'
 
-    def __init__(self, params=None):
-        super().__init__(params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.name = f'binary-t{self.params.get("threshold", .5)}'
 
     @property
@@ -160,8 +152,8 @@ class Binary(SignalEvaluator):
 class EBinary(Binary):
     name = 'e-binary'
 
-    def __init__(self, params=None):
-        super().__init__(params)
+    def __init__(self, **params):
+        super().__init__(**params)
         self.name = (f'e-binary-t{self.params.get("threshold", .5)}-' 
                      f's{self.params.get("size", 5)}t{self.params.get("conv_threshold", 3)}')
 

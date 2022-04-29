@@ -34,10 +34,9 @@ class TorchSignalModel(SignalModel):
             if i > 0:
                 self.model = self.model.weight_reset().to(DEVICE)
                 self.new_optimizer()
-                # torch.cuda.empty_cache()
 
             print(f"Training model {model_id}...")
-            batch_indices_generator = tqdm(train_loader)
+            batch_indices_generator = tqdm(train_loader, ncols=150)
             losses = []
             trues = []
 
@@ -46,11 +45,14 @@ class TorchSignalModel(SignalModel):
             for batch_id, (x, y) in enumerate(batch_indices_generator):
                 # print(x.shape, y.shape)
                 new_loss, y_hat = self.train_on_batch(x, y, training_params)
+                x = x.detach()
+                y_hat = y_hat.detach()
                 losses.append(new_loss)
                 if isinstance(y_hat, tuple):
                     trues.append(int(torch.sum(y_hat[0] > .5) / batch_size))
                 else:
                     trues.append(int(torch.sum(y_hat > .5) / batch_size))
+
                 mean_loss = np.mean(losses[-training_params["average_losses_to_print"]:])
                 mean_true = np.mean(trues[-training_params["average_losses_to_print"]:])
 
@@ -67,7 +69,9 @@ class TorchSignalModel(SignalModel):
                         break
 
                 # progress bar update and printing
-                batch_indices_generator.set_description(f"Loss: {mean_loss: .06f}, total_true: {int(mean_true)}")
+                batch_indices_generator.set_description(
+                    f"Loss: {mean_loss: .06f}, total_true: {int(mean_true)} | tr_mean: {torch.mean(x):.6f} | tr_std: {torch.std(x):.4f} | mean: {torch.mean(y_hat):.6f} | std: {torch.std(y_hat):.4f}"
+                )
                 if batch_id % training_params["echo_step"] == 0 and batch_id != 0:
                     print()
 
@@ -122,6 +126,7 @@ class TorchSignalModel(SignalModel):
         else:
             y_batch = y.type(torch.float32).to(DEVICE)
 
+        assert x_batch is not y_batch
         self.optimizer.zero_grad()
         y_hat = self.model(x_batch)
         loss_lambda = eval(training_params.get('loss_lambda', 'lambda _x, _y, crit: crit(_x, _y)'))

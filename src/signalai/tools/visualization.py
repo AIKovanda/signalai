@@ -17,7 +17,7 @@ def plot_piano_tones(y, x_max=1000 * 131584 / 48000, savefigs=(), figsize=(7, 4)
                  '$A^{\\#}_6$', '$B_6$', '$C_7$']
 
     tone_info = []
-
+    assert len(y.shape) == 2
     for i, (tone, np_tone) in enumerate(zip(all_tones, y)):
         where_ = np.where(np_tone == 1.)[0]
         if len(where_) > 1:

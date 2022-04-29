@@ -119,15 +119,16 @@ class EvaluateModel(Task):
             'batch_size': eval_batch_size,
             'batches': eval_batches,
         }
-        items = [y_pair for y_pair in tqdm(
+        items = list(tqdm(
                 trained_model.eval_on_generator(
                     test_series_processor, evaluation_params, post_transform=eval_post_transform,
-                ), total=eval_batches*eval_batch_size)]
+                ), total=eval_batches*eval_batch_size))
+
+        test_series_processor.free_ram(purpose='test')
 
         for evaluator in evaluators:
             evaluator.set_items(items)
 
-        test_series_processor.free_ram(purpose='test')
         return {evaluator.name: evaluator.stat for evaluator in evaluators}
 
 
