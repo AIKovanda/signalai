@@ -9,11 +9,11 @@ import librosa
 import numpy as np
 import pandas as pd
 import pydub
-import seaborn as sns
 import torch
 from librosa import resample
 from librosa.display import specshow
 from matplotlib import pyplot as plt
+import seaborn as sns
 from pydub import AudioSegment
 from pydub.utils import mediainfo
 from scipy import signal as scipy_signal
@@ -920,17 +920,19 @@ def audio_file2numpy(file) -> tuple[np.ndarray, int]:
     return pydub2numpy(audio)[0].T, int(mediainfo(file)['sample_rate'])
 
 
-def read_audio(filename, file_sample_interval=None, interval=None, dtype=None):
+def read_audio(filename, file_sample_interval=None, interval=None, dtype=None, fs=None):
     real_start, interval_length = _get_start_length(file_sample_interval, interval)
-    data_arr, fs = audio_file2numpy(filename)
+    data_arr, fs_ = audio_file2numpy(filename)
+    if fs is not None and fs != fs_:
+        raise ValueError(f'fs is wrong in config (from config) {fs}!={fs_} (from audio)')
     if dtype is not None:
         data_arr = data_arr.astype(dtype)
     if not real_start:
-        return Signal(data_arr=data_arr, fs=fs)
+        return Signal(data_arr=data_arr, fs=fs_)
     if not file_sample_interval:
-        return Signal(data_arr=data_arr[:, real_start:], fs=fs)
+        return Signal(data_arr=data_arr[:, real_start:], fs=fs_)
 
-    return Signal(data_arr=data_arr[:, real_start: real_start + interval_length], fs=fs)
+    return Signal(data_arr=data_arr[:, real_start: real_start + interval_length], fs=fs_)
 
 
 def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='float32', dtype=None, meta=None,

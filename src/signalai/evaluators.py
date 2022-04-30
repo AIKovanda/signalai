@@ -95,7 +95,7 @@ class AutoEncoderL12(L12):
 
     def __init__(self, **params):
         super().__init__(**params)
-        config_path = config.CONFIGS_DIR / 'models' / 'autoencoder' / '1.yaml'
+        config_path = config.CONFIGS_DIR / 'models' / 'autoencoder' / '4.yaml'
 
         conf = Config(
             config.TASKS_DIR,  # where Taskchain data should be stored
