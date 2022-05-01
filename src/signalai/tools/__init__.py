@@ -1,1 +1,1 @@
-from signalai.tools.visualization import plot_piano_tones
+from signalai.tools.visualization import plot_binary_map
