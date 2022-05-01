@@ -9,7 +9,7 @@ from signalai.timeseries import MultiSeries
 SUFFIXES = [".mp3", ".aac", ".wav"]
 
 
-config_path = config.CONFIGS_DIR / 'models' / 'decomposer' / f'{sys.argv[2]}' / f'{sys.argv[1]}.yaml'
+config_path = config.CONFIGS_DIR / 'models' / 'autoencoder' / f'{sys.argv[1]}.yaml'
 
 conf = Config(
     config.TASKS_DIR,  # where Taskchain data should be stored
@@ -24,14 +24,14 @@ chain.set_log_level('CRITICAL')
 signal_model = chain.trained_model.value
 
 
-eval_dir = config.EVALUATION_DIR / f'predict'
+eval_dir = config.EVALUATION_DIR / f'predict_tracks'
 
 
 signal_model.load(batch='last')
 song_names = [f for suffix in SUFFIXES for f in eval_dir.glob(f"*{suffix}")]
 
 
-nex_dir = config.BASE_DIR / 'separation' / f'{sys.argv[2]}'
+nex_dir = config.EVALUATION_DIR / 'autoencoder_results'
 
 json_file = nex_dir / 'json' / f'{sys.argv[1]}.json'
 

@@ -1,0 +1,77 @@
+tasks: signalai.tasks.datasets.*
+
+datasets:
+  - class: signalai.datasets.FileLoader
+    kwargs:
+      base_dir: '/home/martin/BigData/event_detection/train/cracks-ch4-HPF120'
+      channels:
+        - re_path: '.*.bin' # (?P<class>ww)
+
+      target_dtype: float16
+      purpose: train
+
+      class_structure:
+        crack120: event_superclass
+
+      fs: 44100
+      transform: []
+
+  - class: signalai.datasets.FileLoader
+    kwargs:
+      base_dir: '/home/martin/BigData/event_detection/train/cracks-ch4-HPF350'
+      channels:
+        - re_path: '.*.bin' # (?P<class>ww)
+
+      target_dtype: float16
+      purpose: train
+
+      class_structure:
+        crack350: event_superclass
+
+      fs: 44100
+      transform: []
+
+  - class: signalai.datasets.FileLoader
+    kwargs:
+      base_dir: '/home/martin/BigData/event_detection/test/cracks-ch4-HPF120'
+      channels:
+        - re_path: '.*.bin' # (?P<class>ww)
+
+      target_dtype: float16
+      purpose: test
+
+      class_structure:
+        crack120: event_superclass_test
+
+      fs: 44100
+      transform: []
+
+  - class: signalai.datasets.FileLoader
+    kwargs:
+      base_dir: '/home/martin/BigData/event_detection/test/cracks-ch4-HPF350'
+      channels:
+        - re_path: '.*.bin' # (?P<class>ww)
+
+      target_dtype: float16
+      purpose: test
+
+      class_structure:
+        crack350: event_superclass_test
+
+      fs: 44100
+      transform: []
+
+  - class: signalai.datasets.FileLoader
+    kwargs:
+      base_dir: '/home/martin/BigData/event_detection/hum_and_noise'
+      channels:
+        - re_path: 'AE-DATA-conti-7382934628139121-ch4.bin'
+
+      target_dtype: float16
+
+      class_structure:
+        noise: noise
+
+      split_by_files: false
+      fs: 44100
+      transform: []

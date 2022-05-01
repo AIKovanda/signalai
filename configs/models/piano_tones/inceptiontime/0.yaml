@@ -1,0 +1,60 @@
+tasks: signalai.tasks.processing.*
+uses: "{CONFIGS_DIR}/data_preparation/piano_tones/piano_tones.yaml"
+
+
+signal_model_config:
+  signal_model_type: torch_signal_model
+  output_type: signal
+  target_signal_length: 131584  #32768
+  model:
+    class: signalai.models.InceptionTime
+    kwargs:
+      build_config:
+        - bottleneck_channels: 32
+          kernel_sizes: [63, 127, 255]
+          pooling_size: 512
+          pooling_type: max
+          activation: SELU
+          n_filters: 32
+
+      out_activation: sigmoid
+      in_channels: 1
+      outputs: -85
+
+  transform:
+    predict:
+      - class: signalai.transformers.TimeMapScale
+        kwargs:
+          scale: 1/512
+
+  post_transform:
+    predict:
+      - class: signalai.transformers.TimeMapScale
+        kwargs:
+          scale: 512.
+
+
+batch_size: 3
+batches: 25000
+echo_step: 300
+save_step: 1500
+average_losses_to_print: 300
+early_stopping_min: 2000
+early_stopping_regression: 1500
+
+criterion:
+  name: BCELoss
+optimizer:
+  name: Adam
+  kwargs:
+    lr: 0.0002
+
+
+evaluators:
+- class: signalai.evaluators.ItemsEcho
+- class: signalai.evaluators.Binary
+- class: signalai.evaluators.EBinary
+
+eval_batch_size: 3
+eval_batches: 1500
+eval_post_transform: false

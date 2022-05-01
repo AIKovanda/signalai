@@ -1,0 +1,95 @@
+tasks: signalai.tasks.data_preparation.*
+uses: "{CONFIGS_DIR}/datasets/karaoke.yaml"
+load_to_ram: true
+
+train:
+  tracks:
+    t0:
+      class: signalai.strategies.SimpleStrategy
+      kwargs:
+        superclasses:
+        - karaoke_superclass
+        equal_classes: false
+        strategy: random
+        transform:
+          base:
+            - class: signalai.transformers.ChannelJoiner
+              kwargs:
+                choose_channels:
+                  - [[0]]
+                  - [[1]]
+                  - [[2]]
+                  - [[3]]
+                  - [[4]]
+                  - [[5]]
+                  - [[6]]
+                  - [[7]]
+
+            - class: signalai.transformers.Reverb
+              kwargs:
+                transform_chance: 0.2
+                room_size: [.0, 1.]
+                damping: [.0, 1.]
+                wet_level: [.0, 1.]
+                dry_level: [.0, 1.]
+                freeze_mode: [.0,.2]
+
+            - class: signalai.transformers.Gain
+              kwargs:
+                transform_chance: 0.2
+                gain_db: [-15., 15.]
+
+            - class: signalai.transformers.ChannelJoiner
+          X: []
+          Y: []
+
+  transform:
+    base: []
+    X: []
+    Y: []
+
+  X: t0
+  Y: t0
+
+valid: {}
+
+test:
+  tracks:
+    t0:
+      class: signalai.strategies.SimpleStrategy
+      kwargs:
+        superclasses:
+        - karaoke_test_superclass
+        equal_classes: false
+        strategy: random
+        transform:
+          base:
+            - class: signalai.transformers.Gain
+              kwargs:
+                transform_chance: 0.2
+                gain_db: [-15., 15.]
+
+            - class: signalai.transformers.ChannelJoiner
+              kwargs:
+                choose_channels:
+                  - [[0]]
+                  - [[1]]
+                  - [[2]]
+                  - [[3]]
+                  - [[4]]
+                  - [[5]]
+                  - [[6]]
+                  - [[7]]
+
+            - class: signalai.transformers.ChannelJoiner
+
+          X: []
+          Y: []
+
+  transform:
+    base: []
+    X: []
+    Y: []
+
+  X: t0
+  Y: t0

@@ -1,0 +1,75 @@
+tasks: signalai.tasks.processing.*
+uses: "{CONFIGS_DIR}/data_preparation/musdb18/augment_magpha.yaml"
+
+
+signal_model_config:
+  signal_model_type: torch_signal_model
+  output_type: signal
+  target_signal_length: 65536  #32768
+  model:
+    class: signalai.models.SpecResNeXt
+    kwargs:
+      in_channels: 2
+      processing_kernels: 128
+      output_channels: 8
+      activation: SELU
+      inner_out_channels: 8
+      attention: false
+      residual:
+        - true
+        - false
+        - true
+        - false
+        - true
+
+  transform:
+    predict:
+      - class: signalai.transformers.STFT
+        kwargs:
+          phase_as_meta: false
+          n_fft: 2048
+          hop_length: 1024
+
+  post_transform:
+    predict:
+      - class: signalai.transformers.ISTFT
+        kwargs:
+          phase_as_meta: false
+          hop_length: 1024
+
+
+batch_size: 1
+batches: 60000
+echo_step: 500
+save_step: 1000
+average_losses_to_print: 300
+early_stopping_regression: 10000
+
+criterion:
+  name: MSELoss
+optimizer:
+  name: Adam
+  kwargs:
+    lr: 0.001
+
+
+evaluators:
+- class: signalai.evaluators.L12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
+- class: signalai.evaluators.AutoEncoderL12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
+- class: signalai.evaluators.SpectrogramL12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
+- class: signalai.evaluators.MELSpectrogramL12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
+
+eval_batch_size: 5
+eval_batches: 1000

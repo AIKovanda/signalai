@@ -1,0 +1,17 @@
+tasks: signalai.tasks.datasets.*
+
+datasets:
+  - class: signalai.datasets.AllToneLoader
+    kwargs:
+      class_structure:
+        all_piano:
+          filename: '/mnt/AXAGO/Datasets/Tone/piano/*.mp3'
+          classes_file: "{CONFIGS_DIR}/datasets/piano_tones.csv"
+
+        piano:
+          filename: '/mnt/AXAGO/Datasets/Tone/piano/piano.mp3'
+          classes_file: "{CONFIGS_DIR}/datasets/piano_tones.csv"
+
+      target_dtype: float16
+      meta:
+        fs: 48000

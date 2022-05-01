@@ -1,0 +1,151 @@
+tasks: signalai.tasks.data_preparation.*
+uses: "{CONFIGS_DIR}/datasets/burst_detection.yaml"
+load_to_ram: true
+
+train:
+  to_ram: true
+  tracks:
+    t0:
+      class: signalai.strategies.ToneStrategy
+      kwargs:
+        superclasses:
+        - event_superclass
+        strategy: start
+        tones_count_range: [1, 10]
+        start_arange: [0, 65536]
+        tone_length_arange: [251,252]
+        transform:
+          base:
+            - class: signalai.transformers.Reverb
+              kwargs:
+                transform_chance: 0.2
+                room_size: [.0, 1.]
+                damping: [.0, 1.]
+                wet_level: [.0, 1.]
+                dry_level: [.0, 1.]
+#                freeze_mode: [.0,.2]
+
+            - class: signalai.transformers.Gain
+              kwargs:
+                transform_chance: 0.2
+                gain_db: [-35., 35.]
+
+            - class: signalai.transformers.Chorus
+              kwargs:
+                transform_chance: 0.2
+                centre_delay_ms: [6.5, 8.5]
+          X: []
+          Y:
+            - class: signalai.transformers.TimeMapScale
+              kwargs:
+                scale: 1/16
+
+    t1:
+      class: signalai.strategies.SimpleStrategy
+      kwargs:
+        superclasses:
+        - noise
+        equal_classes: false
+        strategy: random
+        transform:
+          base:
+            - class: signalai.transformers.Reverb
+              kwargs:
+                transform_chance: 0.2
+                room_size: [.0, 1.]
+                damping: [.0, 1.]
+                wet_level: [.0, 1.]
+                dry_level: [.0, 1.]
+                freeze_mode: [.0,.2]
+
+            - class: signalai.transformers.Gain
+              kwargs:
+                transform_chance: 0.2
+                gain_db: [-35., 35.]
+
+            - class: signalai.transformers.Chorus
+              kwargs:
+                transform_chance: 0.2
+                centre_delay_ms: [6.5, 8.5]
+          X: []
+          Y: []
+
+  transform:
+    base: []
+    X: []
+    Y: []
+
+  X: t0.sum_channels()+t1
+  Y: t0.stack_series(only_valid=False).time_map.astype('float32')
+
+
+valid: {}
+
+
+test:
+  to_ram: true
+  tracks:
+    t0:
+      class: signalai.strategies.ToneStrategy
+      kwargs:
+        superclasses:
+        - event_superclass_test
+        strategy: start
+        tones_count_range: [1, 10]
+        start_arange: [0, 65536]
+        tone_length_arange: [251,252]
+        transform:
+          base:
+            - class: signalai.transformers.Reverb
+              kwargs:
+                transform_chance: 0.2
+                room_size: [.0, 1.]
+                damping: [.0, 1.]
+                wet_level: [.0, 1.]
+                dry_level: [.0, 1.]
+#                freeze_mode: [.0,.2]
+
+            - class: signalai.transformers.Gain
+              kwargs:
+                transform_chance: 0.2
+                gain_db: [-5., 5.]
+
+          X: []
+          Y:
+            - class: signalai.transformers.TimeMapScale
+              kwargs:
+                scale: 1/16
+
+    t1:
+      class: signalai.strategies.SimpleStrategy
+      kwargs:
+        superclasses:
+        - noise
+        equal_classes: false
+        strategy: random
+        transform:
+          base:
+            - class: signalai.transformers.Reverb
+              kwargs:
+                transform_chance: 0.2
+                room_size: [.0, 1.]
+                damping: [.0, 1.]
+                wet_level: [.0, 1.]
+                dry_level: [.0, 1.]
+                freeze_mode: [.0,.2]
+
+            - class: signalai.transformers.Gain
+              kwargs:
+                transform_chance: 0.2
+                gain_db: [-5., 5.]
+
+          X: []
+          Y: []
+
+  transform:
+    base: []
+    X: []
+    Y: []
+
+  X: t0.sum_channels()+t1
+  Y: t0.stack_series(only_valid=False).time_map.astype('float32')
