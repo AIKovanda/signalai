@@ -1,5 +1,5 @@
 tasks: signalai.tasks.data_preparation.*
-uses: "{CONFIGS_DIR}/datasets/karaoke.yaml"
+uses: "{CONFIGS_DIR}/datasets/musdb18.yaml"
 load_to_ram: true
 
 train:

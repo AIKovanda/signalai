@@ -71,7 +71,7 @@ more time-frequency transformations as well as more data augmentations.
 
 ### Reference
 
-Example dataset is taken from
+Example dataset is taken from the MUSDB18 dataset:
 
 Z. Rafii, A. Liutkus, F.-R. Stöter, S. I. Mimilakis, and R. Bittner, The MUSDB18 corpus
 for music separation, Dec. 2017. doi: 10.5281/zenodo.1117372. [Online]. Available:
