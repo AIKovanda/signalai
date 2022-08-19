@@ -11,7 +11,7 @@ from tqdm import trange
 from signalai import config
 from signalai.tools import plot_binary_map
 
-config_path = config.CONFIGS_DIR / 'models' / 'event_detection' / f'{sys.argv[1]}' / f'{sys.argv[2]}.yaml'
+config_path = config.CONFIGS_DIR / 'models' / 'burst_detection_gain' / f'{sys.argv[1]}.yaml'
 
 conf = Config(
     config.TASKS_DIR,  # where Taskchain data should be stored
@@ -30,21 +30,21 @@ x_max = 1000 * length / fs
 dc = chain.evaluate_model.force().value
 dt = dc.pop('items')
 
-nex_dir = config.BASE_DIR / 'event_detection' / f'{sys.argv[1]}'
+nex_dir = config.BASE_DIR / 'burst_detection_gain'
 
-json_file = nex_dir / 'json' / f'{sys.argv[2]}.json'
+json_file = nex_dir / 'json' / f'{sys.argv[1]}.json'
 json_file.parent.mkdir(exist_ok=True, parents=True)
 
 with json_file.open('w') as f:
     json.dump(dc, f)
 
 
-img_dir = nex_dir / 'img' / f'{sys.argv[2]}'
+img_dir = nex_dir / 'img' / f'{sys.argv[1]}'
 img_dir.mkdir(exist_ok=True, parents=True)
 
 
 cracks_list = ['crack 0', 'crack 1']
-for j in trange(30, desc=f'Plotting in {img_dir} '):
+for j in trange(15, desc=f'Plotting in {img_dir} '):
     th = .5
     plot_binary_map(dt[j][0], all_object_labels=cracks_list, savefigs=[img_dir / f'{j}-binary_map_full.pdf',
                                                                   img_dir / f'{j}-binary_map_full.pgf'],

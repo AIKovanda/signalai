@@ -3,11 +3,9 @@ from pathlib import Path
 from typing import Generator, Optional, Tuple
 
 import numpy as np
-import torch
 
 from signalai.config import DEVICE
-from signalai.timeseries import (Logger, MultiSeries, Resampler, TimeSeries,
-                                 from_numpy)
+from signalai.timeseries import (from_numpy, Logger, MultiSeries, Resampler, TimeSeries)
 from signalai.tools.utils import apply_transforms, original_length
 
 
@@ -77,6 +75,8 @@ class SignalModel(abc.ABC):
         pass
 
     def _predict_one_timeseries(self, x: TimeSeries) -> TimeSeries:
+        assert isinstance(x, TimeSeries), 'Wrong type.'
+        assert x.data_arr is not None, 'Empty data_arr.'
         new_data_arr = self.predict_numpy_batch(
             np.expand_dims(x.data_arr, 0)
         )[0]

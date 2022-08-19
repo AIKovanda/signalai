@@ -2,7 +2,7 @@ from typing import Union
 
 import numpy as np
 
-from signalai.timeseries import MultiSeries, SeriesTrack, TimeSeries, Signal
+from signalai.timeseries import MultiSeries, SeriesTrack, TimeSeries
 
 
 class SimpleStrategy(SeriesTrack):

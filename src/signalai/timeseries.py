@@ -1075,7 +1075,7 @@ class Transformer(AutoParameterObject):
                              f"{type(ts)} has a dim of {ts.full_dimensions}.")
 
         transform_chance = self.evaluated_params.get('transform_chance', 1.)
-        if np.random.rand() < transform_chance:
+        if np.random.rand() <= transform_chance:
             return self.transform_timeseries(ts)
 
         return ts

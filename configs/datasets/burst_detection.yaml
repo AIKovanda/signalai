@@ -3,11 +3,11 @@ tasks: signalai.tasks.datasets.*
 datasets:
   - class: signalai.datasets.FileLoader
     kwargs:
-      base_dir: '/home/martin/BigData/event_detection/train/cracks-ch4-HPF120'
+      base_dir: '/home/martin/BigData/burst_detection/train/cracks-ch4-HPF120'
       channels:
         - re_path: '.*.bin' # (?P<class>ww)
 
-      target_dtype: float16
+      target_dtype: float32
       purpose: train
 
       class_structure:
@@ -18,11 +18,11 @@ datasets:
 
   - class: signalai.datasets.FileLoader
     kwargs:
-      base_dir: '/home/martin/BigData/event_detection/train/cracks-ch4-HPF350'
+      base_dir: '/home/martin/BigData/burst_detection/train/cracks-ch4-HPF350'
       channels:
         - re_path: '.*.bin' # (?P<class>ww)
 
-      target_dtype: float16
+      target_dtype: float32
       purpose: train
 
       class_structure:
@@ -33,11 +33,11 @@ datasets:
 
   - class: signalai.datasets.FileLoader
     kwargs:
-      base_dir: '/home/martin/BigData/event_detection/test/cracks-ch4-HPF120'
+      base_dir: '/home/martin/BigData/burst_detection/test/cracks-ch4-HPF120'
       channels:
         - re_path: '.*.bin' # (?P<class>ww)
 
-      target_dtype: float16
+      target_dtype: float32
       purpose: test
 
       class_structure:
@@ -48,11 +48,11 @@ datasets:
 
   - class: signalai.datasets.FileLoader
     kwargs:
-      base_dir: '/home/martin/BigData/event_detection/test/cracks-ch4-HPF350'
+      base_dir: '/home/martin/BigData/burst_detection/test/cracks-ch4-HPF350'
       channels:
         - re_path: '.*.bin' # (?P<class>ww)
 
-      target_dtype: float16
+      target_dtype: float32
       purpose: test
 
       class_structure:
@@ -63,11 +63,11 @@ datasets:
 
   - class: signalai.datasets.FileLoader
     kwargs:
-      base_dir: '/home/martin/BigData/event_detection/hum_and_noise'
+      base_dir: '/home/martin/BigData/burst_detection/hum_and_noise'
       channels:
         - re_path: 'AE-DATA-conti-7382934628139121-ch4.bin'
 
-      target_dtype: float16
+      target_dtype: float32
 
       class_structure:
         noise: noise

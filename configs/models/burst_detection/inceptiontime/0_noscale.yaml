@@ -1,5 +1,5 @@
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/burst_detection/signal.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/burst_detection/signal_noscale.yaml"
 
 
 signal_model_config:
@@ -12,8 +12,6 @@ signal_model_config:
       build_config:
         - bottleneck_channels: 32
           kernel_sizes: [63, 127, 255]
-          pooling_size: 16
-          pooling_type: max
           activation: Mish
           n_filters: 32
 
