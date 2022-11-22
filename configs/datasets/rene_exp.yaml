@@ -1,0 +1,7 @@
+tasks: signalai.tasks.datasets.*
+
+datasets:
+  - class: signalai.datasets.ReneExperiment
+    kwargs:
+      steps: 12
+      depspc_r_number: 70

@@ -2,6 +2,7 @@ import abc
 import json
 import os
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple, Type, Union
 
@@ -47,10 +48,10 @@ class TimeSeries:
             self.logger.log(f"Unknown signal type {type(data_arr)}.", priority=5)
             raise TypeError(f"Unknown signal type {type(data_arr)}.")
 
-        if self.full_dimensions is not None:
-            if len(data_arr.shape) == self.full_dimensions - 1:  # channel axis missing
-                data_arr = np.expand_dims(data_arr, axis=0)
+        if len(data_arr.shape) == (self.full_dimensions or 2) - 1:  # channel axis missing
+            data_arr = np.expand_dims(data_arr, axis=0)
 
+        if self.full_dimensions is not None:
             if len(data_arr.shape) != self.full_dimensions:
                 raise ValueError(f"Type {type(self)} must have {self.full_dimensions} dimensions, not "
                                  f"{len(data_arr.shape)}.")
@@ -124,7 +125,7 @@ class TimeSeries:
                 time_maps.append(self._time_map[[channel_gen], ...])
             elif isinstance(channel_gen, list):
                 data_arrays.append(np.sum(self._data_arr[channel_gen, ...], axis=0))
-                time_maps.append(np.all(self._time_map[channel_gen, ...], axis=0))
+                time_maps.append(np.any(self._time_map[channel_gen, ...], axis=0))
             else:
                 raise TypeError(f"Channel cannot be generated using type '{type(channel_gen)}'.")
 
@@ -138,9 +139,9 @@ class TimeSeries:
 
     def trim(self, threshold=1e-5):
         first = np.min(np.argmax(np.abs(self._data_arr) > threshold, axis=1))
-        last = np.min(np.argmax(np.abs(self._data_arr[:, ::-1]) > threshold, axis=1))
-        new_data_arr = self._data_arr[:, first:-last-1]
-        new_time_map = self._time_map[:, first:-last-1]
+        last = len(self) - np.min(np.argmax(np.abs(self._data_arr[:, ::-1]) > threshold, axis=1))
+        new_data_arr = self._data_arr[:, first: last]
+        new_time_map = self._time_map[:, first: last]
         return type(self)(
             data_arr=new_data_arr.copy(),
             time_map=new_time_map.copy(),
@@ -151,9 +152,9 @@ class TimeSeries:
 
     def trim_(self, threshold=1e-5):
         first = np.min(np.argmax(np.abs(self._data_arr) > threshold, axis=1))
-        last = np.min(np.argmax(np.abs(self._data_arr[:, ::-1]) > threshold, axis=1))
-        self._data_arr = self._data_arr[:, first:-last-1]
-        self._time_map = self._time_map[:, first:-last-1]
+        last = len(self) - np.min(np.argmax(np.abs(self._data_arr[:, ::-1]) > threshold, axis=1))
+        self._data_arr = self._data_arr[:, first: last]
+        self._time_map = self._time_map[:, first: last]
 
     def margin_interval(self, interval_length: int = None, start_id=0):
         if interval_length is None:
@@ -182,7 +183,12 @@ class TimeSeries:
 
     def __add__(self, other):
         if isinstance(other, type(self)):
-            assert len(self) == len(other), "Adding signals with different lengths is forbidden (for a good reason)"
+            if len(self) != len(other):
+                raise ValueError(f"Adding signals with different lengths is forbidden (for a good reason). {len(self)}, {len(other)}")
+
+            if (not (self.fs is None and other.fs is None)) and self.fs != other.fs:
+                raise ValueError("Adding signals with different fs is forbidden (for a good reason).")
+
             new_data_arr = self._data_arr + other._data_arr
             new_info = join_dicts(self.meta, other.meta)
             new_time_map = self._time_map | other._time_map
@@ -200,6 +206,28 @@ class TimeSeries:
             fs=self.fs,
         )
 
+    def __and__(self, other):
+        if isinstance(other, type(self)):
+            other_ts = other
+            new_info = join_dicts(self.meta, other.meta)
+        else:
+            other_ts = type(self)(other)
+            new_info = self.meta
+
+        if (not (self.fs is None and other.fs is None)) and self.fs != other.fs:
+            raise ValueError("Joining signals with different fs is forbidden (for a good reason).")
+
+        new_data_arr = np.concatenate([self._data_arr, other_ts._data_arr], axis=-1)
+        new_time_map = np.concatenate([self._time_map, other_ts._time_map], axis=-1)
+
+        return type(self)(
+            data_arr=new_data_arr,
+            meta=new_info,
+            time_map=new_time_map,
+            logger=self.logger,
+            fs=self.fs,
+        )
+
     def __or__(self, other):
         if isinstance(other, type(self)):
             other_ts = other
@@ -208,7 +236,12 @@ class TimeSeries:
             other_ts = type(self)(other)
             new_info = self.meta
 
-        assert len(self) == len(other_ts), "Joining signals with different lengths is forbidden (for a good reason)"
+        if len(self) != len(other):
+            raise ValueError(f"Joining signals with different lengths is forbidden (for a good reason). {len(self)}, {len(other)}")
+
+        if (not (self.fs is None and other.fs is None)) and self.fs != other.fs:
+            raise ValueError("Joining signals with different fs is forbidden (for a good reason).")
+
         new_data_arr = np.concatenate([self._data_arr, other_ts._data_arr], axis=0)
         new_time_map = np.concatenate([self._time_map, other_ts._time_map], axis=0)
 
@@ -237,6 +270,13 @@ class TimeSeries:
             logger=self.logger,
             fs=self.fs,
         )
+
+    def __eq__(self, other):
+        return (np.all(self.data_arr == other.data_arr) and
+                np.all(self.data_arr.shape == other.data_arr.shape) and
+                self.meta == other.meta and
+                np.all(self.time_map == other.time_map) and
+                ((self.fs is None and other.fs is None) or self.fs == other.fs))
 
     def __repr__(self):
         return str(pd.DataFrame.from_dict(
@@ -331,7 +371,7 @@ class Signal2D(TimeSeries):
     full_dimensions = 3
 
     def show(self):
-        pass
+        ...
 
 
 class MultiSeries:
@@ -466,11 +506,41 @@ class MultiSeries:
         return MultiSeries(series, class_order=self.class_order)
 
 
+class TimeSeriesGenerator:
+    def __init__(self, params_func, run_func=None, purpose=None,
+                 class_name: str = None, superclass_name: str = None, logger=None):
+        self.params_func = params_func
+        self.run_func = run_func if run_func is not None else lambda x: x
+        self.next_item = 0
+        self.reset_item()
+        self.logger = logger if logger is not None else Logger()
+        self.purpose = purpose
+        self.class_name = class_name
+        self.superclass_name = superclass_name
+        self.fs = None
+
+    def reset_item(self):
+        self.next_item = 0
+        np.random.seed(37)
+
+    def next(self):
+        return self.params_func()
+
+    @lru_cache(8)
+    def __getitem__(self, item):
+        if item != self.next_item:
+            self.reset_item()
+            for _ in range(item):
+                self.next()
+        self.next_item = item + 1
+        return self.run_func(self.next())
+
+
 class SeriesClass:
-    def __init__(self, series: List[TimeSeries] = None, series_build=None, purpose=None,
+    def __init__(self, series: list[TimeSeries] | TimeSeriesGenerator = None, series_build=None, purpose=None,
                  class_name: str = None, superclass_name: str = None, logger=None):
         assert series or series_build, f'There is no information! superclass: {superclass_name}, class name: {class_name}'
-        self.series: List[TimeSeries] = series or []  # list
+        self.series: list[TimeSeries] | TimeSeriesGenerator = series or []
         self.series_build = series_build  # list
         self.class_name = class_name
         self.purpose = purpose
@@ -480,7 +550,7 @@ class SeriesClass:
 
     def stat(self, to_json=False):
         info_dict = {
-            'series': len(self.series),
+            'series': -1 if isinstance(self.series, TimeSeriesGenerator) else len(self.series),
             'class_name': self.class_name,
             'superclass_name': self.superclass_name,
             'series_length': [len(i) for i in self.series],
@@ -511,6 +581,7 @@ class SeriesClass:
         self.fs = fss[0]
 
     def get_index_map(self) -> List:
+        assert len(self.series)
         return [len(i) for i in self.series]
 
     def get_individual_series(self, individual_id, start_id, length):
@@ -524,6 +595,7 @@ class SeriesClass:
 
     @property
     def total_length(self):
+        assert len(self.series)
         return np.sum([len(i) for i in self.series])
 
     def __len__(self):
@@ -554,8 +626,8 @@ class SeriesDataset(AutoParameterObject, abc.ABC):
             self.split_range = split_range
 
     @abc.abstractmethod
-    def get_class_objects(self) -> list[SeriesClass]:
-        pass
+    def get_class_objects(self) -> list[SeriesClass | TimeSeriesGenerator]:
+        ...
 
 
 class SeriesDatasetsKeeper:
@@ -583,8 +655,12 @@ class SeriesDatasetsKeeper:
                 else:
                     self.superclasses_dict[superclass_name] = [class_name]
 
-        self.total_lengths = {class_key: class_obj.total_length for class_key, class_obj in self.classes_dict.items()}
         self.fs = None
+
+    @property
+    @lru_cache(1)
+    def total_lengths(self):
+        return {class_key: class_obj.total_length for class_key, class_obj in self.classes_dict.items()}
 
     def stat(self, to_json=False):
         info_dict = {
@@ -642,14 +718,14 @@ class SeriesDatasetsKeeper:
 
 
 class EndOfDataset(Exception):
-    pass
+    ...
 
 
 class SeriesTaker:
     """
     strategy:   'random' - taking one random interval from all the relevant signals
-                'sequence' - taking one interval is the logical order
-                'only_once' - taking one interval is the logical order - error when reaching the end of the last signal
+                'sequence' - taking one interval in a logical order
+                'only_once' - taking one interval in a logical order - error when reaching the end of the last signal
                 'start' - taking starting interval of a random signal
                 dict - more complex taking definition
     zero_padding: True - no error, makes zero padding if needed, False - error when length is higher than available
@@ -781,7 +857,7 @@ class SeriesTrack(AutoParameterObject, abc.ABC):
         return self.relevant_classes[np.random.choice(len(self.relevant_classes), p=p)]
 
     def next(self, length: int) -> Union[TimeSeries, MultiSeries]:
-        pass
+        ...
 
 
 class TorchDataset(Dataset):
@@ -1060,7 +1136,7 @@ class Transformer(AutoParameterObject):
         return param_value
 
     def transform_timeseries(self, x: TimeSeries) -> Union[TimeSeries, np.ndarray]:
-        pass
+        ...
 
     def original_signal_length(self, length: int, fs: int = None) -> int:
         raise NotImplementedError("Original length is not implemented for this transformation.")
