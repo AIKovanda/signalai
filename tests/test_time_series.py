@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from timeseries import Signal, TimeSeries
+from time_series import Signal, TimeSeries, sum_time_series, stack_time_series, join_time_series
 
 
 def test_operators():
@@ -41,6 +41,25 @@ def test_operators():
                                                     [0, 1, 1, 0],
                                                     [0, 0, 1, 1]]),
                                  meta={'b': 'asdf'}, fs=50)
+
+
+def test_apply():
+    def func(x):
+        return x * 2 + 1
+
+    s1 = TimeSeries(data_arr=np.array([[1, 2, 3, 3.5],
+                                       [2, 3, 3.5, 1]]),
+                    time_map=np.array([[1, 0, 1, 0],
+                                       [0, 1, 0, 1]]),
+                    meta={'a': 0, 'b': 'asdf'}, fs=50)
+
+    s2 = s1.apply(func)
+    assert s2 != s1
+    assert s2 == TimeSeries(data_arr=np.array([[3, 5, 7, 8],
+                                               [5, 7, 8, 3]]),
+                            time_map=np.array([[1, 0, 1, 0],
+                                               [0, 1, 0, 1]]),
+                            meta={'a': 0, 'b': 'asdf'}, fs=50)
 
 
 def test_crop():
@@ -181,3 +200,50 @@ def test_margin_interval():
                                                time_map=np.array([[0, 1, 0, 1, 0, 1, 0, 0],
                                                                   [1, 0, 1, 0, 1, 0, 0, 0]]),
                                                meta={'a': 0, 'b': 'asdf'}, fs=50)
+
+
+def test_general_operators():
+    s1 = TimeSeries(data_arr=np.array([[3, 3.5],
+                                       [2, 1]]),
+                    time_map=np.array([[1, 0],
+                                       [0, 1]]),
+                    meta={'a': 1, 'b': 'asdf', 'c': 5}, fs=50)
+
+    s2 = TimeSeries(data_arr=np.array([[4, 6.5],
+                                       [5, 4]]),
+                    time_map=np.array([[0, 1],
+                                       [0, 0]]),
+                    meta={'a': 1, 'b': 'asdf', 'd': 6}, fs=50)
+
+    s3 = TimeSeries(data_arr=np.array([[6, 6.5],
+                                       [1, 6.5]]),
+                    time_map=np.array([[0, 1],
+                                       [0, 0]]),
+                    meta={'a': 1, 'b': 'asdf'}, fs=50)
+    data_arr_s1 = s1.data_arr.copy()
+    assert sum_time_series(s1, s2, s3) == TimeSeries(data_arr=np.array([[13, 16.5],
+                                                                        [8, 11.5]]),
+                                                     time_map=np.array([[1, 1],
+                                                                        [0, 1]]),
+                                                     meta={'a': 1, 'b': 'asdf'}, fs=50)
+    assert np.all(data_arr_s1 == s1.data_arr)
+
+    assert stack_time_series(s1, s2, s3) == TimeSeries(data_arr=np.array([[3, 3.5],
+                                                                          [2, 1],
+                                                                          [4, 6.5],
+                                                                          [5, 4],
+                                                                          [6, 6.5],
+                                                                          [1, 6.5]]),
+                                                       time_map=np.array([[1, 0],
+                                                                          [0, 1],
+                                                                          [0, 1],
+                                                                          [0, 0],
+                                                                          [0, 1],
+                                                                          [0, 0]]),
+                                                       meta={'a': 1, 'b': 'asdf'}, fs=50)
+
+    assert join_time_series(s1, s2, s3) == TimeSeries(data_arr=np.array([[3, 3.5, 4, 6.5, 6, 6.5],
+                                                                         [2, 1, 5, 4, 1, 6.5]]),
+                                                      time_map=np.array([[1, 0, 0, 1, 0, 1],
+                                                                         [0, 1, 0, 0, 0, 0]]),
+                                                      meta={'a': 1, 'b': 'asdf'}, fs=50)
