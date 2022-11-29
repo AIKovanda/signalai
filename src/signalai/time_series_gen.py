@@ -2,10 +2,13 @@ import abc
 from functools import lru_cache
 from itertools import chain
 
-from time_series import TimeSeries, sum_time_series
+import numpy as np
+from taskchain.parameter import AutoParameterObject
+
+from signalai.time_series import TimeSeries, sum_time_series
 
 
-class TimeSeriesGen(abc.ABC):
+class TimeSeriesGen(AutoParameterObject, abc.ABC):
     def __init__(self, **config):
         self.input_ts_gen_args: list[TimeSeriesGen] = []
         self.input_ts_gen_kwargs: dict[any, TimeSeriesGen] = {}
@@ -30,8 +33,8 @@ class TimeSeriesGen(abc.ABC):
         if not self.built:
             self._build()
             self.built = True
-        for i in chain(self.input_ts_gen_args, self.input_ts_gen_kwargs.values()):
-            i.build()
+            for i in chain(self.input_ts_gen_args, self.input_ts_gen_kwargs.values()):
+                i.build()
 
     def set_taken_length(self, length):
         if self.taken_length is None:
@@ -68,8 +71,24 @@ class TimeSeriesGen(abc.ABC):
 class Transformer(TimeSeriesGen):
     takes = None  # 'time_series', 'list', 'dict'
 
+    def process(self, input_: TimeSeries | list[TimeSeries] | dict[str, TimeSeries]) -> TimeSeries | np.ndarray:
+        if self.takes == 'time_series':
+            if len(self.input_ts_gen_args) > 0:
+                return self._process(self.input_ts_gen_args[0].process(input_))
+            return self._process(input_)
+        elif self.takes == 'list':
+            if len(self.input_ts_gen_args) > 0:
+                return self._process([tsg.process(input_) for tsg in self.input_ts_gen_args])
+            return self._process(input_)
+        elif self.takes == 'dict':
+            if len(self.input_ts_gen_kwargs) > 0:
+                return self._process({key: tsg.process(input_) for key, tsg in self.input_ts_gen_kwargs.items()})
+            return self._process(input_)
+        else:
+            raise ValueError(f'Wrongly defined class, takes must be time_series/list/dict, not {self.takes}')
+
     @abc.abstractmethod
-    def process(self, input_: TimeSeries | list[TimeSeries] | dict[str, TimeSeries]) -> TimeSeries:
+    def _process(self, input_: TimeSeries | list[TimeSeries] | dict[str, TimeSeries]) -> TimeSeries | np.ndarray:
         pass
 
     @abc.abstractmethod
@@ -86,15 +105,17 @@ class Transformer(TimeSeriesGen):
         lens = {len(tsg) for tsg in chain(self.input_ts_gen_args, self.input_ts_gen_kwargs.values()) if not tsg.is_infinite()}
         if len(lens) > 1:
             raise ValueError('Generators appear to be of different lengths!')
+        elif len(lens) == 0:
+            raise ValueError('No length is available!')
         return lens.pop()
 
     def _getitem(self, item: int) -> TimeSeries:
         if self.takes == 'time_series':
-            return self.process(self.input_ts_gen_args[0].getitem(item))
+            return self._process(self.input_ts_gen_args[0].getitem(item))
         elif self.takes == 'list':
-            return self.process([tsg.getitem(item) for tsg in self.input_ts_gen_args])
+            return self._process([tsg.getitem(item) for tsg in self.input_ts_gen_args])
         elif self.takes == 'dict':
-            return self.process({key: tsg.getitem(item) for key, tsg in self.input_ts_gen_kwargs.items()})
+            return self._process({key: tsg.getitem(item) for key, tsg in self.input_ts_gen_kwargs.items()})
         else:
             raise ValueError(f'Wrongly defined class, takes must be time_series/list/dict, not {self.takes}')
 
@@ -102,7 +123,7 @@ class Transformer(TimeSeriesGen):
     def is_infinite(self) -> bool:
         return all([tsg.is_infinite() for tsg in chain(self.input_ts_gen_args, self.input_ts_gen_kwargs.values())])
 
-    def take_input(self, input_: TimeSeriesGen | list[TimeSeriesGen] | dict[str, TimeSeriesGen]) -> TimeSeriesGen:
+    def take_input(self, input_: TimeSeriesGen | list[TimeSeriesGen] | dict[str, TimeSeriesGen]):
         transformer = type(self)(**self.config)
         if self.takes == 'time_series':
             assert isinstance(input_, TimeSeriesGen), f'Wrong input type {type(input_)}. Needed {self.takes}.'
@@ -126,7 +147,7 @@ class TimeSeriesSum(Transformer):
     def transform_taken_length(self, length: int) -> int:
         pass
 
-    def process(self, ts_list: list[TimeSeries]) -> TimeSeries:
+    def _process(self, ts_list: list[TimeSeries]) -> TimeSeries:
         return sum_time_series(*ts_list)
 
 
@@ -134,14 +155,17 @@ class LambdaTransformer(Transformer):
     takes = 'time_series'
 
     def _build(self):
-        assert 'lambda_x' in self.config
+        assert 'lambda_w' in self.config
         self.__getitem__ = lru_cache(50)(self._getitem)
 
     def transform_taken_length(self, length: int) -> int:
         return length
 
-    def process(self, ts: TimeSeries) -> TimeSeries:
-        func = eval(self.config['lambda_x'])
+    def _process(self, ts: TimeSeries) -> TimeSeries:
+        func = eval("lambda w: "+self.config['lambda_w'])
+        if self.config.get('apply_to_ts', False):
+            return func(ts)
+
         return ts.apply(func)
 
 
@@ -168,7 +192,7 @@ def _graph_node(
         raise TypeError(f"Type '{type(structure)}' of structure is not supported. Repair your config.")
 
 
-def make_graph(time_series_gens: dict[str, TimeSeriesGen], structure: dict) -> dict[str, TimeSeriesGen]:
+def make_graph(time_series_gens: dict[str, TimeSeriesGen], structure: dict) -> dict[str, TimeSeriesGen | Transformer]:
     output_gens = {}
     for key, val in structure.items():
         assert key[0] == '=', 'Names in dict must start with =.'

@@ -1,16 +1,12 @@
 import re
-from functools import partial
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from numba import jit
 
-from signalai.timeseries import SeriesClass, SeriesDataset, read_audio, TimeSeriesGenerator, TimeSeries
+from signalai.time_series import read_audio
+from time_series_old import SeriesClass, SeriesDataset
 from signalai.tools.utils import set_intersection
-
-SQR23 = np.sqrt(2. / 3.)
-SQR32 = np.sqrt(1.5)
 
 
 class AllToneLoader(SeriesDataset):
@@ -171,69 +167,3 @@ class FileLoader(SeriesDataset):  # todo: remake as MultiSignal
 #                 )(base_noise)
 #             base_signal += base_noise
 #         return Signal(signal=base_signal), self.name
-
-
-@jit(nopython=True)
-def _rene_exp(kap: np.ndarray, k0: float, a: np.ndarray, c: np.ndarray, depspc_r: np.ndarray, steps: int):
-    epspc = np.zeros(len(depspc_r) * steps + 1, dtype=np.float32)
-    kiso = np.zeros(len(depspc_r) * steps + 1, dtype=np.float32)
-    alp = np.zeros((len(a), len(depspc_r) * steps + 1), dtype=np.float32)
-
-    for i, next_depspc_r in enumerate(depspc_r):  # next_depspc_r does not start with 0!
-        D = (-1) ** i
-        for j in range(1, steps + 1):
-            epspc[i * steps + j] = epspc[i * steps] + j * next_depspc_r / steps
-            depspc = j * next_depspc_r / steps
-
-            kiso[i * steps + j] = D / kap[1] * (1 - (1 - kap[1] * k0) * np.exp(
-                -SQR32 * kap[0] * kap[1] * epspc[i * steps + j]))
-            alp[:, i * steps + j] = D * a - (D * a - alp[:, i * steps]) * np.exp(-c * depspc)
-
-    sig = SQR23 * np.sum(alp, axis=0) + kiso
-    return epspc, sig
-
-
-def rene_exp(model_params: dict, steps: int):
-    a = np.array(model_params['a'], dtype=np.float32)
-    c = np.array(model_params['c'], dtype=np.float32)
-    assert len(a) == len(c), 'a and c must be the same size'
-    assert model_params['depspc_r'][0] != 0, 'Leading zero is forbidden'
-    kap = np.array(model_params['kap'], dtype=np.float32)
-    k0 = float(model_params['k0'])
-    epspc, sig = _rene_exp(
-        kap=kap,
-        k0=k0,
-        a=a,
-        c=c,
-        depspc_r=np.array(model_params['depspc_r'], dtype=np.float32),
-        steps=int(steps),
-    )
-    return TimeSeries(
-        data_arr=sig,
-        meta={'epspc': epspc, 'params': np.array([*kap, k0, *a, *c])},
-    )
-
-
-def rene_exp_params_gen(depspc_r_number):
-    a = np.random.uniform(0, 1, size=4)
-    a /= np.sum(a)
-    return {
-        # 'E': np.random.uniform(160, 210),  # GPa
-        'k0': np.random.uniform(150, 250),
-        'kap': [np.random.uniform(100, 10000), 1/np.random.uniform(30, 150)],  # MPa
-        'c': np.sort([np.exp(np.random.uniform(np.log(1000), np.log(10000))), *np.exp(np.random.uniform(np.log(50), np.log(2000), size=3))])[::-1],
-        'a': np.random.uniform(250, 350) * a,
-        'depspcR': np.random.uniform(0.0005, 0.005, depspc_r_number),
-    }
-
-
-class ReneExperiment(SeriesDataset):
-    def get_class_objects(self) -> list[TimeSeriesGenerator]:
-        return [TimeSeriesGenerator(
-            params_func=partial(rene_exp_params_gen, depspc_r_number=self.params["depspc_r_number"]),
-            run_func=partial(rene_exp, steps=self.params["steps"]),
-            class_name='experiment',
-            superclass_name='experiment_sc',
-            logger=self.logger,
-            purpose=self.purpose,
-        )]

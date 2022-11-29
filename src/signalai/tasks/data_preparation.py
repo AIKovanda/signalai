@@ -1,70 +1,73 @@
 from taskchain import InMemoryData, Parameter, Task
 
-from signalai.tasks.datasets import DatasetManipulator
-from signalai.timeseries import Logger, SeriesDatasetsKeeper, TorchDataset
+from signalai.time_series_gen import TimeSeriesGen, make_graph
+from signalai.torch_dataset import TorchDataset
+from signalai.tasks.datasets import DatasetDict
 
 
-class KeeperLoader(Task):
+class TimeSeriesGenGraph(Task):
     class Meta:
         data_class = InMemoryData
-        input_tasks = [DatasetManipulator]
+        input_tasks = [DatasetDict]
         parameters = [
-            Parameter("load_to_ram", default=False, ignore_persistence=True),
+            Parameter("data_graph"),
+            Parameter("generators", default={}),
         ]
 
-    def run(self) -> SeriesDatasetsKeeper:
-        logger = Logger(name="KeeperLoader", verbose=0, save=False)
-        keeper = SeriesDatasetsKeeper(
-            datasets_config=self.input_tasks['dataset_manipulator'].value,
-            logger=logger,
+    def run(self, dataset_dict: dict, generators: dict, data_graph: dict) -> dict[str, TimeSeriesGen]:
+        graph = make_graph(
+            time_series_gens={**dataset_dict, **generators},
+            structure=data_graph,
         )
+        return graph
 
-        return keeper
 
-
-class TaskSeriesProcessor(Task):
+class TaskTimeSeriesGen(Task):
     class Meta:
         abstract = True
 
     def run(self) -> TorchDataset:
-        split_name = self.meta.split_name
-        logger = Logger(name=f"{split_name.capitalize()}SignalGenerator", verbose=0, save=False)
+        take_dict = self.parameters[self.meta.split_name]
+        take = {val for i in ['inputs', 'outputs'] for val in take_dict[i]}
+        relevant_graph = {
+            key: val for key, val in self.input_tasks['time_series_gen_graph'].value.items() if key in take}
+        params = {
+            'take_dict': take_dict,
+            'max_length': self.parameters['max_length'],
+        }
+        td = TorchDataset(**params).take_input(relevant_graph)
+        td.build()
+        return td
 
-        return TorchDataset(
-            processor_config=self.parameters[split_name],
-            keeper=self.input_tasks['keeper_loader'].value,
-            logger=logger,
-        )
 
-
-class TrainSeriesProcessor(TaskSeriesProcessor):
+class TrainTimeSeriesGen(TaskTimeSeriesGen):
     class Meta:
         data_class = InMemoryData
-        input_tasks = [KeeperLoader]
+        input_tasks = [TimeSeriesGenGraph]
         parameters = [
-            Parameter("train", default=None),
-            Parameter("load_to_ram", default=False, ignore_persistence=True),
+            Parameter("train_gen", default=None),
+            Parameter("max_length", default=10**15),
         ]
-        split_name = 'train'
+        split_name = 'train_gen'
 
 
-class ValidSeriesProcessor(TaskSeriesProcessor):
+class ValidTimeSeriesGen(TaskTimeSeriesGen):
     class Meta:
         data_class = InMemoryData
-        input_tasks = [KeeperLoader]
+        input_tasks = [TimeSeriesGenGraph]
         parameters = [
-            Parameter("valid", default=None),
-            Parameter("load_to_ram", default=False, ignore_persistence=True),
+            Parameter("valid_gen", default=None),
+            Parameter("max_length", default=10**15),
         ]
-        split_name = 'valid'
+        split_name = 'valid_gen'
 
 
-class TestSeriesProcessor(TaskSeriesProcessor):
+class TestTimeSeriesGen(TaskTimeSeriesGen):
     class Meta:
         data_class = InMemoryData
-        input_tasks = [KeeperLoader]
+        input_tasks = [TimeSeriesGenGraph]
         parameters = [
-            Parameter("test", default=None),
-            Parameter("load_to_ram", default=False, ignore_persistence=True),
+            Parameter("test_gen", default=None),
+            Parameter("max_length", default=10**15),
         ]
-        split_name = 'test'
+        split_name = 'test_gen'

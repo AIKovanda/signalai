@@ -2,7 +2,7 @@ import numpy as np
 import yaml
 
 from time_series import TimeSeries, Signal
-from time_series_gen import TimeSeriesSum, TimeSeriesGen, LambdaTransformer, make_graph
+from signalai.time_series_gen import TimeSeriesSum, TimeSeriesGen, LambdaTransformer, make_graph
 
 
 class SinusGenerator(TimeSeriesGen):
@@ -65,8 +65,8 @@ def test_graph():
     tsgs = {
         'sg0': SinusGenerator(linspace_params=[0, 4, 100], amplitude=2),
         'sg1': FiniteSinusGenerator(linspace_params=[0, 4, 100], amplitude=1, len_=50),
-        'l0': LambdaTransformer(lambda_x='lambda x: x*2+1'),
-        'l1': LambdaTransformer(lambda_x='lambda x: x**2'),
+        'l0': LambdaTransformer(lambda_w='w*2+1'),
+        'l1': LambdaTransformer(lambda_w='w**2'),
         'sum': TimeSeriesSum(),
         'not_used': NotUsed(),
     }
@@ -113,3 +113,26 @@ def test_graph():
     assert 'epoch' not in tsgs['sg0'].config
     x_gen.set_epoch(1)
     assert tsgs['sg0'].config['epoch'] == 1
+
+
+def test_transformer():
+    tsgs = {
+        'l0': LambdaTransformer(lambda_w='w*2+1'),
+        'l1': LambdaTransformer(lambda_w='np.sum(w.data_arr/2)', apply_to_ts=True),
+    }
+    cfg = yaml.load("""
+        =Z:
+          l1:
+            l0
+        """, yaml.FullLoader)
+
+    graph = make_graph(tsgs, cfg)
+    assert 'Z' in graph and isinstance(graph['Z'], TimeSeriesGen)
+    z_gen = graph['Z']
+    s = TimeSeries(data_arr=np.array([[2, 2.5],
+                                      [1, 2.5]]),
+                   time_map=np.array([[0, 1],
+                                      [0, 0]]),
+                   meta={'a': 1, 'b': 'asdf'}, fs=50)
+    assert z_gen.process(s) == 10.
+

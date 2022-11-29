@@ -1,25 +1,209 @@
+from typing import Union, List
+
 import librosa
 import numpy as np
+from librosa import resample
 from pedalboard import \
     Chorus as PBChorus  # in the magnitude frequency response
 from pedalboard import \
     Gain as \
-    PBGain  # Increase or decrease the volume of a signal by applying a gain value (in decibels).
+        PBGain  # Increase or decrease the volume of a signal by applying a gain value (in decibels).
 from pedalboard import \
     Phaser as \
-    PBPhaser  # A 6 stage phaser that modulates first order all-pass filters to create sweeping notches
+        PBPhaser  # A 6 stage phaser that modulates first order all-pass filters to create sweeping notches
 from pedalboard import \
     Reverb as \
-    PBReverb  # Performs a simple reverb effect on a stream of audio data.
+        PBReverb  # Performs a simple reverb effect on a stream of audio data.
+from taskchain.parameter import AutoParameterObject
 
-from signalai.timeseries import Signal, Signal2D, TimeSeries, Transformer
+from signalai.time_series import Signal, Signal2D
 from signalai.tools.filters import butter_bandpass_filter
-from signalai.tools.utils import by_channel
+from signalai.time_series import TimeSeries, from_numpy
+from tools.utils import by_channel
 
 RETURN_CLASS = {
     2: Signal,
     3: Signal2D,
 }
+
+
+# class MultiSeries:
+#
+#     def sum_channels(self, channels: Optional[List[Union[int, List[int]]]] = None):
+#         series = self._series_list(only_valid=True)
+#         series_length = len(series[0])
+#         assert all([len(ts) == series_length for ts in series]), 'Timeseries must have a same length to be joined.'
+#         fs_set = {ts.fs for ts in series}
+#         assert len(fs_set) == 1, f'Timeseries must have the same sampling frequency. {fs_set}'
+#         if channels is None:
+#             series_channels = series[0].channels_count
+#             assert all([ts.channels_count == series_channels for ts in series]), \
+#                 'Timeseries must have the same number of channels to be joined when channels are not defined.'
+#
+#         zero_series = series[0].take_channels(channels)
+#         data_arrays = [zero_series.data_arr]
+#         time_map = zero_series.time_map.copy()
+#         metas = [zero_series.meta]
+#
+#         for ts in series[1:]:
+#             s_series = ts.take_channels(channels)
+#             data_arrays.append(s_series.data_arr)
+#             time_map = np.logical_or(time_map, s_series.time_map)
+#             metas.append(s_series.meta)
+#
+#         assert series[0].fs is not None, series
+#         return type(series[0])(
+#             data_arr=np.sum(data_arrays, axis=0),
+#             time_map=time_map,
+#             meta=join_dicts(*metas),
+#             fs=series[0].fs,
+#         )
+#
+#     def stack_series(self, only_valid=False, axis=0):
+#         series = self._series_list(only_valid=only_valid)
+#
+#         series_shape = None
+#         ts_type = None
+#         time_map_shape = None
+#
+#         for ts in series:
+#             if ts is not None:
+#                 ts_type = type(ts)
+#                 time_map_shape = ts.time_map.shape
+#                 if ts.data_arr is not None:
+#                     series_shape = ts.data_arr.shape
+#                     break
+#         else:
+#             if time_map_shape is None:  # meaning there is no TimeSeries at all
+#                 raise ValueError(f"At least one timeseries must not be empty while stacking timeseries.")
+#
+#         if series_shape is not None:
+#             assert all([ts.data_arr.shape == series_shape for ts in series if ts is not None]), \
+#                 'Timeseries must have the same shapes to be joined.'
+#
+#         data_arrays = []
+#         time_maps = []
+#         fss = []
+#         metas = []
+#
+#         for ts in series:
+#             if ts is not None:
+#                 if series_shape is not None:
+#                     data_arrays.append(ts.data_arr)
+#                 fss.append(ts.fs)
+#                 time_maps.append(ts.time_map)
+#                 metas.append(ts.meta)
+#             else:
+#                 if series_shape is not None:
+#                     data_arrays.append(np.zeros(series_shape))
+#                 time_maps.append(np.zeros(time_map_shape, dtype=bool))
+#
+#         if series_shape is not None:
+#             data_arr = np.concatenate(data_arrays, axis=axis)
+#         else:
+#             data_arr = None
+#
+#         assert len(set(fss)) == 1, fss  # todo: check if this works good
+#         return ts_type(
+#             data_arr=data_arr,
+#             time_map=np.concatenate(time_maps, axis=0),
+#             meta=join_dicts(*metas),
+#             fs=fss[0],
+#         )
+
+
+class Transformer(AutoParameterObject):
+    in_dim = None
+
+    def __init__(self, **params):
+        self.params = params
+        self.evaluated_params = {}
+        for key, val in params.items():
+            if isinstance(val, str):
+                val = eval(val)
+            self.evaluated_params[key] = val
+
+    def _get_parameter_uniform(self, param_name: str, default: Union[float, List[float]]) -> float:
+        param_value = self.evaluated_params.get(param_name, default)
+        if isinstance(param_value, list) or isinstance(param_value, tuple):
+            if len(param_value) == 1:
+                return param_value[0]
+
+            if len(param_value) == 2:
+                return np.random.uniform(*param_value)
+
+            raise ValueError(f"Parameter '{param_name}' must have one or two values, not {len(param_value)}.")
+
+        return param_value
+
+    def transform_timeseries(self, x: TimeSeries) -> Union[TimeSeries, np.ndarray]:
+        ...
+
+    def original_signal_length(self, length: int, fs: int = None) -> int:
+        raise NotImplementedError("Original length is not implemented for this transformation.")
+
+    @property
+    def keeps_signal_length(self) -> bool:
+        raise NotImplementedError("Keeps length is not implemented for this transformation.")
+
+    def _transform(self, ts: TimeSeries):
+        if self.in_dim is not None and self.in_dim != ts.full_dimensions:
+            raise ValueError(f"Transform '{type(self)}' takes input of dim {self.in_dim}, "
+                             f"{type(ts)} has a dim of {ts.full_dimensions}.")
+
+        transform_chance = self.evaluated_params.get('transform_chance', 1.)
+        if np.random.rand() <= transform_chance:
+            return self.transform_timeseries(ts)
+
+        return ts
+
+    def transform(self, x: Union[np.ndarray, TimeSeries]) -> Union[TimeSeries]:
+        if isinstance(x, TimeSeries):
+            ts = x
+            return self._transform(ts)
+
+        elif isinstance(x, np.ndarray):
+            ts = from_numpy(x)
+            return self._transform(ts)
+
+        else:
+            raise TypeError(
+                f"Transformer got a type of '{type(x)}' which is not supported.")
+
+    def __call__(self, x):
+        return self.transform(x)
+
+
+class Resampler(Transformer):
+    in_dim = 2
+
+    @by_channel
+    def transform_npy(self, x: np.ndarray, input_fs: int, output_fs: int) -> np.ndarray:
+        return np.expand_dims(resample(
+            x[0].astype('float32'), input_fs, output_fs, res_type='linear'
+        ).astype(x.dtype), 0)
+
+    def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
+        input_fs = x.fs
+        assert input_fs is not None, 'Missing info about sampling frequency!'
+        output_fs = self.evaluated_params.get('output_fs')
+        if input_fs == output_fs:
+            return x
+
+        data_arr = self.transform_npy(x.data_arr, input_fs=input_fs, output_fs=output_fs)
+        return Signal(
+            data_arr=data_arr,
+            time_map=x.time_map,
+            meta=x.meta,
+            fs=output_fs,
+        )
+
+    def original_signal_length(self, length: int, fs: int = None) -> int:
+        return int(length * fs / self.evaluated_params.get('output_fs'))
+
+    @property
+    def keeps_signal_length(self) -> bool:
+        return False
 
 
 class Standardizer(Transformer):
@@ -37,7 +221,6 @@ class Standardizer(Transformer):
             data_arr=self.transform_npy(x.data_arr),
             time_map=x.time_map,
             meta=x.meta,
-            logger=x.logger,
             fs=x.fs,
         )
 
@@ -65,7 +248,6 @@ class Gain(Transformer):
             data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
-            logger=x.logger,
             fs=x.fs,
         )
 
@@ -92,7 +274,6 @@ class Phaser(Transformer):
             data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
-            logger=x.logger,
             fs=x.fs,
         )
 
@@ -120,7 +301,6 @@ class Chorus(Transformer):
             data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
-            logger=x.logger,
             fs=x.fs,
         )
 
@@ -163,7 +343,6 @@ class Reverb(Transformer):
             data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
-            logger=x.logger,
             fs=x.fs,
         )
 
@@ -194,7 +373,6 @@ class BandPassFilter(Transformer):
             data_arr=self.transform_npy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
-            logger=x.logger,
             fs=x.fs,
         )
 
@@ -295,7 +473,6 @@ class STFT(Transformer):
             data_arr=data_arr,
             time_map=x.time_map,  # todo
             meta=meta,
-            logger=x.logger,
             fs=x.fs,
         )
 
@@ -333,7 +510,6 @@ class ISTFT(Transformer):
             data_arr=s_data_arr,
             time_map=x.time_map,  # todo
             meta=meta,
-            logger=x.logger,
             fs=x.fs,
         )
 

@@ -6,28 +6,11 @@ from typing import Callable
 import numpy as np
 
 
-def set_union(*sets):
-    union = sets[0]
-    for i in range(1, len(sets)):
-        union |= sets[i]
-    return union
-
-
 def set_intersection(*sets):
     union = sets[0]
     for i in range(1, len(sets)):
         union &= sets[i]
     return union
-
-
-def double_sort(x, y, shuffle=False):
-    temp = list(zip(x, y))
-    if shuffle:
-        np.random.seed(42)
-        np.random.shuffle(temp)
-    else:
-        temp = sorted(temp)
-    return zip(*temp)
 
 
 def load_file(file_paths, dtype="float32"):
@@ -54,14 +37,6 @@ def load_file(file_paths, dtype="float32"):
         raise NotImplemented("multiple input is not implemented yet")
 
 
-def time_now(millisecond=False):
-    # datetime object containing current date and time
-    now = datetime.now()
-    if millisecond:
-        return str(now)
-    return now.strftime("%Y-%m-%d %H:%M:%S")
-
-
 def timefunc(func):
     def _wrapper(*args, **kwargs):
         start_time = time.time()
@@ -82,14 +57,6 @@ def join_dicts(*args):
                 if all([value == i[key] for i in args]):
                     new_info[key] = value
         return new_info
-
-
-def apply_transforms(ts, transforms=()):
-    if len(transforms) == 0:
-        return ts
-    for t in transforms:
-        ts = t(ts)
-    return ts
 
 
 def original_length(target_length, transforms=(), fs=None):

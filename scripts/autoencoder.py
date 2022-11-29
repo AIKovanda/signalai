@@ -4,7 +4,7 @@ import sys
 from taskchain.task import Config
 
 from signalai import config, read_audio
-from signalai.timeseries import MultiSeries
+from signalai.time_series import MultiSeries
 
 SUFFIXES = [".mp3", ".aac", ".wav"]
 
