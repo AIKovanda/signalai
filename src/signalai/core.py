@@ -58,7 +58,7 @@ class TimeSeriesModel(AutoParameterObject, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def train_on_generator(self, time_series_gen: TorchDataset) -> pd.DataFrame:
+    def train_on_generator(self, time_series_gen: TorchDataset, valid_time_series_gen: TorchDataset = None) -> pd.DataFrame:
         pass
 
     @abc.abstractmethod
@@ -74,8 +74,8 @@ class TimeSeriesModel(AutoParameterObject, abc.ABC):
         return self.predict_numpy(*[self.pre_transform.process(i) for i in ts])
 
     @abc.abstractmethod
-    def eval_on_generator(self, time_series_gen: TorchDataset, evaluation_params: dict, post_transform: bool,
-                          ) -> Generator[tuple[np.ndarray, np.ndarray], None, None]:
+    def eval_on_generator(self, time_series_gen: TorchDataset, evaluators: list, evaluation_params: dict,
+                          use_tqdm=False) -> dict:
         pass
 
     @abc.abstractmethod
@@ -83,7 +83,7 @@ class TimeSeriesModel(AutoParameterObject, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def load(self, weights=None, epoch_id=None, batch_id=None):
+    def load(self, weights_path=None, epoch_id=None, batch_id=None):
         pass
 
     @abc.abstractmethod

@@ -17,7 +17,7 @@ def pass_through(x):
 
 class InceptionModule(AutoParameterObject, nn.Module):
     def __init__(self, in_channels, n_filters, kernel_sizes=None, bottleneck_channels=32, activation=nn.SELU(),
-                 use_batch_norm=True, return_indices=False):
+                 use_batch_norm=True, return_indices=False, bias=False):
         """
         in_channels				Number of input channels (input features)
         n_filters				Number of filters per convolution layer => out_channels = 4*n_filters
@@ -48,7 +48,7 @@ class InceptionModule(AutoParameterObject, nn.Module):
                 out_channels=bottleneck_channels,
                 kernel_size=1,
                 stride=1,
-                bias=False,
+                bias=bias,
             )
         else:
             self.bottleneck = pass_through
@@ -60,7 +60,7 @@ class InceptionModule(AutoParameterObject, nn.Module):
             kernel_size=kernel_sizes[0],
             stride=1,
             padding=kernel_sizes[0] // 2,
-            bias=False,
+            bias=bias,
         )
         self.conv_from_bottleneck_2 = nn.Conv1d(
             in_channels=bottleneck_channels,
@@ -68,7 +68,7 @@ class InceptionModule(AutoParameterObject, nn.Module):
             kernel_size=kernel_sizes[1],
             stride=1,
             padding=kernel_sizes[1] // 2,
-            bias=False,
+            bias=bias,
         )
         self.conv_from_bottleneck_3 = nn.Conv1d(
             in_channels=bottleneck_channels,
@@ -76,7 +76,7 @@ class InceptionModule(AutoParameterObject, nn.Module):
             kernel_size=kernel_sizes[2],
             stride=1,
             padding=kernel_sizes[2] // 2,
-            bias=False,
+            bias=bias,
         )
         self.max_pool = nn.MaxPool1d(kernel_size=3, stride=1, padding=1, return_indices=return_indices)
         self.conv_from_maxpool = nn.Conv1d(
@@ -85,7 +85,7 @@ class InceptionModule(AutoParameterObject, nn.Module):
             kernel_size=1,
             stride=1,
             padding=0,
-            bias=False,
+            bias=bias,
         )
         self.batch_norm = nn.BatchNorm1d(num_features=4 * n_filters)
         self.activation = activation
@@ -116,7 +116,7 @@ class InceptionModule(AutoParameterObject, nn.Module):
 
 class InceptionBlock(nn.Module):
     def __init__(self, in_channels, n_filters=32, kernel_sizes=None, bottleneck_channels=32, use_residual=True,
-                 use_batch_norm=True, activation=nn.SELU(), return_indices=False):
+                 use_batch_norm=True, activation=nn.SELU(), return_indices=False, bias=False):
         super(InceptionBlock, self).__init__()
         if kernel_sizes is None:
             kernel_sizes = [9, 19, 39]
@@ -133,6 +133,7 @@ class InceptionBlock(nn.Module):
             activation=activation,
             use_batch_norm=self.use_batch_norm,
             return_indices=return_indices,
+            bias=bias,
         )
         self.inception_2 = InceptionModule(
             in_channels=4 * n_filters,
@@ -142,6 +143,7 @@ class InceptionBlock(nn.Module):
             activation=activation,
             use_batch_norm=self.use_batch_norm,
             return_indices=return_indices,
+            bias=bias,
         )
         self.inception_3 = InceptionModule(
             in_channels=4 * n_filters,
@@ -151,6 +153,7 @@ class InceptionBlock(nn.Module):
             activation=activation,
             use_batch_norm=self.use_batch_norm,
             return_indices=return_indices,
+            bias=bias,
         )
         if self.use_residual:
             self.residual = nn.Sequential(
@@ -335,7 +338,7 @@ class InceptionTime(AutoParameterObject, nn.Module):
             bottleneck_channels = [node.get("bottleneck_channels", 32) for node in build_config]
             use_residuals = [node.get("use_residual", True) for node in build_config]
 
-            activation_function = get_activation(node.get('activation', 'SELU'))
+            activation_function = get_activation(node.get('activation'))
             block_list.append(InceptionBlock(
                 in_channels=last_n_filters if i == 0 else last_n_filters * 4,
                 n_filters=current_n_filters,

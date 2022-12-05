@@ -4,10 +4,13 @@ import torch
 from taskchain.parameter import AutoParameterObject
 
 
-class SignalEvaluator(AutoParameterObject):
+class TorchEvaluator(AutoParameterObject):
 
     def __init__(self, **params):
         self.params = params
+        self.items = []
+
+    def reset_items(self):
         self.items = []
 
     @abc.abstractmethod
@@ -21,23 +24,39 @@ class SignalEvaluator(AutoParameterObject):
             for i in range(lens.pop()):
                 self.process_one(tuple(item[i].detach() for item in y_true), tuple(item[i] for item in y_pred))
 
-    @abc.abstractmethod
     @property
-    def value(self) -> dict:
+    @abc.abstractmethod
+    def metric_value(self) -> dict:
         raise NotImplementedError
 
     def __call__(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
         self.process_batch(y_true, y_pred)
 
 
-class L2PieceWise(SignalEvaluator):
+class L2PieceWise(TorchEvaluator):
 
     def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
+        # print(f'{y_true=}\n{y_pred=}\n{(y_true[0] - y_pred[0])**2}')
         self.items.append((y_true[0] - y_pred[0])**2)
 
     @property
-    def value(self) -> dict:
-        return {'L2PieceWise': torch.mean(torch.stack(self.items, dim=0), dim=0).detach().cpu().numpy()}
+    def metric_value(self) -> dict:
+        stack = torch.stack(self.items, dim=0)
+        # print(stack)
+        return {'L2PieceWise': torch.mean(stack, dim=0).detach().cpu().numpy()}
+
+
+class L2Total(TorchEvaluator):
+
+    def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
+        # print(f'{y_true=}\n{y_pred=}\n{(y_true[0] - y_pred[0])**2}')
+        self.items.append((y_true[0] - y_pred[0])**2)
+
+    @property
+    def metric_value(self) -> dict:
+        stack = torch.stack(self.items, dim=0)
+        # print(stack)
+        return {'L2Total': float(torch.mean(stack))}
 
 
 # class ItemsEcho(SignalEvaluator):

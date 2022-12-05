@@ -1,6 +1,5 @@
 import abc
 import os
-from typing import Generator, Tuple
 
 import numpy as np
 import pandas as pd
@@ -11,6 +10,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from signalai.core import TimeSeriesModel
+from signalai.evaluators import TorchEvaluator
 from signalai.torch_dataset import TorchDataset
 
 
@@ -49,8 +49,9 @@ class TorchTimeSeriesModel(TimeSeriesModel):
     def _apply_loss(self, y_batch: tuple, y_hat: tuple):
         pass
 
-    def train_on_generator(self, time_series_gen: TorchDataset) -> pd.DataFrame:
-        metric_history = []
+    def train_on_generator(self, time_series_gen: TorchDataset, valid_time_series_gen: TorchDataset = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+        batch_history = []
+        eval_history = []
         losses = []
         batch_size = self.training_params.get('dataloader_kwargs', {}).get("batch_size", 1)
         if self.taken_length is not None:
@@ -66,6 +67,9 @@ class TorchTimeSeriesModel(TimeSeriesModel):
                 self.model = self.model.weight_reset().to(self.device)
 
             print(f"Training model #{model_id}...")
+            if valid_time_series_gen is not None and len(self.training_echo.get('evaluators', [])) != 0 and self.training_echo.get('init_eval', False):
+                eval_history.append(self._eval_in_training(valid_time_series_gen))
+
             for epoch_id in range(self.training_params.get('epochs', 1)):
                 if epoch_id in (set_ := self.training_params.get('set')):
                     if 'criterion' in set_[epoch_id]:
@@ -84,7 +88,7 @@ class TorchTimeSeriesModel(TimeSeriesModel):
                     x_detached = tuple(val.detach() for val in x)
                     y_hat_detached = tuple(val.detach() for val in y_hat)
 
-                    metric_history.append({
+                    batch_history.append({
                         key: metric(x_detached, y_hat_detached, batch_size=batch_size)
                         for key, metric in self.training_echo.get('metrics', {}).items()})
                     losses.append(new_loss)
@@ -107,7 +111,7 @@ class TorchTimeSeriesModel(TimeSeriesModel):
 
                     # progress bar update and printing
                     tqdm_train_loader.set_description(
-                        f'E{epoch_id}: ' + " | ".join([f"{key}: {val}" for key, val in {'loss': losses[-1], **metric_history[-1]}.items()])
+                        f'E{epoch_id}: ' + " | ".join([f"{key}: {val}" for key, val in {'loss': losses[-1], **batch_history[-1]}.items()])
                     )
                     if "echo_step" in self.training_echo and (current_batch + 1) % self.training_echo["echo_step"] == 0:
                         print()
@@ -121,12 +125,24 @@ class TorchTimeSeriesModel(TimeSeriesModel):
                     self.save(model_id=model_id, batch_id=current_batch)
                 if broken:
                     break
+                if valid_time_series_gen is not None and len(self.training_echo.get('evaluators', [])) != 0:
+                    eval_history.append(self._eval_in_training(valid_time_series_gen))
 
             self.save(model_id=model_id, batch_id=current_batch)
 
-        metric_history = pd.DataFrame(metric_history)
-        metric_history['loss'] = losses
-        return metric_history
+        batch_history = pd.DataFrame(batch_history)
+        batch_history['loss'] = losses
+        return batch_history, pd.DataFrame(eval_history)
+
+    def _eval_in_training(self, valid_time_series_gen):
+        eval_dict = self.eval_on_generator(
+            valid_time_series_gen,
+            evaluators=self.training_echo.get('evaluators'),
+            evaluation_params=self.training_echo.get("evaluation_params", {}),
+        )
+        for key, val in eval_dict.items():
+            print(f'{key:<12}: {val}')
+        return eval_dict
 
     def predict_batch(self, x: tuple[torch.Tensor]) -> tuple[torch.Tensor]:
         with torch.no_grad():
@@ -140,26 +156,32 @@ class TorchTimeSeriesModel(TimeSeriesModel):
         x = tuple(torch.from_numpy(np.stack(arr_)).type(torch.float32).to(self.device) for arr_ in zip(*arr))
         return self.predict_batch(x)
 
-    def eval_on_generator(self, time_series_gen: TorchDataset, evaluation_params: dict, post_transform: bool,
-                          ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
+    def eval_on_generator(self, time_series_gen: TorchDataset, evaluators: list[TorchEvaluator], evaluation_params: dict,
+                          use_tqdm=False) -> dict:
         np.random.seed(13)
+        eval_dict = {}
+        if self.taken_length is not None:
+            time_series_gen.set_taken_length(self.taken_length)
+        if evaluation_params.get("max_batches") is not None:
+            valid_batch_size = evaluation_params.get('dataloader_kwargs', {}).get("batch_size", 1)
+            time_series_gen.config['max_length'] = evaluation_params.get("max_batches") * valid_batch_size
 
-        # batch_size = evaluation_params.get("batch_size", 1)
-        # time_series_gen.set_target_length(self.taken_length)
-        # time_series_gen.set_len(evaluation_params["batches"] * batch_size)
-        #
-        # eval_loader = DataLoader(time_series_gen, batch_size=batch_size, shuffle=False, num_workers=os.cpu_count())
-        #
-        # for x, y_true in eval_loader:
-        #     y_hat = self.predict_batch(x)
-        #     y_true = y_true.detach().cpu().numpy()
-        #     y_hat = y_hat.detach().cpu().numpy()
-        #
-        #     for one_y_true, one_y_hat in zip(y_true, y_hat):
-        #         if post_transform and len(self.post_transform.get('predict', [])) > 0:
-        #             one_y_hat = apply_transforms(one_y_hat, self.post_transform.get('predict')).data_arr
-        #             one_y_true = apply_transforms(one_y_true, self.post_transform.get('predict')).data_arr
-        #         yield one_y_true, one_y_hat
+        for evaluator in evaluators:
+            evaluator.reset_items()
+
+        data_loader = DataLoader(time_series_gen, **evaluation_params.get('dataloader_kwargs', {}))
+        tqdm_train_loader = tqdm(data_loader, ncols=150) if use_tqdm else data_loader
+        for x, y in tqdm_train_loader:
+            x = tuple(val.type(torch.float32).to(self.device) for val in x)
+            y_true = tuple(val.type(torch.float32).to(self.device) for val in y)
+            y_pred = self.predict_batch(x)
+            for evaluator in evaluators:
+                evaluator.process_batch(y_true, y_pred)
+
+        for evaluator in evaluators:
+            eval_dict.update(evaluator.metric_value)
+
+        return eval_dict
 
     def save(self, model_id=0, batch_id=0):
         model_dir = self.save_dir / "saved_model" / f"{model_id}"
@@ -198,12 +220,16 @@ class TorchTimeSeriesModel(TimeSeriesModel):
 
     def set_optimizer(self, optimizer_info: dict):
         optimizer_name = optimizer_info["name"]
-
         kwargs = optimizer_info.get("kwargs", {})
         if optimizer_name == "Adam":
             self.optimizer = optim.Adam(self.model.parameters(), **kwargs)
+        elif optimizer_name.upper() == "SGD":
+            self.optimizer = optim.SGD(self.model.parameters(), **kwargs)
+        elif optimizer_name.lower() == "rmsprop":
+            self.optimizer = optim.RMSprop(self.model.parameters(), **kwargs)
         else:
             raise NotImplementedError(f"Optimizer '{optimizer_name}' not implemented yet!!")
+        print('Optimized initialized with parameters ', kwargs)
 
 
 class OneIOTorchTimeSeriesModel(TorchTimeSeriesModel):
