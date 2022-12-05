@@ -1,7 +1,7 @@
 tasks: signalai.tasks.datasets.*
 
 datasets:
-  - class: signalai.datasets.AllToneLoader
+  - class: signalai.datasets.EventsLoader
     kwargs:
       class_structure:
         all_piano:
