@@ -132,23 +132,26 @@ class GRUMaxAvg(AutoParameterObject, nn.Module):
 
 
 class InceptionGRU(AutoParameterObject, nn.Module):
-    def __init__(self, input_size, hidden_size, layers, outputs):
+    def __init__(self, input_size, hidden_size, layers, outputs, kernel_sizes, bias):
         super(InceptionGRU, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.bias = bias
         self.layers = layers
         self.outputs = outputs
+        self.kernel_sizes = kernel_sizes
         n_filters = 32
         self.inc1 = InceptionBlock(
                 in_channels=input_size,
                 n_filters=n_filters,
-                kernel_sizes=[11, 21, 41],
+                kernel_sizes=kernel_sizes,
                 bottleneck_channels=32,
                 use_residual=False,
                 use_batch_norm=False,
                 activation=get_activation('tanh'),
+                bias=bias,
             )
-        self.rnn = nn.GRU(n_filters*4+1, hidden_size, layers, batch_first=True)
+        self.gru = nn.GRU(n_filters * 4 + 1, hidden_size, layers, batch_first=True)
         self.fc = nn.Linear(hidden_size*2, outputs)
         self.max = nn.AdaptiveMaxPool1d(output_size=1)
         self.avg = nn.AdaptiveAvgPool1d(output_size=1)
@@ -157,7 +160,7 @@ class InceptionGRU(AutoParameterObject, nn.Module):
         x0 = self.inc1(x)
         x = torch.swapaxes(torch.concat([x, x0], dim=1), 1, 2)
         h0 = torch.zeros(self.layers, x.size(0), self.hidden_size).to(x.device)
-        out, _ = self.rnn(x, h0)
+        out, _ = self.gru(x, h0)
         swapped_out = torch.swapaxes(out, 1, 2)
         out1 = self.avg(swapped_out).view(-1, self.hidden_size)
         out2 = self.max(swapped_out).view(-1, self.hidden_size)

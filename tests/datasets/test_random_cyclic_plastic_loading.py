@@ -26,22 +26,32 @@ def test_params():
 
 def test_generation():
     for dim in [1, 4]:
-        rtsg = RandomCyclicPlasticLoadingGen(depspc_r_number=12, steps=12, dim=dim)
-        sigs = []
-        params = []
-        for i in range(100000):
-            item = rtsg.getitem(i)
-            sigs.append(item.data_arr)
-            params.append(item.meta['rcpl_params'].scaled_params)
-        sigs = np.stack(sigs)
-        params = np.stack(params)
-        print('mu_abs', np.mean(np.abs(sigs)))
-        print('mu', np.mean(sigs))
-        print('std', np.std(sigs))
+        for use_kiso in [True, False]:
+            for mode, conf in [('equidistant', {'distance': 0.0001}), ('scaled', {'steps': 12})]:
+                rtsg = RandomCyclicPlasticLoadingGen(
+                    depspc_r_number=12, mode=mode, use_kiso=use_kiso, rcpl_kwargs=conf, dim=dim,
+                )
+                sigs = []
+                params = []
+                for i in range(10000):
+                    item = rtsg.getitem(i)
+                    sigs.append(item.data_arr)
+                    assert item.data_arr.shape[-1] > 1, item.data_arr
+                    params.append(item.meta['rcpl_params'].scaled_params)
 
-        print('mu_params', np.mean(params, axis=0))
-        print('std_params', np.std(params, axis=0))
+                sigs = np.concatenate(sigs, axis=-1)
+                params = np.stack(params)
+                print(f'Dim: {dim}, use_kiso: {int(use_kiso)}, mode: {mode}')
+                print('mu_abs', np.mean(np.abs(sigs)))
+                print('mu', np.mean(sigs))
+                print('std', np.std(sigs))
+                print('mu_params', np.mean(params, axis=0))
+                print('std_params', np.std(params, axis=0))
+                print('-'*25)
 
+
+def test_plot():
+    rtsg = RandomCyclicPlasticLoadingGen(depspc_r_number=12, rcpl_kwargs={'steps': 12}, dim=4)
     plt.figure()
     for i in range(6):
         print('-' * 12, i)
