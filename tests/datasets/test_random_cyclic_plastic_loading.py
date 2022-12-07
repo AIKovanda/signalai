@@ -8,24 +8,17 @@ from datasets.random_cyclic_plastic_loading import (
 )
 
 
-def test_norm():
-    for i in range(1, 12):
-        rcpl_params = RandomCyclicPlasticLoadingParams4D.generate(12)
-        assert rcpl_params._denormalize_uniform(rcpl_params._normalize_uniform(i, [-1, 13]), [-1, 13]) == i
-        assert np.abs(np.exp(rcpl_params._denormalize_uniform(rcpl_params._normalize_uniform(np.log(i), [-1, 13]), [-1, 13])) - i) < 1e-8
-
-
 def test_params():
     for class_ in [RandomCyclicPlasticLoadingParams1D, RandomCyclicPlasticLoadingParams4D]:
         for i in range(10):
             rcpl_params = class_.generate(12)
             scaled = rcpl_params.scaled_params
-            print(scaled)
+            print(scaled, class_(scaled_params=scaled).scaled_params)
             assert np.sum(np.abs(scaled - class_(scaled_params=scaled).scaled_params)) < 1e-15, scaled - class_(scaled_params=scaled).scaled_params
 
 
 def test_generation():
-    for dim in [1, 4]:
+    for dim in [1, 2, 3, 4]:
         for use_kiso in [True, False]:
             for mode, conf in [('equidistant', {'distance': 0.0001}), ('scaled', {'steps': 12})]:
                 rtsg = RandomCyclicPlasticLoadingGen(
