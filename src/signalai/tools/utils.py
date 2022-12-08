@@ -1,5 +1,4 @@
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
@@ -80,3 +79,14 @@ def by_channel(transform: Callable):
         return np.concatenate(processed_channels, axis=0)
 
     return wrapper
+
+
+# def signal_len(build_dict: dict) -> int:
+#     file_dict = build_dict['files'][0]
+#     if file_dict.get("file_sample_interval"):
+#         return int(file_dict["file_sample_interval"][1] - file_dict["file_sample_interval"][0])
+#
+#     if str(file_dict['filename'])[-4:] in ['.bin', '.dat']:
+#         return int(os.path.getsize(file_dict['filename']) // DTYPE_BYTES[file_dict.get("dtype", "float32")])
+#
+#     raise NotImplementedError  # todo: more options

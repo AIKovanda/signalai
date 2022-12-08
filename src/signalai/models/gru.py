@@ -69,13 +69,14 @@ class GRUMaxAvg(AutoParameterObject, nn.Module):
 
 
 class InceptionGRU(AutoParameterObject, nn.Module):
-    def __init__(self, input_size, hidden_size, layers, outputs, kernel_sizes, bias, combine=True):
+    def __init__(self, input_size, hidden_size, layers, outputs, kernel_sizes, bias, combine=True, pool_size=1):
         assert hidden_size % 4 == 0
         super(InceptionGRU, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
         self.layers = layers
+        self.pool_size = pool_size
         self.outputs = outputs
         self.combine = combine
         self.kernel_sizes = kernel_sizes
@@ -102,9 +103,9 @@ class InceptionGRU(AutoParameterObject, nn.Module):
                     bias=bias,
                 )
         self.rnn = nn.GRU(n_filters*4+input_size, hidden_size, layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size*4, outputs)
-        self.max = nn.AdaptiveMaxPool1d(output_size=1)
-        self.avg = nn.AdaptiveAvgPool1d(output_size=1)
+        self.fc = nn.Linear(hidden_size*4*self.pool_size, outputs)
+        self.max = nn.AdaptiveMaxPool1d(output_size=self.pool_size)
+        self.avg = nn.AdaptiveAvgPool1d(output_size=self.pool_size)
 
     def forward(self, x: torch.Tensor):
         h0 = torch.zeros(self.layers, x.size(0), self.hidden_size).to(x.device)
@@ -112,10 +113,13 @@ class InceptionGRU(AutoParameterObject, nn.Module):
         x = torch.concat([x, x0], dim=1)
         out_rnn, _ = self.rnn(torch.swapaxes(x, 1, 2), h0)
         rnn_out_swapped = torch.swapaxes(out_rnn, 1, 2)
-        outs = [self.avg(rnn_out_swapped).view(-1, self.hidden_size),
-                self.max(rnn_out_swapped).view(-1, self.hidden_size)]
+        outs = [self.avg(rnn_out_swapped).view(-1, self.hidden_size*self.pool_size),
+                self.max(rnn_out_swapped).view(-1, self.hidden_size*self.pool_size)]
         if self.combine:
             out_inc = self.inc2(x)
-            outs.append(self.avg(out_inc).view(-1, self.hidden_size))
-            outs.append(self.max(out_inc).view(-1, self.hidden_size))
+            outs.append(self.avg(out_inc).view(-1, self.hidden_size*self.pool_size))
+            outs.append(self.max(out_inc).view(-1, self.hidden_size*self.pool_size))
         return self.fc(torch.concat(outs, dim=-1))
+
+    def dont_persist_default_value_args(self) -> list[str]:
+        return ['pool_size']

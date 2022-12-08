@@ -1,6 +1,6 @@
 import abc
 from functools import lru_cache
-from itertools import chain
+from itertools import chain, count
 
 import numpy as np
 from taskchain.parameter import AutoParameterObject
@@ -8,23 +8,32 @@ from taskchain.parameter import AutoParameterObject
 from signalai.time_series import TimeSeries, sum_time_series
 
 
+def offset_generator():
+    yield 1/2
+    for pow_ in count(2):
+        for i in range(1, 2**(pow_ - 1), 2):
+            yield i / 2**pow_
+            yield 0.5 + i / 2**pow_
+
+
 class TimeSeriesGen(AutoParameterObject, abc.ABC):
     def __init__(self, **config):
         self.input_ts_gen_args: list[TimeSeriesGen] = []
         self.input_ts_gen_kwargs: dict[any, TimeSeriesGen] = {}
         self.taken_length = None
+        self.epoch_id = 0
         self.config = config
-        self.data = None
         self.built = False
         self.getitem = lru_cache(1)(self._getitem)
 
-    def _set_epoch(self, epoch_id: int):
+    def _next_epoch(self):
         pass
 
-    def set_epoch(self, epoch_id: int):
-        self._set_epoch(epoch_id)
+    def next_epoch(self):
+        self.epoch_id += 1
+        self._next_epoch()
         for i in chain(self.input_ts_gen_args, self.input_ts_gen_kwargs.values()):
-            i.set_epoch(epoch_id)
+            i.next_epoch()
 
     def _build(self):  # expensive loading/building function for data
         pass
@@ -36,6 +45,9 @@ class TimeSeriesGen(AutoParameterObject, abc.ABC):
             for i in chain(self.input_ts_gen_args, self.input_ts_gen_kwargs.values()):
                 i.build()
 
+    def _set_taken_length(self, length):
+        pass
+
     def set_taken_length(self, length):
         if self.taken_length is None:
             self.taken_length = length
@@ -45,6 +57,7 @@ class TimeSeriesGen(AutoParameterObject, abc.ABC):
                     f'This generator already gives length of {self.taken_length}, length {length} cannot '
                     f'be set instead. To bypass, restart taken_length value by calling reset_taken_length().')
 
+        self._set_taken_length(length)
         self._set_child_taken_length(length)
 
     def _set_child_taken_length(self, length):
@@ -66,6 +79,70 @@ class TimeSeriesGen(AutoParameterObject, abc.ABC):
     @lru_cache(1)
     def is_infinite(self) -> bool:
         pass
+
+    def get_random_item(self):
+        return self._getitem(np.random.randint(0, len(self)))
+
+
+class TimeSeriesHolder(TimeSeriesGen):
+
+    def __init__(self, timeseries: list[TimeSeries] = None, priorities: list[int] = None, **config):
+        super().__init__(**config)
+        self.timeseries = timeseries
+        self.priorities = priorities
+        self.offset_generator = offset_generator()
+        self.current_offset = 0
+        self.index_list: list[tuple[int, int | None]] = []
+
+    def _set_taken_length(self, length):
+        self._build_index_list()
+
+    def __len__(self):
+        return len(self.index_list)
+
+    def _next_epoch(self):
+        self.current_offset = next(self.offset_generator)
+        self._build_index_list()
+
+    def _build(self):
+        self._build_index_list()
+
+    def _build_index_list(self):
+        self.index_list = []
+        if self.taken_length is None:
+            priorities = self.priorities if self.priorities is not None else [1]*len(self.timeseries)
+            for i, priority in zip(range(len(self.timeseries)), priorities):
+                self.index_list += [(i, None)] * priority
+        else:
+            for i, ts in enumerate(self.timeseries):
+                ts_len = len(ts)
+                interval_count = int(np.ceil(ts_len / self.taken_length)) if self.priorities is None else self.priorities[i]
+                if self.current_offset == 0:
+                    end = ts_len - self.taken_length
+                else:
+                    end = ts_len + self.taken_length * (self.current_offset - 2)
+                for j in np.linspace(self.current_offset*self.taken_length, end, interval_count):
+                    self.index_list.append((i, int(j)))
+
+    def is_infinite(self) -> bool:
+        return False
+
+    def map_index(self, idx: int) -> tuple[int, int | None]:
+        return self.index_list[idx]
+
+    def _get_ts(self, ts_id: int, interval: tuple[int, int] = None) -> TimeSeries:
+        if interval is not None:
+            return self.timeseries[ts_id].crop(interval)
+        return self.timeseries[ts_id]
+
+    def _getitem(self, idx: int) -> TimeSeries:
+        ts_id, position = self.map_index(idx)
+        if self.taken_length:
+            assert position is not None, 'Position in signal must be defined when specifying the taken length!'
+            return self._get_ts(ts_id, (position, position+self.taken_length))
+
+        assert position is None, 'Position in signal is defined without specifying the taken length!'
+        return self._get_ts(ts_id)
 
 
 class Transformer(TimeSeriesGen):
@@ -148,7 +225,7 @@ class TimeSeriesSum(Transformer):
         pass
 
     def _process(self, ts_list: list[TimeSeries]) -> TimeSeries:
-        return sum_time_series(*ts_list)
+        return sum_time_series(ts_list)
 
 
 class LambdaTransformer(Transformer):

@@ -1,13 +1,10 @@
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 import pandas as pd
 
-from signalai import read_audio
-from signalai.time_series_gen import TimeSeriesGen
-from time_series import TimeSeries, sum_time_series, stack_time_series
-from time_series_old import SeriesTrack
+from signalai.time_series_gen import TimeSeriesGen, TimeSeriesHolder
+from signalai.time_series import TimeSeries, sum_time_series, stack_time_series, Signal, read_audio
 
 
 class EventsGen(TimeSeriesGen):
@@ -48,13 +45,13 @@ class EventsGen(TimeSeriesGen):
                 for origin_filename, full_signal in all_signals.items():
                     s = full_signal.crop(interval=(row.sample_start, row.sample_end))
                     # s.trim_(threshold=1e-7)  # found around 1000 empty samples in the beginning
-                    s.update_meta({'force': row.force, 'origin': origin_filename})
+                    s.update_meta({'force': row.force, 'origin': origin_filename, 'class_name': unique_event_type})
                     event_signals.append(s)
 
             assert len(event_signals) > 0, f'Event type {unique_event_type!r} cannot load its signals.'
-            # self.input_ts_gen_kwargs[unique_event_type] = SeriesClass(
-            #     series=event_signals, class_name=unique_event_type
-            # )
+            self.input_ts_gen_kwargs[unique_event_type] = TimeSeriesHolder(
+                timeseries=event_signals,
+            )
     
     def next(self) -> TimeSeries:
         """
@@ -67,7 +64,7 @@ class EventsGen(TimeSeriesGen):
         allowed_starting_indices = np.arange(*self.config.get('start_arange', [1]))
         allowed_event_length = np.arange(*self.config.get('event_length_arange', [self.taken_length]))
 
-        signals = []
+        non_zero_signals = {}
 
         for chosen_event_name in event_names:
             chosen_event_intervals = []
@@ -86,13 +83,15 @@ class EventsGen(TimeSeriesGen):
                 else:
                     chosen_event_intervals.append([starting_index, ending_index])
 
-            if len(chosen_event_intervals) == 0:
-                chosen_event_intervals.append([0, 0])
+            if len(chosen_event_intervals) != 0:
+                non_zero_signals[chosen_event_name] = sum_time_series(
+                    [self.input_ts_gen_kwargs[chosen_event_name].get_random_item().crop(
+                        (0, ending_index - starting_index)).margin_interval(
+                        interval_length=self.taken_length,
+                        start_id=starting_index,
+                    ) for (starting_index, ending_index) in chosen_event_intervals])
 
-            signals.append(sum_time_series(*[self.input_ts_gen_kwargs[chosen_event_name].getitem().crop(
-                [0, ending_index - starting_index]).margin_interval(
-                interval_length=self.taken_length,
-                start_id=starting_index,
-            ) for (starting_index, ending_index) in chosen_event_intervals]))
+        non_zero_signal = list(non_zero_signals.values())[0]
+        zero_signal = Signal(data_arr=np.zeros_like(non_zero_signal.data_arr), time_map=np.zeros_like(non_zero_signal.time_map), meta=non_zero_signal.meta)
 
-        return stack_time_series(*signals)
+        return stack_time_series([non_zero_signals.get(key, zero_signal) for key in event_names])

@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -16,12 +15,3 @@ EVALUATION_DIR = DATA_DIR / 'eval'
 
 TASKS_DIR.mkdir(exist_ok=True)
 EVALUATION_DIR.mkdir(exist_ok=True)
-
-
-DEVICE = 'cuda'
-
-
-DTYPE_BYTES = {'float32': 4, 'float16': 2}
-
-
-LOADING_THREADS = os.cpu_count()

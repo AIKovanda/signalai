@@ -139,7 +139,7 @@ class Transformer(AutoParameterObject):
     def transform_timeseries(self, x: TimeSeries) -> Union[TimeSeries, np.ndarray]:
         ...
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         raise NotImplementedError("Original length is not implemented for this transformation.")
 
     @property
@@ -178,7 +178,7 @@ class Resampler(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, input_fs: int, output_fs: int) -> np.ndarray:
+    def transform_npy(self, x: np.ndarray, input_fs: float, output_fs: float) -> np.ndarray:
         return np.expand_dims(resample(
             x[0].astype('float32'), input_fs, output_fs, res_type='linear'
         ).astype(x.dtype), 0)
@@ -198,7 +198,7 @@ class Resampler(Transformer):
             fs=output_fs,
         )
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return int(length * fs / self.evaluated_params.get('output_fs'))
 
     @property
@@ -224,7 +224,7 @@ class Standardizer(Transformer):
             fs=x.fs,
         )
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property
@@ -239,7 +239,7 @@ class Gain(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
+    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
         gain_db = self._get_parameter_uniform('gain_db', default=[-10, 10])
         return PBGain(gain_db=gain_db)(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
@@ -251,7 +251,7 @@ class Gain(Transformer):
             fs=x.fs,
         )
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property
@@ -266,7 +266,7 @@ class Phaser(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
+    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
         return PBPhaser()(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
     def transform_timeseries(self, x: TimeSeries) -> TimeSeries:
@@ -277,7 +277,7 @@ class Phaser(Transformer):
             fs=x.fs,
         )
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property
@@ -292,7 +292,7 @@ class Chorus(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
+    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
         centre_delay_ms = self._get_parameter_uniform('centre_delay_ms', default=[7., 8.])
         return PBChorus(centre_delay_ms=centre_delay_ms)(input_array=x, sample_rate=fs)  # todo .astype(x.dtype)
 
@@ -304,7 +304,7 @@ class Chorus(Transformer):
             fs=x.fs,
         )
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property
@@ -324,7 +324,7 @@ class Reverb(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
+    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
         room_size = self._get_parameter_uniform('room_size', default=[0., 1.])
         damping = self._get_parameter_uniform('damping', default=[0., 1.])
         wet_level = self._get_parameter_uniform('wet_level', default=[0., 1.])
@@ -346,7 +346,7 @@ class Reverb(Transformer):
             fs=x.fs,
         )
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property
@@ -362,7 +362,7 @@ class BandPassFilter(Transformer):
     in_dim = 2
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: int) -> np.ndarray:
+    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
         low_cut = self.evaluated_params.get('low_cut')
         high_cut = self.evaluated_params.get('high_cut')
 
@@ -376,7 +376,7 @@ class BandPassFilter(Transformer):
             fs=x.fs,
         )
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property
@@ -398,7 +398,7 @@ class ChannelJoiner(Transformer):
             channels = self.evaluated_params.get("channels", [list(range(x.data_arr.shape[0]))])
         return x.take_channels(channels=channels)
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property
@@ -414,7 +414,7 @@ class Lambda(Transformer):
     def transform(self, x: TimeSeries) -> TimeSeries:
         return self.evaluated_params.get("lambda")(x)
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property
@@ -437,7 +437,7 @@ class TimeMapScale(Transformer):
         new_time_map = time_map[:, np.round(np.linspace(0, time_map.shape[-1] - 1, int(target_length))).astype(int)]
         return TimeSeries(time_map=new_time_map, meta=x.meta)
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:  # todo: another approach
+    def original_signal_length(self, length: int, fs: float = None) -> int:  # todo: another approach
         return length
 
     @property
@@ -476,7 +476,7 @@ class STFT(Transformer):
             fs=x.fs,
         )
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property
@@ -513,7 +513,7 @@ class ISTFT(Transformer):
             fs=x.fs,
         )
 
-    def original_signal_length(self, length: int, fs: int = None) -> int:
+    def original_signal_length(self, length: int, fs: float = None) -> int:
         return length
 
     @property

@@ -1,11 +1,14 @@
+import pathlib
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from signalai.config import DTYPE_BYTES
-from signalai.tools.utils import (join_dicts)
+from signalai.tools.utils import join_dicts
+
+
+DTYPE_BYTES = {'float32': 4, 'float16': 2}
 
 
 class TimeSeries:
@@ -19,7 +22,7 @@ class TimeSeries:
     """
     full_dimensions = None
 
-    def __init__(self, data_arr: np.ndarray = None, meta=None, time_map=None, fs: int = None):
+    def __init__(self, data_arr: np.ndarray = None, meta=None, time_map=None, fs: float = None):
         if meta is None:
             meta = {}
 
@@ -52,7 +55,7 @@ class TimeSeries:
         self.meta = meta.copy()
         self.fs = fs
 
-    def crop(self, interval=None):
+    def crop(self, interval: tuple[int, int] = None):
         if interval is None:
             data_arr = self.data_arr
             time_map = self.time_map
@@ -323,7 +326,7 @@ class Signal(TimeSeries):
         ax.set_title('Power spectrogram')
         fig.colorbar(img, ax=ax, format="%+2.0f dB")
 
-    def play(self, channel_id=0, fs: int = None, volume=32):
+    def play(self, channel_id=0, fs: float = None, volume=32):
         import sounddevice as sd
         fs = fs or self.fs
         sd.play(volume * self.data_arr[channel_id].astype('float32'), fs)
@@ -354,7 +357,7 @@ class Signal2D(TimeSeries):
         ...
 
 
-def sum_time_series(*series):
+def sum_time_series(series: list[TimeSeries]) -> TimeSeries:
     if len(series) == 0:
         raise ValueError
     elif len(series) == 1:
@@ -367,7 +370,7 @@ def sum_time_series(*series):
     return ts0
 
 
-def stack_time_series(*series):
+def stack_time_series(series: list[TimeSeries]) -> TimeSeries:
     if len(series) == 0:
         raise ValueError
     elif len(series) == 1:
@@ -380,7 +383,7 @@ def stack_time_series(*series):
     return ts0
 
 
-def join_time_series(*series):
+def join_time_series(series: list[TimeSeries]) -> TimeSeries:
     if len(series) == 0:
         raise ValueError
     elif len(series) == 1:
@@ -413,77 +416,57 @@ def audio_file2numpy(file) -> tuple[np.ndarray, int]:
     return np_audio[0].T, int(mediainfo(file)['sample_rate'])
 
 
-def read_audio(filename, file_sample_interval=None, interval=None, dtype=None, fs=None):
-    real_start, interval_length = _get_start_length(file_sample_interval, interval)
+def read_audio(filename, interval: tuple[int, int] = None, dtype=None, fs: float = None, meta=None) -> Signal:
+    
     data_arr, fs_ = audio_file2numpy(filename)
     if fs is not None and fs != fs_:
         raise ValueError(f'fs is wrong in config (from config) {fs}!={fs_} (from audio)')
     if dtype is not None:
         data_arr = data_arr.astype(dtype)
-    if not real_start:
-        return Signal(data_arr=data_arr, fs=fs_)
-    if not file_sample_interval:
-        return Signal(data_arr=data_arr[:, real_start:], fs=fs_)
 
-    return Signal(data_arr=data_arr[:, real_start: real_start + interval_length], fs=fs_)
+    s = Signal(data_arr=data_arr, fs=fs_, meta=meta)
+    if interval is not None:
+        return s.crop(interval)
+
+    return s
 
 
-def read_bin(filename, file_sample_interval=None, interval=None, source_dtype='float32', dtype=None, meta=None,
-             fs: int = None):
-    real_start, interval_length = _get_start_length(file_sample_interval, interval)
+def read_bin(filename, interval: tuple[int, int] = None, source_dtype='float32', dtype=None, meta=None,
+             fs: float = None) -> Signal:
     with open(filename, "rb") as f:
-        start_byte = int(DTYPE_BYTES[source_dtype] * real_start)
+        start_byte = int(DTYPE_BYTES[source_dtype] * interval[0]) if interval is not None else 0
         assert start_byte % DTYPE_BYTES[source_dtype] == 0, "Bytes are not loading properly."
         f.seek(start_byte, 0)
-        data_arr = np.expand_dims(np.fromfile(f, dtype=source_dtype, count=interval_length or -1), axis=0)
+        count = (interval[1] - interval[0]) if interval is not None else -1
+        data_arr = np.expand_dims(np.fromfile(f, dtype=source_dtype, count=count), axis=0)
         if dtype is not None:
             data_arr = data_arr.astype(dtype)
         return Signal(data_arr=data_arr, meta=meta, fs=fs)
 
 
-def read_npy(filename, file_sample_interval=None, interval=None, dtype=None, fs: int = None):
-    real_start, interval_length = _get_start_length(file_sample_interval, interval)
-    full_data_arr = np.load(filename)
-    if len(full_data_arr.shape) == 1:
-        full_data_arr = np.expand_dims(full_data_arr, axis=0)
-    data_arr = full_data_arr[:, real_start: real_start + interval_length]
+def from_numpy(data_arr: np.ndarray, interval: tuple[int, int] = None, dtype=None, fs: float = None, meta=None) -> TimeSeries:
+    assert isinstance(data_arr, np.ndarray), f"data_arr must be a numpy.ndarray, not '{type(data_arr)}'"
+    if len(data_arr.shape) == 1:
+        data_arr = np.expand_dims(data_arr, axis=0)
+    if interval is not None:
+        data_arr = data_arr[..., interval[0]: interval[1]]
     if dtype is not None:
         data_arr = data_arr.astype(dtype)
 
-    if len(full_data_arr.shape) == 2:
-        return Signal(data_arr=data_arr, fs=fs)
-    elif len(full_data_arr.shape) == 3:
-        return Signal2D(data_arr=data_arr, fs=fs)
-    else:
-        raise ValueError(f"Loaded array '{filename}' has {len(full_data_arr.shape)} channels, maximum is 3.")
-
-
-def from_numpy(data_arr: np.ndarray, meta=None, time_map=None, fs: int = None) -> TimeSeries:
-    assert isinstance(data_arr, np.ndarray), f"data_arr must be a numpy.ndarray, not '{type(data_arr)}'"
-    if len(data_arr.shape) in [1, 2]:
-        return Signal(data_arr=data_arr, meta=meta, time_map=time_map, fs=fs)
+    if len(data_arr.shape) == 2:
+        return Signal(data_arr=data_arr, meta=meta, fs=fs)
     elif len(data_arr.shape) == 3:
-        return Signal2D(data_arr=data_arr, fs=fs)
+        return Signal2D(data_arr=data_arr, meta=meta, fs=fs)
     else:
-        raise ValueError(f"data_arr has unsupported dimension {len(data_arr.shape)}.")
+        raise ValueError(f"Loaded array has {len(data_arr.shape)} channels, maximum is 3.")
 
 
-def _get_start_length(file_sample_interval, interval) -> tuple[int, int]:
-    """
-    Takes file_sample_interval and inner interval and returns tuple of real_start and interval_length.
-    """
-    real_start = 0
-    interval_length = None
-    if file_sample_interval is not None:
-        real_start += file_sample_interval[0]
-        interval_length = file_sample_interval[1] - file_sample_interval[0]
-    if interval is not None:
-        real_start += interval[0]
-        if interval_length is not None:
-            interval_length = min(interval_length, interval[1] - interval[0])
-        else:
-            interval_length = interval[1] - interval[0]
-
-    if interval_length is not None:
-        interval_length = int(interval_length)
-    return int(real_start), interval_length
+def read_npy(filename: str | pathlib.PosixPath, interval: tuple[int, int] = None, dtype=None, fs: float = None, meta=None) -> TimeSeries:
+    full_data_arr = np.load(filename)
+    return from_numpy(
+        data_arr=full_data_arr,
+        interval=interval,
+        dtype=dtype,
+        fs=fs,
+        meta=meta,
+    )
