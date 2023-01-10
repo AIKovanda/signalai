@@ -3,61 +3,50 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from signalai.datasets.file_loader import GlobFileLoader
+from signalai.time_series import read_audio, Signal, stack_time_series, sum_time_series, TimeSeries
 from signalai.time_series_gen import TimeSeriesGen, TimeSeriesHolder
-from signalai.time_series import TimeSeries, sum_time_series, stack_time_series, Signal, read_audio
+from signalai.tools.utils import join_dicts
 
 
 class EventsGen(TimeSeriesGen):
-    def __len__(self):
-        pass
+    def __init__(self, **config):
+        super().__init__(**config)
+        self.signal_info = {}
 
-    def _getitem(self, item: int) -> TimeSeries:
+    def __len__(self):
         pass
 
     def is_infinite(self) -> bool:
         return True
 
     def _build(self):
-        assert 'filename' in self.config
-        assert 'classes_file' in self.config
-        self.build_class_dicts()
+        assert 'paths' in self.config, 'A dict class_name: dir_with_files'
 
-    def build_class_dicts(self):
-        df = pd.read_csv(self.config['classes_file'])
-        unique_events = df['event'].drop_duplicates().to_list()
-
-        files = list(Path('/'.join(self.config["filename"].split('/')[:-1])).glob(
-            self.config["filename"].split('/')[-1]))
-        assert len(files) > 0, 'There is no file!'
-
-        # loading all files
-        all_signals = {}
-        for file in files:
-            full_signal = read_audio(file, dtype=self.config.get("target_dtype"))
-            assert full_signal.fs is not None
-            full_signal.update_meta(self.config.get("meta", {}))
-            all_signals[str(file)] = full_signal
-
-        for unique_event_type in unique_events:
-            sub_df = df.query(f"event=='{unique_event_type}'")
-            event_signals = []
-            for row in sub_df.itertuples():
-                for origin_filename, full_signal in all_signals.items():
-                    s = full_signal.crop(interval=(row.sample_start, row.sample_end))
-                    # s.trim_(threshold=1e-7)  # found around 1000 empty samples in the beginning
-                    s.update_meta({'force': row.force, 'origin': origin_filename, 'class_name': unique_event_type})
-                    event_signals.append(s)
-
-            assert len(event_signals) > 0, f'Event type {unique_event_type!r} cannot load its signals.'
-            self.input_ts_gen_kwargs[unique_event_type] = TimeSeriesHolder(
-                timeseries=event_signals,
+        for class_name, dir_with_files in self.config['paths'].items():
+            self.input_ts_gen_kwargs[class_name] = GlobFileLoader(
+                base_dir=dir_with_files, file_structure=self.config.get('file_structure', {}),
             )
-    
-    def next(self) -> TimeSeries:
-        """
-        Event compose, randomly taking events into a MultiSeries.
-        """
-        events_number = np.random.choice(range(*self.config.get('events_count_range', (0, 10))))
+            self.input_ts_gen_kwargs[class_name].build()
+        dim_set = set()
+        meta_list = []
+        fs_set = set()
+        for input_ts_gen in self.input_ts_gen_kwargs.values():
+            s = input_ts_gen.get_random_item()
+            dim_set.add(s.data_arr.shape[0])
+            meta_list.append(s.meta)
+            fs_set.add(s.fs)
+
+        assert len(fs_set) == 1, 'Items have different sample frequency.'
+        assert len(dim_set) == 1, 'Items have different channel number.'
+
+        self.signal_info['fs'] = fs_set.pop()
+        self.signal_info['dim'] = dim_set.pop()
+        self.signal_info['meta'] = join_dicts(*meta_list)
+
+    def _getitem(self, item: int) -> TimeSeries:
+        assert self.taken_length is not None
+        events_number = np.random.choice(range(*self.config.get('event_count_range', (0, 10))))
         event_names = list(self.input_ts_gen_kwargs.keys())
         chosen_event_names = [np.random.choice(event_names) for _ in range(events_number)]
 
@@ -91,7 +80,47 @@ class EventsGen(TimeSeriesGen):
                         start_id=starting_index,
                     ) for (starting_index, ending_index) in chosen_event_intervals])
 
-        non_zero_signal = list(non_zero_signals.values())[0]
-        zero_signal = Signal(data_arr=np.zeros_like(non_zero_signal.data_arr), time_map=np.zeros_like(non_zero_signal.time_map), meta=non_zero_signal.meta)
-
+        zero_signal = Signal(
+            data_arr=np.zeros((self.signal_info['dim'], self.taken_length)),
+            time_map=np.zeros((self.signal_info['dim'], self.taken_length)),
+            meta=self.signal_info['meta'],
+            fs=self.signal_info['fs'],
+        )
         return stack_time_series([non_zero_signals.get(key, zero_signal) for key in event_names])
+
+
+class CSVEventsGen(EventsGen):
+
+    def _build(self):
+        assert 'filename' in self.config
+        assert 'classes_file' in self.config
+
+        df = pd.read_csv(self.config['classes_file'])
+        unique_events = df['event'].drop_duplicates().to_list()
+
+        files = list(Path('/'.join(self.config["filename"].split('/')[:-1])).glob(
+            self.config["filename"].split('/')[-1]))
+        assert len(files) > 0, 'There is no file!'
+
+        # loading all files
+        all_signals = {}
+        for file in files:
+            full_signal = read_audio(file, dtype=self.config.get("target_dtype"))
+            assert full_signal.fs is not None
+            full_signal.update_meta(self.config.get("meta", {}))
+            all_signals[str(file)] = full_signal
+
+        for unique_event_type in unique_events:
+            sub_df = df.query(f"event=='{unique_event_type}'")
+            event_signals = []
+            for row in sub_df.itertuples():
+                for origin_filename, full_signal in all_signals.items():
+                    s = full_signal.crop(interval=(row.sample_start, row.sample_end))
+                    # s.trim_(threshold=1e-7)  # found around 1000 empty samples in the beginning
+                    s.update_meta({'force': row.force, 'origin': origin_filename, 'class_name': unique_event_type})
+                    event_signals.append(s)
+
+            assert len(event_signals) > 0, f'Event type {unique_event_type!r} cannot load its signals.'
+            self.input_ts_gen_kwargs[unique_event_type] = TimeSeriesHolder(
+                timeseries=event_signals,
+            )

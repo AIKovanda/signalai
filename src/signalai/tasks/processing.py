@@ -2,7 +2,6 @@ from pathlib import Path
 
 from taskchain import DirData, InMemoryData, Parameter
 from taskchain.task import Task
-from tqdm import tqdm
 
 from signalai.core import TimeSeriesModel
 from signalai.tasks.data_preparation import TestTimeSeriesGen, TrainTimeSeriesGen, ValidTimeSeriesGen

@@ -150,6 +150,14 @@ class TimeSeries:
             fs=self.fs,
         )
 
+    def sum_channels(self):
+        return type(self)(
+            data_arr=np.sum(self.data_arr, axis=0),
+            time_map=np.sum(self.time_map, axis=0),
+            meta=self.meta,
+            fs=self.fs,
+        )
+
     def apply(self, func):
         return type(self)(
             data_arr=func(self.data_arr),
@@ -217,7 +225,7 @@ class TimeSeries:
                              f"{len(self)}, {len(other)}")
 
         if (not (self.fs is None and other.fs is None)) and self.fs != other.fs:
-            raise ValueError("Joining signals with different fs is forbidden (for a good reason).")
+            raise ValueError(f"Joining signals with different fs is forbidden (for a good reason), {self.fs}, {other.fs}.")
 
         new_data_arr = np.concatenate([self.data_arr, other_ts.data_arr], axis=0)
         new_time_map = np.concatenate([self.time_map, other_ts.time_map], axis=0)
@@ -257,23 +265,6 @@ class TimeSeries:
             self.meta | {'length': len(self), 'channels': self.channels_count, 'fs': self.fs},
             orient='index', columns=['value'],
         ))
-
-    # def __iter__(self):
-    #     self.n = 0
-    #     return self
-    #
-    # def __next__(self):
-    #     if self.n < self.channels_count:
-    #         sub_arr = self._data_arr[self.n: self.n+1]
-    #         self.n += 1
-    #         return type(self)(
-    #             data_arr=sub_arr,
-    #             meta=self.meta,
-    #             time_map=self.time_map,
-    #             fs=self.fs,
-    #         )
-    #     else:
-    #         raise StopIteration
 
     def update_meta(self, dict_):
         self.meta = self.meta.copy()

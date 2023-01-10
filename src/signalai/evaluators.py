@@ -1,6 +1,8 @@
 import abc
 
+import numpy as np
 import torch
+from sklearn.metrics import accuracy_score, auc, precision_score, recall_score, roc_curve
 from taskchain.parameter import AutoParameterObject
 
 
@@ -42,21 +44,39 @@ class L2PieceWise(TorchEvaluator):
     @property
     def metric_value(self) -> dict:
         stack = torch.stack(self.items, dim=0)
-        # print(stack)
         return {'L2PieceWise': torch.mean(stack, dim=0).detach().cpu().numpy()}
+
+
+class L1Total(TorchEvaluator):
+
+    def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
+        self.items.append(torch.abs(y_true[0] - y_pred[0]))
+
+    @property
+    def metric_value(self) -> dict:
+        stack = torch.stack(self.items, dim=0)
+        return {'L1Total': float(torch.mean(stack))}
 
 
 class L2Total(TorchEvaluator):
 
     def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
-        # print(f'{y_true=}\n{y_pred=}\n{(y_true[0] - y_pred[0])**2}')
         self.items.append((y_true[0] - y_pred[0])**2)
 
     @property
     def metric_value(self) -> dict:
         stack = torch.stack(self.items, dim=0)
-        # print(stack)
         return {'L2Total': float(torch.mean(stack))}
+
+
+class Accuracy(TorchEvaluator):
+
+    def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
+        self.items.append(int(torch.abs(y_true[0] - y_pred[0]) < 0.5))
+
+    @property
+    def metric_value(self) -> dict:
+        return {'Acc': float(np.mean(self.items))}
 
 
 # class ItemsEcho(SignalEvaluator):
@@ -146,38 +166,40 @@ class L2Total(TorchEvaluator):
 #             y = torch.from_numpy(true_channel).type(torch.float32).unsqueeze(0).unsqueeze(0).to(config.DEVICE)
 #             return self._transform(x)[0][0].detach().cpu().numpy(), self._transform(y)[0][0].detach().cpu().numpy()
 #
-#
-# class Binary(SignalEvaluator):
-#     name = 'binary'
-#
-#     def __init__(self, **params):
-#         super().__init__(**params)
-#         self.name = f'binary-t{self.params.get("threshold", .5)}'
-#
-#     @property
-#     def stat(self) -> dict[str, float]:
-#         print(self.name)
-#         true = np.concatenate([i[0] for i in self.items], axis=1).reshape(-1)
-#         pred = np.concatenate([i[1] for i in self.items], axis=1).reshape(-1)
-#         th = self.params.get('threshold', .5)
-#
-#         fpr, tpr, _ = roc_curve(true, pred)
-#         roc_auc = auc(fpr, tpr)
-#
-#         true_map = true > .5
-#         pred_map = pred > th
-#
-#         precision = precision_score(true_map, pred_map, zero_division=1)
-#         recall = recall_score(true_map, pred_map)
-#         return {
-#             'accuracy': accuracy_score(true_map, pred_map),
-#             'precision': precision,
-#             'recall': recall,
-#             'F1': 2 * precision * recall / (precision + recall),
-#             'roc_auc': roc_auc,
-#         }
-#
-#
+
+class Binary(TorchEvaluator):
+    def __init__(self, **params):
+        super().__init__(**params)
+        self.trues = []
+        self.preds = []
+
+    def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
+        self.trues.append(y_true[0].detach().cpu().numpy())
+        self.preds.append(y_pred[0].detach().cpu().numpy())
+
+    @property
+    def metric_value(self) -> dict:
+        true = np.concatenate(self.trues, axis=1).reshape(-1)
+        pred = np.concatenate(self.preds, axis=1).reshape(-1)
+        th = self.params.get('threshold', .5)
+
+        fpr, tpr, _ = roc_curve(true, pred)
+        roc_auc = auc(fpr, tpr)
+
+        true_map = true > .5
+        pred_map = pred > th
+
+        precision = precision_score(true_map, pred_map, zero_division=1)
+        recall = recall_score(true_map, pred_map)
+        return {
+            'accuracy': accuracy_score(true_map, pred_map),
+            'precision': precision,
+            'recall': recall,
+            'F1': 2 * precision * recall / (precision + recall),
+            'roc_auc': roc_auc,
+        }
+
+
 # class EBinary(Binary):
 #     name = 'e-binary'
 #

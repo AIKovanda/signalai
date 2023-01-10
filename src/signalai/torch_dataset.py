@@ -24,7 +24,7 @@ class TorchDataset(Dataset, Transformer):
 
     def __len__(self):
         try:
-            return super().__len__()
+            return min(self.config['max_length'], super().__len__())
         except ValueError:
             return self.config['max_length']
 

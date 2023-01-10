@@ -1,50 +1,90 @@
+# these stuffs are necessary for the taskchain library
 tasks: signalai.tasks.processing.*
 uses: "{CONFIGS_DIR}/data_preparation/burst_detection/signal_noscale.yaml"
 
 
-signal_model_config:
-  signal_model_type: torch_signal_model
-  output_type: signal
-  target_signal_length: 32768
-  model:
-    class: signalai.models.InceptionTime
-    kwargs:
-      build_config:
-        - bottleneck_channels: 32
-          kernel_sizes: [63, 127, 255]
-          activation: Mish
-          n_filters: 32
-
-      out_activation: sigmoid
-      in_channels: 1
-      outputs: -2
-
-  transform: {}
-
-  post_transform: {}
-
-
-batch_size: 3
-batches: 25000
-echo_step: 300
-save_step: 1500
-average_losses_to_print: 300
-#early_stopping_min: 2000
-#early_stopping_regression: 1500
-
-criterion:
-  name: BCELoss
-optimizer:
-  name: Adam
+model:
+  class: signalai.torch_model.OneIOTorchTimeSeriesModel
   kwargs:
-    lr: 0.0002
+    taken_length: 32768
+    model_definition:
+      model:
+        class: signalai.models.InceptionTime
+        kwargs:
+          build_config:
+            - bottleneck_channels: 32
+              kernel_sizes: [63, 127, 255]
+              activation: Mish
+              n_filters: 32
+
+          out_activation: sigmoid
+          in_channels: 1
+          outputs: -2
+
+    device: cuda
+    training_params:
+      epochs: 5
+      dataloader_kwargs:
+        batch_size: 3
+        shuffle: true
+        num_workers: 8
+      max_batches: 5000
+      save_epoch_step: 1
+      # save_batch_step: 1500
+      # early_stopping_regression: 1500
+      # early_stopping_average_losses: 300
+      set:
+        0:
+          criterion:
+            name: BCELoss
+          optimizer:
+            name: Adam
+            kwargs:
+              weight_decay: 1.0e-5
+              lr: 2.0e-4
+        35:
+          optimizer:
+            name: Adam
+            kwargs:
+              weight_decay: 1.0e-5
+              lr: 1.0e-5
+        50:
+          optimizer:
+            name: Adam
+            kwargs:
+              weight_decay: 1.0e-5
+              lr: 1.0e-6
+
+    training_echo:
+      # echo_step: 5000
+      metrics: {}
+      init_eval: true
+      evaluators:
+        - class: signalai.evaluators.Binary
+        #- class: signalai.evaluators.EBinary
+      evaluation_params:
+        dataloader_kwargs:
+          batch_size: 3
+          shuffle: false
+          num_workers: 8
+
+        max_batches: 100
+
+
+generators:
+  x_lambda:
+    class: signalai.time_series_gen.LambdaTransformer
+    kwargs:
+      lambda_w: w.data_arr
+      apply_to_ts: true
+
+
+transform_graph:
+  =pre_transform:
+    x_lambda
 
 
 evaluators:
-- class: signalai.evaluators.ItemsEcho
-- class: signalai.evaluators.Binary
-- class: signalai.evaluators.EBinary
-
-eval_batch_size: 3
-eval_batches: 1500
-eval_post_transform: false
+#  - class: signalai.evaluators.ItemsEcho
+  - class: signalai.evaluators.Binary
+#  - class: signalai.evaluators.EBinary

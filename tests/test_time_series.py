@@ -222,28 +222,41 @@ def test_general_operators():
                     meta={'a': 1, 'b': 'asdf'}, fs=50)
     data_arr_s1 = s1.data_arr.copy()
     assert sum_time_series([s1, s2, s3]) == TimeSeries(data_arr=np.array([[13, 16.5],
-                                                                        [8, 11.5]]),
-                                                     time_map=np.array([[1, 1],
-                                                                        [0, 1]]),
-                                                     meta={'a': 1, 'b': 'asdf'}, fs=50)
+                                                                          [8, 11.5]]),
+                                                       time_map=np.array([[1, 1],
+                                                                          [0, 1]]),
+                                                       meta={'a': 1, 'b': 'asdf'}, fs=50)
     assert np.all(data_arr_s1 == s1.data_arr)
 
     assert stack_time_series([s1, s2, s3]) == TimeSeries(data_arr=np.array([[3, 3.5],
-                                                                          [2, 1],
-                                                                          [4, 6.5],
-                                                                          [5, 4],
-                                                                          [6, 6.5],
-                                                                          [1, 6.5]]),
-                                                       time_map=np.array([[1, 0],
-                                                                          [0, 1],
-                                                                          [0, 1],
-                                                                          [0, 0],
-                                                                          [0, 1],
-                                                                          [0, 0]]),
-                                                       meta={'a': 1, 'b': 'asdf'}, fs=50)
+                                                                            [2, 1],
+                                                                            [4, 6.5],
+                                                                            [5, 4],
+                                                                            [6, 6.5],
+                                                                            [1, 6.5]]),
+                                                         time_map=np.array([[1, 0],
+                                                                            [0, 1],
+                                                                            [0, 1],
+                                                                            [0, 0],
+                                                                            [0, 1],
+                                                                            [0, 0]]),
+                                                         meta={'a': 1, 'b': 'asdf'}, fs=50)
 
     assert join_time_series([s1, s2, s3]) == TimeSeries(data_arr=np.array([[3, 3.5, 4, 6.5, 6, 6.5],
-                                                                         [2, 1, 5, 4, 1, 6.5]]),
-                                                      time_map=np.array([[1, 0, 0, 1, 0, 1],
-                                                                         [0, 1, 0, 0, 0, 0]]),
-                                                      meta={'a': 1, 'b': 'asdf'}, fs=50)
+                                                                           [2, 1, 5, 4, 1, 6.5]]),
+                                                        time_map=np.array([[1, 0, 0, 1, 0, 1],
+                                                                           [0, 1, 0, 0, 0, 0]]),
+                                                        meta={'a': 1, 'b': 'asdf'}, fs=50)
+
+
+def test_sum_channels():
+    s1 = TimeSeries(data_arr=np.array([[1, 2, 3, 3.5, 0],
+                                       [2, 3, 3.5, 1, 0]]),
+                    time_map=np.array([[1, 1, 1, 0, 0],
+                                       [0, 1, 0, 1, 0]]),
+                    meta={'a': 0, 'b': 'asdf'}, fs=50)
+
+    s1 = s1.sum_channels()
+    assert s1 == TimeSeries(data_arr=np.array([[3, 5, 6.5, 4.5, 0]]),
+                            time_map=np.array([[1, 1, 1, 1, 0]]),
+                            meta={'a': 0, 'b': 'asdf'}, fs=50)

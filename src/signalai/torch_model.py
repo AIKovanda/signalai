@@ -66,7 +66,8 @@ class TorchTimeSeriesModel(TimeSeriesModel):
             if model_id > 0:
                 self.model = self.model.weight_reset().to(self.device)
 
-            print(f"Training model #{model_id}...")
+            if self.model_count > 1:
+                print(f"Training model #{model_id}...")
             if valid_time_series_gen is not None and len(self.training_echo.get('evaluators', [])) != 0 and self.training_echo.get('init_eval', False):
                 eval_history.append(self._eval_in_training(valid_time_series_gen))
 
@@ -139,6 +140,7 @@ class TorchTimeSeriesModel(TimeSeriesModel):
             valid_time_series_gen,
             evaluators=self.training_echo.get('evaluators'),
             evaluation_params=self.training_echo.get("evaluation_params", {}),
+            use_tqdm=True,
         )
         for key, val in eval_dict.items():
             print(f'{key:<12}: {val}')
@@ -170,7 +172,7 @@ class TorchTimeSeriesModel(TimeSeriesModel):
             evaluator.reset_items()
 
         data_loader = DataLoader(time_series_gen, **evaluation_params.get('dataloader_kwargs', {}))
-        tqdm_train_loader = tqdm(data_loader, ncols=150) if use_tqdm else data_loader
+        tqdm_train_loader = tqdm(data_loader, ncols=150, desc='Evaluating model...') if use_tqdm else data_loader
         for x, y in tqdm_train_loader:
             x = tuple(val.type(torch.float32).to(self.device) for val in x)
             y_true = tuple(val.type(torch.float32).to(self.device) for val in y)

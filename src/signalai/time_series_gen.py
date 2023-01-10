@@ -45,10 +45,13 @@ class TimeSeriesGen(AutoParameterObject, abc.ABC):
             for i in chain(self.input_ts_gen_args, self.input_ts_gen_kwargs.values()):
                 i.build()
 
+            assert all([i.built for i in chain(self.input_ts_gen_args, self.input_ts_gen_kwargs.values())])
+
     def _set_taken_length(self, length):
         pass
 
     def set_taken_length(self, length):
+        assert length is not None
         if self.taken_length is None:
             self.taken_length = length
         else:
@@ -105,6 +108,7 @@ class TimeSeriesHolder(TimeSeriesGen):
         self._build_index_list()
 
     def _build(self):
+        print('asdf')
         self._build_index_list()
 
     def _build_index_list(self):
@@ -144,14 +148,37 @@ class TimeSeriesHolder(TimeSeriesGen):
         assert position is None, 'Position in signal is defined without specifying the taken length!'
         return self._get_ts(ts_id)
 
+    def __eq__(self, other):
+        if self.timeseries != other.timeseries:
+            if self.timeseries is not None or other.timeseries is not None:
+                return False
+        if self.priorities != other.priorities:
+            if self.priorities is not None or other.priorities is not None:
+                return False
+        if self.current_offset != other.current_offset:
+            if self.current_offset is not None or other.current_offset is not None:
+                return False
+        if self.index_list != other.index_list:
+            if self.index_list is not None or other.index_list is not None:
+                return False
+
+        return True
+
 
 class Transformer(TimeSeriesGen):
     takes = None  # 'time_series', 'list', 'dict'
 
     def process(self, input_: TimeSeries | list[TimeSeries] | dict[str, TimeSeries]) -> TimeSeries | np.ndarray:
         if self.takes == 'time_series':
+            transform_chance = self.config.get('transform_chance', 1.)
             if len(self.input_ts_gen_args) > 0:
+                if np.random.rand() > transform_chance:
+                    return self.input_ts_gen_args[0].process(input_)
                 return self._process(self.input_ts_gen_args[0].process(input_))
+
+            if np.random.rand() > transform_chance:
+                return input_
+
             return self._process(input_)
         elif self.takes == 'list':
             if len(self.input_ts_gen_args) > 0:
@@ -174,7 +201,9 @@ class Transformer(TimeSeriesGen):
         pass
 
     def _set_child_taken_length(self, length):
+        assert length is not None
         needed_length = self.transform_taken_length(length)
+        assert needed_length is not None, type(self)
         for i in chain(self.input_ts_gen_args, self.input_ts_gen_kwargs.values()):
             i.set_taken_length(needed_length)
 
@@ -222,7 +251,7 @@ class TimeSeriesSum(Transformer):
     takes = 'list'
 
     def transform_taken_length(self, length: int) -> int:
-        pass
+        return length
 
     def _process(self, ts_list: list[TimeSeries]) -> TimeSeries:
         return sum_time_series(ts_list)

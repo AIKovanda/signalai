@@ -6,6 +6,7 @@ from taskchain.task import Config
 from signalai import config, read_bin
 from signalai.config import DATA_DIR
 from signalai.tools.filters import gauss_convolve
+from signalai.time_series_gen import TimeSeriesHolder
 
 
 def run(config_path):
@@ -30,14 +31,15 @@ def run(config_path):
     ]
     for bin_file_to_predict in bin_files_to_predict:
         print("Loading signal...")
-        signal = read_bin(bin_file_to_predict)  # .crop([0, 50000000])
+        holder = TimeSeriesHolder(timeseries=[read_bin(bin_file_to_predict)])
+        holder.set_taken_length(32768)
         print("Signal loaded successfully.")
         plt.figure(figsize=(16, 9))
 
         for model_id in range(5):  # how many models we have
             print(f"Evaluating signal by model {model_id}...")
             signal_model.load(model_id=model_id)
-            np_result = signal_model(signal, target_length=32768, residual_end=False).data_arr
+            np_result = np.array(signal_model.predict_ts(holder.getitem(i)) for i in range(len(holder)))
 
             if len(np_result.shape) == 1:
                 np_result = np.expand_dims(np_result, 0)
@@ -53,5 +55,5 @@ def run(config_path):
 
 
 if __name__ == '__main__':
-    chosen_config_path = config.CONFIGS_DIR / 'models' / 'tensile_test' / 'base' / 'inceptiontime.yaml'
+    chosen_config_path = config.CONFIGS_DIR / 'models' / 'tensile_test' / 'inceptiontime.yaml'
     run(chosen_config_path)
