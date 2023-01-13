@@ -1,38 +1,42 @@
 # these stuffs are necessary for the taskchain library
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/tensile_test/no_augmentation.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/burst_detection/signal.yaml"
 
 
 model:
   class: signalai.torch_model.OneIOTorchTimeSeriesModel
   kwargs:
     taken_length: 32768
-    model_count: 2
     model_definition:
       model:
         class: signalai.models.InceptionTime
         kwargs:
           build_config:
             - bottleneck_channels: 32
-              kernel_sizes: [11, 21, 41]
+              kernel_sizes: [63, 127, 255]
+              pooling_size: 4
+              pooling_type: max
+              activation: Mish
               n_filters: 32
-              # pooling_size: 8
-              # pooling_type: max
-              use_batch_norm: true
-              # activation: sigmoid
+            - bottleneck_channels: 32
+              kernel_sizes: [11, 21, 41]
+              pooling_size: 4
+              pooling_type: max
+              activation: sigmoid
+              n_filters: 32
 
           out_activation: sigmoid
           in_channels: 1
-          outputs: 1
+          outputs: -2
 
     device: cuda
     training_params:
-      epochs: 10
+      epochs: 5
       dataloader_kwargs:
-        batch_size: 16
+        batch_size: 3
         shuffle: true
-        num_workers: 12
-
+        num_workers: 8
+      max_batches: 5000
       save_epoch_step: 1
       # save_batch_step: 1500
       # early_stopping_regression: 1500
@@ -44,34 +48,42 @@ model:
           optimizer:
             name: Adam
             kwargs:
-              weight_decay: 1.0e-5
+              #weight_decay: 1.0e-5
               lr: 2.0e-3
-        5:
+        3:
           optimizer:
             name: Adam
             kwargs:
-              weight_decay: 1.0e-5
+              #weight_decay: 1.0e-5
               lr: 2.0e-4
-        8:
-          optimizer:
-            name: Adam
-            kwargs:
-              weight_decay: 1.0e-5
-              lr: 1.0e-5
+#        35:
+#          optimizer:
+#            name: Adam
+#            kwargs:
+#              weight_decay: 1.0e-5
+#              lr: 1.0e-5
+#        50:
+#          optimizer:
+#            name: Adam
+#            kwargs:
+#              weight_decay: 1.0e-5
+#              lr: 1.0e-6
 
     training_echo:
       # echo_step: 5000
       metrics: {}
       init_eval: true
+      # save_evaluation_dir: /home/martin/Documents/save_evaluation_dir
       evaluators:
         - class: signalai.evaluators.Binary
+        #- class: signalai.evaluators.EBinary
       evaluation_params:
         dataloader_kwargs:
-          batch_size: 16
+          batch_size: 3
           shuffle: true
           num_workers: 8
 
-        max_batches: 250
+        max_batches: 200
 
 
 generators:
@@ -88,11 +100,13 @@ transform_graph:
 
 
 evaluators:
+#  - class: signalai.evaluators.ItemsEcho
   - class: signalai.evaluators.Binary
+#  - class: signalai.evaluators.EBinary
 
 evaluation_params:
   dataloader_kwargs:
-    batch_size: 16
+    batch_size: 3
     shuffle: true
     num_workers: 8
 

@@ -42,6 +42,7 @@ class TrainedModel(Task):
             time_series_gens=generators,
             structure=transform_graph,
         )
+        model.save_dir = Path(train_model)
         if 'pre_transform' in graph:
             model.set_pre_transform(graph['pre_transform'])
         if 'post_transform' in graph:
@@ -64,3 +65,19 @@ class EvaluateModel(Task):
 
         assert len(evaluators) > 0, "There is no evaluator!"
         return trained_model.eval_on_generator(test_time_series_gen, evaluators, evaluation_params, use_tqdm=True)
+
+
+class EvaluateValidModel(Task):
+    class Meta:
+        data_class = InMemoryData
+        input_tasks = [ValidTimeSeriesGen, TrainedModel]
+        parameters = [
+            Parameter('evaluators'),
+            Parameter('evaluation_params', default={}),
+        ]
+
+    def run(self, valid_time_series_gen, trained_model: TimeSeriesModel, evaluators: list,
+            evaluation_params: dict) -> dict:
+
+        assert len(evaluators) > 0, "There is no evaluator!"
+        return trained_model.eval_on_generator(valid_time_series_gen, evaluators, evaluation_params, use_tqdm=True)

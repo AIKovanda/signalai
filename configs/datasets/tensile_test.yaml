@@ -1,0 +1,48 @@
+tasks: signalai.tasks.datasets.*
+
+datasets:
+  experiment_train:
+    class: signalai.datasets.file_loader.FileLoader
+    kwargs:
+      base_dir: '{DATA_DIR}/tensile_tests/200915'
+      all_file_structure:
+        - channels: [200915_AE.bin]
+          interval: [15625000, 60156250]
+          source_dtype: float32
+          target_dtype: float16
+          relative_priority: 1
+          fs: 1562500
+          meta:
+            category: 0
+
+        - channels: [200915_AE.bin]
+          interval: [968890625, 1010156250]
+          source_dtype: float32
+          target_dtype: float16
+          relative_priority: 1
+          fs: 1562500
+          meta:
+            category: 1
+
+  experiment_test:
+    class: signalai.datasets.file_loader.FileLoader
+    kwargs:
+      base_dir: '{DATA_DIR}/tensile_tests/200915'
+      all_file_structure:
+        - channels: [200915_AE.bin]
+          interval: [60156250, 62500000]
+          source_dtype: float32
+          target_dtype: float16
+          relative_priority: 1
+          fs: 1562500
+          meta:
+            category: 0
+
+        - channels: [200915_AE.bin]
+          interval: [966718750, 968890625]
+          source_dtype: float32
+          target_dtype: float16
+          relative_priority: 1
+          fs: 1562500
+          meta:
+            category: 1

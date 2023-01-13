@@ -38,7 +38,6 @@ class TorchEvaluator(AutoParameterObject):
 class L2PieceWise(TorchEvaluator):
 
     def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
-        # print(f'{y_true=}\n{y_pred=}\n{(y_true[0] - y_pred[0])**2}')
         self.items.append((y_true[0] - y_pred[0])**2)
 
     @property
@@ -69,22 +68,42 @@ class L2Total(TorchEvaluator):
         return {'L2Total': float(torch.mean(stack))}
 
 
-class Accuracy(TorchEvaluator):
+class Binary(TorchEvaluator):
+    def __init__(self, **params):
+        super().__init__(**params)
+        self.trues = []
+        self.preds = []
+
+    def reset_items(self):
+        self.trues = []
+        self.preds = []
 
     def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
-        self.items.append(int(torch.abs(y_true[0] - y_pred[0]) < 0.5))
+        self.trues.append(y_true[0].detach().cpu().numpy())
+        self.preds.append(y_pred[0].detach().cpu().numpy())
 
     @property
     def metric_value(self) -> dict:
-        return {'Acc': float(np.mean(self.items))}
+        true = np.concatenate(self.trues, axis=-1).reshape(-1)
+        pred = np.concatenate(self.preds, axis=-1).reshape(-1)
 
+        th = self.params.get('threshold', .5)
 
-# class ItemsEcho(SignalEvaluator):
-#     name = 'items'
-#
-#     @property
-#     def stat(self) -> list:
-#         return self.items
+        fpr, tpr, _ = roc_curve(true, pred)
+        roc_auc = auc(fpr, tpr)
+
+        true_map = true > .5
+        pred_map = pred > th
+
+        precision = precision_score(true_map, pred_map, zero_division=1)
+        recall = recall_score(true_map, pred_map)
+        return {
+            'accuracy': accuracy_score(true_map, pred_map),
+            'precision': precision,
+            'recall': recall,
+            'F1': 2 * precision * recall / (precision + recall),
+            'roc_auc': roc_auc,
+        }
 
 
 # class L12(SignalEvaluator):
@@ -166,66 +185,3 @@ class Accuracy(TorchEvaluator):
 #             y = torch.from_numpy(true_channel).type(torch.float32).unsqueeze(0).unsqueeze(0).to(config.DEVICE)
 #             return self._transform(x)[0][0].detach().cpu().numpy(), self._transform(y)[0][0].detach().cpu().numpy()
 #
-
-class Binary(TorchEvaluator):
-    def __init__(self, **params):
-        super().__init__(**params)
-        self.trues = []
-        self.preds = []
-
-    def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
-        self.trues.append(y_true[0].detach().cpu().numpy())
-        self.preds.append(y_pred[0].detach().cpu().numpy())
-
-    @property
-    def metric_value(self) -> dict:
-        true = np.concatenate(self.trues, axis=1).reshape(-1)
-        pred = np.concatenate(self.preds, axis=1).reshape(-1)
-        th = self.params.get('threshold', .5)
-
-        fpr, tpr, _ = roc_curve(true, pred)
-        roc_auc = auc(fpr, tpr)
-
-        true_map = true > .5
-        pred_map = pred > th
-
-        precision = precision_score(true_map, pred_map, zero_division=1)
-        recall = recall_score(true_map, pred_map)
-        return {
-            'accuracy': accuracy_score(true_map, pred_map),
-            'precision': precision,
-            'recall': recall,
-            'F1': 2 * precision * recall / (precision + recall),
-            'roc_auc': roc_auc,
-        }
-
-
-# class EBinary(Binary):
-#     name = 'e-binary'
-#
-#     def __init__(self, **params):
-#         super().__init__(**params)
-#         self.name = (f'e-binary-t{self.params.get("threshold", .5)}-'
-#                      f's{self.params.get("size", 5)}t{self.params.get("conv_threshold", 3)}')
-#
-#     @property
-#     def stat(self) -> dict[str, float]:
-#         print(self.name)
-#         true = np.concatenate([i[0] for i in self.items], axis=1)
-#         pred = np.concatenate([i[1] for i in self.items], axis=1)
-#         th = self.params.get('threshold', .5)
-#         size = self.params.get("size", 5)
-#         conv_threshold = self.params.get("conv_threshold", 3)
-#
-#         pred_map = convolve2d((pred > th).astype(int), np.ones((1, size)), 'same').reshape(-1) >= conv_threshold
-#         true_map = true.reshape(-1) > .5
-#
-#         precision = precision_score(true_map, pred_map, zero_division=1)
-#         recall = recall_score(true_map, pred_map)
-#
-#         return {
-#             'accuracy': accuracy_score(true_map, pred_map),
-#             'precision': precision,
-#             'recall': recall,
-#             'F1': 2 * precision * recall / (precision + recall),
-#         }

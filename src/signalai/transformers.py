@@ -229,7 +229,7 @@ class TimeMapScale(Transformer):
     def _process(self, x: TimeSeries) -> np.ndarray:
         target_length = self.config.get("target_length")
         if target_length is None:
-            target_length = len(x) * self.config.get("scale")
+            target_length = len(x) * eval(self.config.get("scale"))
 
         time_map = x.time_map.astype(int)
         # nearest

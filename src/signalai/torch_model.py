@@ -1,5 +1,6 @@
 import abc
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -54,6 +55,7 @@ class TorchTimeSeriesModel(TimeSeriesModel):
         eval_history = []
         losses = []
         batch_size = self.training_params.get('dataloader_kwargs', {}).get("batch_size", 1)
+        save_evaluation_dir = self.training_echo.get('save_evaluation_dir')
         if self.taken_length is not None:
             time_series_gen.set_taken_length(self.taken_length)
         if self.training_params.get("max_batches") is not None:
@@ -127,7 +129,12 @@ class TorchTimeSeriesModel(TimeSeriesModel):
                 if broken:
                     break
                 if valid_time_series_gen is not None and len(self.training_echo.get('evaluators', [])) != 0:
-                    eval_history.append(self._eval_in_training(valid_time_series_gen))
+                    if save_evaluation_dir is not None:
+                        eval_history.append(self._eval_in_training(
+                            valid_time_series_gen,
+                            save_evaluation_dir=Path(save_evaluation_dir) / f'epoch{epoch_id}'))
+                    else:
+                        eval_history.append(self._eval_in_training(valid_time_series_gen))
 
             self.save(model_id=model_id, batch_id=current_batch)
 
@@ -135,12 +142,13 @@ class TorchTimeSeriesModel(TimeSeriesModel):
         batch_history['loss'] = losses
         return batch_history, pd.DataFrame(eval_history)
 
-    def _eval_in_training(self, valid_time_series_gen):
+    def _eval_in_training(self, valid_time_series_gen, save_evaluation_dir: Path = None):
         eval_dict = self.eval_on_generator(
             valid_time_series_gen,
             evaluators=self.training_echo.get('evaluators'),
             evaluation_params=self.training_echo.get("evaluation_params", {}),
             use_tqdm=True,
+            save_evaluation_dir=save_evaluation_dir,
         )
         for key, val in eval_dict.items():
             print(f'{key:<12}: {val}')
@@ -159,9 +167,13 @@ class TorchTimeSeriesModel(TimeSeriesModel):
         return self.predict_batch(x)
 
     def eval_on_generator(self, time_series_gen: TorchDataset, evaluators: list[TorchEvaluator], evaluation_params: dict,
-                          use_tqdm=False) -> dict:
+                          use_tqdm=False, save_evaluation_dir: Path = None) -> dict:
         np.random.seed(13)
         eval_dict = {}
+        if save_evaluation_dir is not None:
+            save_evaluation_dir = Path(save_evaluation_dir)
+            save_evaluation_dir.mkdir(parents=True, exist_ok=True)
+
         if self.taken_length is not None:
             time_series_gen.set_taken_length(self.taken_length)
         if evaluation_params.get("max_batches") is not None:
@@ -173,10 +185,16 @@ class TorchTimeSeriesModel(TimeSeriesModel):
 
         data_loader = DataLoader(time_series_gen, **evaluation_params.get('dataloader_kwargs', {}))
         tqdm_train_loader = tqdm(data_loader, ncols=150, desc='Evaluating model...') if use_tqdm else data_loader
-        for x, y in tqdm_train_loader:
+        for i, (x, y) in enumerate(tqdm_train_loader):
             x = tuple(val.type(torch.float32).to(self.device) for val in x)
             y_true = tuple(val.type(torch.float32).to(self.device) for val in y)
             y_pred = self.predict_batch(x)
+            if save_evaluation_dir is not None:
+                Path(save_evaluation_dir).mkdir(parents=True, exist_ok=True)
+                np.save(str(save_evaluation_dir / f'{i}-x.npy'), x[0].detach().cpu().numpy())
+                np.save(str(save_evaluation_dir / f'{i}-y_true.npy'), y_true[0].detach().cpu().numpy())
+                np.save(str(save_evaluation_dir / f'{i}-y_pred.npy'), y_pred[0].detach().cpu().numpy())
+
             for evaluator in evaluators:
                 evaluator.process_batch(y_true, y_pred)
 

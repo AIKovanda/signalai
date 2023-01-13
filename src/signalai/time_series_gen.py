@@ -108,7 +108,6 @@ class TimeSeriesHolder(TimeSeriesGen):
         self._build_index_list()
 
     def _build(self):
-        print('asdf')
         self._build_index_list()
 
     def _build_index_list(self):

@@ -1,6 +1,6 @@
 # these stuffs are necessary for the taskchain library
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/burst_detection/signal_noscale.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/burst_detection/signal.yaml"
 
 
 model:
@@ -14,6 +14,8 @@ model:
           build_config:
             - bottleneck_channels: 32
               kernel_sizes: [63, 127, 255]
+              pooling_size: 16
+              pooling_type: max
               activation: Mish
               n_filters: 32
 
@@ -23,7 +25,7 @@ model:
 
     device: cuda
     training_params:
-      epochs: 5
+      epochs: 12
       dataloader_kwargs:
         batch_size: 3
         shuffle: true
@@ -88,3 +90,11 @@ evaluators:
 #  - class: signalai.evaluators.ItemsEcho
   - class: signalai.evaluators.Binary
 #  - class: signalai.evaluators.EBinary
+
+evaluation_params:
+  dataloader_kwargs:
+    batch_size: 3
+    shuffle: false
+    num_workers: 8
+
+  max_batches: 300

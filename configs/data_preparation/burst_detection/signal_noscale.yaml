@@ -83,7 +83,7 @@ data_graph:
   =X_test:
     x_lambda:
       sum:
-        - gain_noise:
+        - gain:
             reverb:
               hum_and_noise
         - sum_channels: Z_test

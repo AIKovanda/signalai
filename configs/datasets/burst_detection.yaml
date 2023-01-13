@@ -27,10 +27,14 @@ datasets:
         crack350: '/home/martin/BigData/burst_detection/test/cracks-ch4-HPF350'
 
       file_structure:
-          source_dtype: float32
-          target_dtype: float16
-          relative_priority: 1
-          fs: 44100
+        source_dtype: float32
+        target_dtype: float16
+        relative_priority: 1
+        fs: 44100
+
+      event_count_range: [1, 10]
+      start_arange: [0, 65536]
+      event_length_arange: [251,252]
 
   hum_and_noise:
     class: signalai.datasets.file_loader.FileLoader

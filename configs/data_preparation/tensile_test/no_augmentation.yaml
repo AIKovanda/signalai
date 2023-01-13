@@ -1,0 +1,51 @@
+tasks: signalai.tasks.data_preparation.*
+uses: "{CONFIGS_DIR}/datasets/tensile_test.yaml"
+
+
+generators:
+  x_lambda:
+    class: signalai.time_series_gen.LambdaTransformer
+    kwargs:
+      lambda_w: w.data_arr
+      apply_to_ts: true
+
+  y_lambda:
+    class: signalai.time_series_gen.LambdaTransformer
+    kwargs:
+      lambda_w: np.array([w.meta['category']])
+      apply_to_ts: true
+
+
+data_graph:
+  =Z:
+    experiment_train
+  =X:
+    x_lambda: Z
+  =Y:
+    y_lambda: Z
+
+  =Z_test:
+    experiment_test
+  =X_test:
+    x_lambda: Z_test
+  =Y_test:
+    y_lambda: Z_test
+
+
+train_gen:
+  inputs:
+    - X
+  outputs:
+    - Y
+
+valid_gen:
+  inputs:
+    - X_test
+  outputs:
+    - Y_test
+
+test_gen:
+  inputs:
+    - X_test
+  outputs:
+    - Y_test

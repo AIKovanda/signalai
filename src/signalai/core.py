@@ -1,12 +1,11 @@
 import abc
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 import pandas as pd
 from taskchain.parameter import AutoParameterObject
 
-from signalai.time_series import from_numpy, TimeSeries
+from signalai.time_series import TimeSeries
 from signalai.time_series_gen import Transformer
 from signalai.torch_dataset import TorchDataset
 
@@ -71,7 +70,7 @@ class TimeSeriesModel(AutoParameterObject, abc.ABC):
 
     def predict_ts(self, *ts: TimeSeries):
         assert self.pre_transform is not None
-        return self.predict_numpy(*[self.pre_transform.process(i) for i in ts])
+        return self.predict_numpy(*[np.expand_dims(self.pre_transform.process(i), 0) for i in ts])
 
     @abc.abstractmethod
     def eval_on_generator(self, time_series_gen: TorchDataset, evaluators: list, evaluation_params: dict,
@@ -93,51 +92,3 @@ class TimeSeriesModel(AutoParameterObject, abc.ABC):
     @abc.abstractmethod
     def set_criterion(self, criterion_info: dict):
         pass
-
-    def _predict_one_timeseries(self, x: TimeSeries) -> TimeSeries:
-        pass
-        # assert isinstance(x, TimeSeries), 'Wrong type.'
-        # assert x.data_arr is not None, 'Empty data_arr.'
-        # new_data_arr = self.predict_numpy_batch(
-        #     np.expand_dims(x.data_arr, 0)
-        # )[0]
-        # return type(x)(
-        #     data_arr=new_data_arr,
-        #     time_map=x.time_map,
-        #     meta=x.meta,
-        # )
-
-    def predict_timeseries(self, ts: TimeSeries, target_length=None, residual_end=True):
-        pass
-        # transforms = self.pre_transform + self.transform.get('predict', [])
-        #
-        # if target_length is None or target_length >= len(ts):
-        #     new_ts = apply_transforms(ts, transforms)
-        #     new_data_arr = self.predict_numpy_batch(np.expand_dims(new_ts.data_arr, 0))[0]
-        #     new_ts = from_numpy(data_arr=new_data_arr, meta=ts.meta, time_map=ts.time_map)
-        #     return apply_transforms(new_ts, self.post_transform.get('predict', []))
-        # else:
-        #     length = original_length(target_length, transforms, fs=ts.fs)
-        #     transformed_crops = []
-        #     for i in range(len(ts) // length):
-        #         new_ts = apply_transforms(ts.crop([i * length, (i + 1) * length]), transforms)
-        #         transformed_crops.append(new_ts)
-        #
-        #     if len(ts) % length > 0 and residual_end:
-        #         new_ts = apply_transforms(ts.crop([-(len(ts) % length), len(ts)]), transforms)
-        #         transformed_crops.append(new_ts)
-        #
-        #     predicted_crops = map(self._predict_one_timeseries, transformed_crops)
-        #
-        #     result = [apply_transforms(_ts, self.post_transform.get('predict', [])) for _ts in predicted_crops]
-        #     return MultiSeries(result).stack_series(axis=-1)
-
-    def __call__(self, x, **kwargs):
-        if isinstance(x, np.ndarray):
-            ts = from_numpy(data_arr=x)
-        elif isinstance(x, TimeSeries):
-            ts = x
-        else:
-            raise TypeError(f"X cannot be of type '{type(x)}'.")
-
-        return self.predict_timeseries(ts, **kwargs)
