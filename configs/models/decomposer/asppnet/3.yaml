@@ -1,3 +1,0 @@
-uses:
-- "{CONFIGS_DIR}/data_preparation/musdb18/augment_magpha_vocals.yaml"
-- "{CONFIGS_DIR}/models/decomposer/asppnet/_asppnet_lr0.0001.yaml"

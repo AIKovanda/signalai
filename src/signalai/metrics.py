@@ -1,5 +1,0 @@
-f"Loss: {mean_loss: .06f}, total_true: {int(mean_true)} | "
-f"tr_mean: {torch.mean(x):.6f} | "
-f"tr_std: {torch.std(x):.4f} | "
-f"mean: {torch.mean(y_hat_detached):.6f} | "
-f"std: {torch.std(y_hat_detached):.4f}"

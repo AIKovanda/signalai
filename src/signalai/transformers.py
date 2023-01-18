@@ -1,3 +1,5 @@
+from typing import Callable
+
 import librosa
 import numpy as np
 from librosa import resample
@@ -17,7 +19,20 @@ from signalai.time_series import Signal, Signal2D
 from signalai.time_series import TimeSeries
 from signalai.time_series_gen import Transformer
 from signalai.tools.filters import butter_bandpass_filter
-from signalai.tools.utils import by_channel
+
+
+def by_channel(transform: Callable):
+    def wrapper(self, *args, **kwargs):
+        arg_len = set([len(arg) for arg in args])
+        assert len(arg_len) == 1, f"Inputs must be the same length."
+        processed_channels = []
+        for i in range(list(arg_len)[0]):
+            processed_channels.append(
+                transform(self, *[arg[i: i+1] for arg in args], **kwargs)
+            )
+        return np.concatenate(processed_channels, axis=0)
+
+    return wrapper
 
 
 def get_parameter_uniform(param_value: float | list[float] | None, default: float | list[float] | None) -> float:

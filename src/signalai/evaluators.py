@@ -106,7 +106,7 @@ class Binary(TorchEvaluator):
         }
 
 
-# class L12(SignalEvaluator):
+# class L12(SignalEvaluator):  # todo
 #     name = 'L12'
 #
 #     def _transform_channels(self, pred_channel: np.ndarray, true_channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

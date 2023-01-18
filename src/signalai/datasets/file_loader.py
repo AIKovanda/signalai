@@ -1,12 +1,24 @@
+import json
 import pathlib
 from functools import partial
 
 import numpy as np
+import yaml
 from tqdm import tqdm
 
-from signalai.datasets.utils import get_config
-from signalai.time_series import read_audio, read_bin, read_npy, TimeSeries, stack_time_series
+from signalai.time_series import read_audio, read_bin, read_npy, stack_time_series, TimeSeries
 from signalai.time_series_gen import TimeSeriesHolder
+
+
+def get_config(build_info) -> list[dict]:
+    if isinstance(build_info, str):
+        with open(build_info, 'r') as f:
+            if build_info.endswith('.json'):
+                build_info = json.load(f)
+            elif build_info.endswith('.yaml'):
+                build_info = yaml.load(f, yaml.FullLoader)
+
+    return build_info
 
 
 def build_one_series(file_dict: dict, base_dir, target_dtype: str = None) -> TimeSeries:

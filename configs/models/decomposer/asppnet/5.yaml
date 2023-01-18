@@ -1,3 +1,0 @@
-uses:
-- "{CONFIGS_DIR}/data_preparation/musdb18/augment_magpha_bass.yaml"
-- "{CONFIGS_DIR}/models/decomposer/asppnet/_asppnet.yaml"
