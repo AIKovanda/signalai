@@ -21,7 +21,7 @@ def get_config(build_info) -> list[dict]:
     return build_info
 
 
-def build_one_series(file_dict: dict, base_dir, target_dtype: str = None) -> TimeSeries:
+def build_one_series(file_dict: dict, base_dir, target_dtype: str = None, zero_time_map=False) -> TimeSeries:
     if not file_dict:
         raise ValueError(f"There is no information of how to build a signal.")
 
@@ -51,6 +51,8 @@ def build_one_series(file_dict: dict, base_dir, target_dtype: str = None) -> Tim
         loaded_channels.append(func_map[suffix](**kwargs))
 
     new_series = stack_time_series(loaded_channels)
+    if zero_time_map:
+        new_series.time_map = new_series.time_map * 0
     if target_dtype:
         new_series.data_arr = new_series.data_arr.astype(target_dtype)
     assert isinstance(new_series, TimeSeries)
@@ -62,7 +64,8 @@ class FileLoader(TimeSeriesHolder):
     def load_individuals(self, all_file_structure: list[dict]) -> None:
         build_info = get_config(all_file_structure)  # may be a dict, json_path or yaml_path
         partial_build_series = partial(build_one_series, base_dir=self.config['base_dir'],
-                                       target_dtype=self.config.get('target_dtype'))
+                                       target_dtype=self.config.get('target_dtype'),
+                                       zero_time_map=self.config.get('zero_time_map', False))
         if build_info[0].get('priority') is not None:
             self.priorities = [sig_info['priority'] for sig_info in build_info]
         if self.config.get('num_workers', 1) == 1:

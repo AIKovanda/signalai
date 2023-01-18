@@ -242,11 +242,13 @@ class TimeMapScale(Transformer):
     takes = 'time_series'
 
     def _process(self, x: TimeSeries) -> np.ndarray:
+        first_crop = self.config.get("first_crop")
         target_length = self.config.get("target_length")
         if target_length is None:
-            target_length = len(x) * eval(self.config.get("scale"))
-
+            target_length = x.time_map.shape[-1] * eval(str(self.config.get("scale")))
         time_map = x.time_map.astype(int)
+        if first_crop is not None:
+            time_map = time_map[..., first_crop[0]: time_map.shape[-1] - first_crop[1]]
         # nearest
         return time_map[:, np.round(np.linspace(0, time_map.shape[-1] - 1, int(target_length))).astype(int)]
 
@@ -271,6 +273,7 @@ class STFT(Transformer):
         return np.expand_dims(Zxx, 0)
 
     def _process(self, x: TimeSeries) -> TimeSeries:
+        n_fft = self.config.get('n_fft', 256)
         if self.config.get('phase_as_meta', True):
             Zxx = self.transform_npy(x.data_arr, split_complex=False)
             data_arr = np.abs(Zxx)  # magnitude
@@ -281,7 +284,7 @@ class STFT(Transformer):
 
         return Signal2D(
             data_arr=data_arr,
-            time_map=x.time_map,  # here is the original time_map
+            time_map=x.time_map[..., int(n_fft/2): -int(n_fft/2)],
             meta=meta,
             fs=x.fs,
         )
@@ -301,6 +304,7 @@ class ISTFT(Transformer):
         return np.expand_dims(librosa.istft(x[0], hop_length=hop_length, center=center), 0)
 
     def _process(self, x: TimeSeries) -> TimeSeries:
+        n_fft = self.config.get('n_fft', 256)
         meta = x.meta.copy()
         phase = meta.pop('phase', None)
         data_arr = x.data_arr
@@ -312,9 +316,11 @@ class ISTFT(Transformer):
             Zxx = data_arr[0::2] + 1j * data_arr[1::2]
 
         s_data_arr = self.transform_npy(Zxx)
+        new_time_map = np.zeros([*x.time_map.shape[:-1], x.time_map.shape[-1]+n_fft])
+        new_time_map[..., int(n_fft/2): int(n_fft/2) + x.time_map.shape[-1]] = x.time_map
         return Signal(
             data_arr=s_data_arr,
-            time_map=x.time_map,  # here is the original time_map
+            time_map=new_time_map,
             meta=meta,
             fs=x.fs,
         )

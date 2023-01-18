@@ -85,9 +85,7 @@ transform_graph:
 
 
 evaluators:
-#  - class: signalai.evaluators.ItemsEcho
   - class: signalai.evaluators.Binary
-#  - class: signalai.evaluators.EBinary
 
 evaluation_params:
   dataloader_kwargs:

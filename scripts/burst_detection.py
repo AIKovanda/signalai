@@ -9,7 +9,7 @@ from tqdm import trange
 from signalai import config
 from signalai import read_bin
 from signalai.time_series_gen import TimeSeriesHolder
-from signalai.tools import plot_binary_map
+from signalai.tools.visualization import plot_binary_map
 
 
 OUTPUT_DIR = 'test'
@@ -61,4 +61,5 @@ def run(config_path):
 
 if __name__ == '__main__':
     chosen_config_path = config.CONFIGS_DIR / 'models' / 'burst_detection' / 'inceptiontime' / '2layer_x16.yaml'
+    chosen_config_path = config.CONFIGS_DIR / 'models' / 'burst_detection' / 'spec2map' / '1x2d-layer_2x1d-layer.yaml'
     run(chosen_config_path)

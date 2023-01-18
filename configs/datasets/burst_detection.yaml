@@ -40,6 +40,7 @@ datasets:
     class: signalai.datasets.file_loader.FileLoader
     kwargs:
       base_dir: '/home/martin/BigData/burst_detection/hum_and_noise'
+      zero_time_map: true
       all_file_structure:
         - channels: ['AE-DATA-conti-7382934628139121-ch4.bin']
           source_dtype: float32

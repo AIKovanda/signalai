@@ -45,7 +45,7 @@ class TrainTimeSeriesGen(TaskTimeSeriesGen):
         data_class = InMemoryData
         input_tasks = [TimeSeriesGenGraph]
         parameters = [
-            Parameter("train_gen", default=None),
+            Parameter("train_gen"),
             Parameter("max_length", default=10**15),
         ]
         split_name = 'train_gen'
@@ -56,7 +56,7 @@ class ValidTimeSeriesGen(TaskTimeSeriesGen):
         data_class = InMemoryData
         input_tasks = [TimeSeriesGenGraph]
         parameters = [
-            Parameter("valid_gen", default=None),
+            Parameter("valid_gen"),
             Parameter("max_length", default=10**15),
         ]
         split_name = 'valid_gen'
@@ -67,7 +67,7 @@ class TestTimeSeriesGen(TaskTimeSeriesGen):
         data_class = InMemoryData
         input_tasks = [TimeSeriesGenGraph]
         parameters = [
-            Parameter("test_gen", default=None),
+            Parameter("test_gen"),
             Parameter("max_length", default=10**15),
         ]
         split_name = 'test_gen'

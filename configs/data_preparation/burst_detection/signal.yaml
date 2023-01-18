@@ -18,18 +18,6 @@ generators:
       transform_chance: 0.2
       gain_db: [-15., 15.]
 
-#  gain_noise:
-#    class: signalai.transformers.Gain
-#    kwargs:
-#      transform_chance: 0.2
-#      gain_db: [-35., 40.]
-
-#  chorus:
-#    class: signalai.transformers.Chorus
-#    kwargs:
-#      transform_chance: 0.2
-#      centre_delay_ms: [6.5, 8.5]
-
   x_lambda:
     class: signalai.time_series_gen.LambdaTransformer
     kwargs:
@@ -42,7 +30,7 @@ generators:
       lambda_w: np.array([w.meta['category']])
       apply_to_ts: true
 
-  sum:
+  sum_ts:
     class: signalai.time_series_gen.TimeSeriesSum
 
   sum_channels:
@@ -65,7 +53,7 @@ data_graph:
 
   =X:
     x_lambda:
-      sum:
+      sum_ts:
         - gain:
             reverb:
               hum_and_noise
@@ -81,7 +69,7 @@ data_graph:
 
   =X_test:
     x_lambda:
-      sum:
+      sum_ts:
         - gain:
             reverb:
               hum_and_noise

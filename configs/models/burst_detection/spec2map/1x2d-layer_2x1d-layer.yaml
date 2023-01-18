@@ -1,6 +1,6 @@
 # these stuffs are necessary for the taskchain library
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/burst_detection/signal.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/burst_detection/magnitude.yaml"
 
 
 model:
@@ -9,28 +9,24 @@ model:
     taken_length: 32768
     model_definition:
       model:
-        class: signalai.models.InceptionTime
+        class: signalai.models.Spec2Map
         kwargs:
-          build_config:
-            - bottleneck_channels: 32
-              kernel_sizes: [63, 127, 255]
-              pooling_size: 16
-              pooling_type: max
-              activation: Mish
-              n_filters: 32
-
+          convs_2d: [8]
+          convs_1d: [512, 256]
+          activation: mish
           out_activation: sigmoid
           in_channels: 1
-          outputs: -2
+          vertical_channels: 513
+          outputs: 2
 
     device: cuda
     training_params:
       epochs: 12
       dataloader_kwargs:
-        batch_size: 3
+        batch_size: 16
         shuffle: true
         num_workers: 8
-      max_batches: 5000
+      max_batches: 20000
       save_epoch_step: 1
       # save_batch_step: 1500
       # early_stopping_regression: 1500
@@ -59,7 +55,7 @@ model:
 
     training_echo:
       # echo_step: 5000
-      metrics: {}
+      metrics: { }
       init_eval: true
       evaluators:
         - class: signalai.evaluators.Binary
@@ -67,7 +63,7 @@ model:
       evaluation_params:
         dataloader_kwargs:
           batch_size: 3
-          shuffle: false
+          shuffle: true
           num_workers: 8
 
         max_batches: 100
@@ -79,22 +75,28 @@ generators:
     kwargs:
       lambda_w: w.data_arr
       apply_to_ts: true
+  stft:
+    class: signalai.transformers.STFT
+    kwargs:
+      phase_as_meta: true
+      n_fft: 1024
+      hop_length: 16
 
 
 transform_graph:
   =pre_transform:
-    x_lambda
+    x_lambda:
+      stft
 
 
 evaluators:
-#  - class: signalai.evaluators.ItemsEcho
-  - class: signalai.evaluators.Binary
-#  - class: signalai.evaluators.EBinary
+- class: signalai.evaluators.Binary
+
 
 evaluation_params:
   dataloader_kwargs:
-    batch_size: 3
-    shuffle: false
+    batch_size: 16
+    shuffle: true
     num_workers: 8
 
-  max_batches: 300
+  max_batches: 1500
