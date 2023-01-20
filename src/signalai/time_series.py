@@ -85,17 +85,20 @@ class TimeSeries:
             return self.data_arr.shape[0]
         return self.time_map.shape[0]
 
-    def take_channels(self, channels: list[list[int] | int] = None):
+    def take_channels(self, channels: list[set[int] | list[int] | int] = None):
         if channels is None:
             return self
 
         data_arrays = []
         time_maps = []
         for channel_gen in channels:
+            if isinstance(channel_gen, set):
+                channel_gen = int(np.random.choice(tuple(channel_gen)))
+
             if isinstance(channel_gen, int):
                 data_arrays.append(self.data_arr[[channel_gen], ...])
                 time_maps.append(self.time_map[[channel_gen], ...])
-            elif isinstance(channel_gen, list):
+            elif isinstance(channel_gen, list) or isinstance(channel_gen, tuple):
                 data_arrays.append(np.sum(self.data_arr[channel_gen, ...], axis=0))
                 time_maps.append(np.any(self.time_map[channel_gen, ...], axis=0))
             else:
@@ -334,9 +337,8 @@ class Signal(TimeSeries):
             y = np.int16(self.data_arr.T * 2 ** 15)
         else:
             y = np.int16(self.data_arr.T)
-        if fs in None:
+        if fs is None:
             fs = self.fs
-
         song = pydub.AudioSegment(y.tobytes(), frame_rate=fs, sample_width=2, channels=self.data_arr.ndim)
         song.export(file, format="mp3", bitrate="320k")
 

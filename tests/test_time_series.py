@@ -138,17 +138,27 @@ def test_take_channels():
     assert s1.channels_count == 2
 
     assert s1.take_channels() == s1
-    assert s1.take_channels([1, 1]) == Signal(data_arr=np.array([[0, 0, 0.01, 0.001, 5, 0, 5, 0.5, 0.001],
-                                                                 [0, 0, 0.01, 0.001, 5, 0, 5, 0.5, 0.001]]),
-                                              time_map=np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0],
-                                                                 [0, 1, 0, 1, 0, 1, 0, 1, 0]]),
-                                              meta={'a': 0, 'b': 'asdf'}, fs=50)
+    s11 = Signal(
+        data_arr=np.array([[0, 0, 0.01, 0.001, 5, 0, 5, 0.5, 0.001], [0, 0, 0.01, 0.001, 5, 0, 5, 0.5, 0.001]]),
+        time_map=np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 0]]), meta={'a': 0, 'b': 'asdf'},
+        fs=50)
+    s10 = Signal(
+        data_arr=np.array([[0, 0, 0.01, 0.001, 5, 0, 5, 0.5, 0.001], [0, 0, 0.01, 0.250, 5, 0, 5, 0.0001, 0]]),
+        time_map=np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0], [0, 0, 1, 0, 1, 0, 1, 0, 1]]), meta={'a': 0, 'b': 'asdf'},
+        fs=50)
+    assert s1.take_channels([1, 1]) == s11
 
     assert s1.take_channels([1, [0, 1]]) == Signal(data_arr=np.array([[0, 0, 0.01, 0.001, 5, 0, 5, 0.5, 0.001],
                                                                       [0, 0, 0.02, 0.251, 10, 0, 10, 0.5001, 0.001]]),
                                                    time_map=np.array([[0, 1, 0, 1, 0, 1, 0, 1, 0],
                                                                       [0, 1, 1, 1, 1, 1, 1, 1, 1]]),
                                                    meta={'a': 0, 'b': 'asdf'}, fs=50)
+    for s_ref in [s11, s10]:
+        while True:
+            s0 = s1.take_channels([1, {0, 1}])
+            assert s0 == s11 or s0 == s10
+            if s0 == s_ref:
+                break
 
 
 def test_trim():

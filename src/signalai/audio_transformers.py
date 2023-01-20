@@ -56,7 +56,7 @@ class Resampler(Transformer):
         assert 'fs_ratio' in self.config, 'output_fs / input_fs'
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, input_fs: float, output_fs: float) -> np.ndarray:
+    def process_numpy(self, x: np.ndarray, input_fs: float, output_fs: float) -> np.ndarray:
         return np.expand_dims(resample(
             x[0].astype('float32'), input_fs, output_fs, res_type='linear',
         ).astype(x.dtype), 0)
@@ -69,7 +69,7 @@ class Resampler(Transformer):
             return x
 
         output_fs = fs_ratio * input_fs
-        data_arr = self.transform_npy(x.data_arr, input_fs=input_fs, output_fs=output_fs)
+        data_arr = self.process_numpy(x.data_arr, input_fs=input_fs, output_fs=output_fs)
         return Signal(
             data_arr=data_arr,
             time_map=x.time_map,
@@ -84,7 +84,7 @@ class Resampler(Transformer):
 class Standardizer(Transformer):
     takes = 'time_series'
 
-    def transform_npy(self, x: np.ndarray) -> np.ndarray:
+    def process_numpy(self, x: np.ndarray) -> np.ndarray:
         mean = self.config.get('mean', 0)
         std = self.config.get('std', 1)
 
@@ -93,7 +93,7 @@ class Standardizer(Transformer):
 
     def _process(self, x: TimeSeries) -> TimeSeries:
         return Signal(
-            data_arr=self.transform_npy(x.data_arr),
+            data_arr=self.process_numpy(x.data_arr),
             time_map=x.time_map,
             meta=x.meta,
             fs=x.fs,
@@ -110,13 +110,13 @@ class Gain(Transformer):
     takes = 'time_series'
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
+    def process_numpy(self, x: np.ndarray, fs: float) -> np.ndarray:
         gain_db = get_parameter_uniform(self.config.get('gain_db'), default=[-10, 10])
         return PBGain(gain_db=gain_db)(input_array=x.astype('float32'), sample_rate=fs).astype(x.dtype)
 
     def _process(self, x: TimeSeries) -> TimeSeries:
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
+            data_arr=self.process_numpy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             fs=x.fs,
@@ -133,12 +133,12 @@ class Phaser(Transformer):
     takes = 'time_series'
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
+    def process_numpy(self, x: np.ndarray, fs: float) -> np.ndarray:
         return PBPhaser()(input_array=x.astype('float32'), sample_rate=fs).astype(x.dtype)
 
     def _process(self, x: TimeSeries) -> TimeSeries:
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
+            data_arr=self.process_numpy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             fs=x.fs,
@@ -155,13 +155,13 @@ class Chorus(Transformer):
     takes = 'time_series'
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
+    def process_numpy(self, x: np.ndarray, fs: float) -> np.ndarray:
         centre_delay_ms = get_parameter_uniform(self.config.get('centre_delay_ms'), default=[7., 8.])
         return PBChorus(centre_delay_ms=centre_delay_ms)(input_array=x.astype('float32'), sample_rate=fs).astype(x.dtype)
 
     def _process(self, x: TimeSeries) -> TimeSeries:
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
+            data_arr=self.process_numpy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             fs=x.fs,
@@ -183,7 +183,7 @@ class Reverb(Transformer):
     takes = 'time_series'
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
+    def process_numpy(self, x: np.ndarray, fs: float) -> np.ndarray:
         room_size = get_parameter_uniform(self.config.get('room_size'), default=[0., 1.])
         damping = get_parameter_uniform(self.config.get('damping'), default=[0., 1.])
         wet_level = get_parameter_uniform(self.config.get('wet_level'), default=[0., 1.])
@@ -199,7 +199,7 @@ class Reverb(Transformer):
 
     def _process(self, x: TimeSeries) -> TimeSeries:
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
+            data_arr=self.process_numpy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             fs=x.fs,
@@ -217,7 +217,7 @@ class BandPassFilter(Transformer):
     takes = 'time_series'
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, fs: float) -> np.ndarray:
+    def process_numpy(self, x: np.ndarray, fs: float) -> np.ndarray:
         low_cut = self.config.get('low_cut')
         high_cut = self.config.get('high_cut')
 
@@ -225,7 +225,7 @@ class BandPassFilter(Transformer):
 
     def _process(self, x: TimeSeries) -> TimeSeries:
         return Signal(
-            data_arr=self.transform_npy(x.data_arr, fs=x.fs),
+            data_arr=self.process_numpy(x.data_arr, fs=x.fs),
             time_map=x.time_map,
             meta=x.meta,
             fs=x.fs,
@@ -235,37 +235,14 @@ class BandPassFilter(Transformer):
         return length
 
 
-class TimeMapScale(Transformer):
-    """
-    channels: list containing list of integers
-    """
-    takes = 'time_series'
-
-    def _process(self, x: TimeSeries) -> np.ndarray:
-        first_crop = self.config.get("first_crop")
-        target_length = self.config.get("target_length")
-        if target_length is None:
-            target_length = x.time_map.shape[-1] * eval(str(self.config.get("scale")))
-        time_map = x.time_map.astype(int)
-        if first_crop is not None:
-            time_map = time_map[..., first_crop[0]: time_map.shape[-1] - first_crop[1]]
-        # nearest
-        return time_map[:, np.round(np.linspace(0, time_map.shape[-1] - 1, int(target_length))).astype(int)]
-
-    def transform_taken_length(self, length: int) -> int:
-        # here it does not make sense, but it would be hard to make alternative
-        return length
-
-
 class STFT(Transformer):
     takes = 'time_series'
 
     @by_channel
-    def transform_npy(self, x: np.ndarray, split_complex=False) -> np.ndarray:
+    def process_numpy(self, x: np.ndarray, split_complex=False) -> np.ndarray:
         center = self.config.get('center', False)
         n_fft = self.config.get('n_fft', 256)
         hop_length = self.config.get('hop_length')
-        # _, _, Zxx = scipy_signal.stft(x[0], fs=fs)
         Zxx = librosa.stft(x[0], center=center, n_fft=n_fft, hop_length=hop_length)
         if split_complex:
             return np.moveaxis(Zxx.view('(2,)float32'), -1, 0)
@@ -275,11 +252,11 @@ class STFT(Transformer):
     def _process(self, x: TimeSeries) -> TimeSeries:
         n_fft = self.config.get('n_fft', 256)
         if self.config.get('phase_as_meta', True):
-            Zxx = self.transform_npy(x.data_arr, split_complex=False)
+            Zxx = self.process_numpy(x.data_arr, split_complex=False)
             data_arr = np.abs(Zxx)  # magnitude
             meta = x.meta.copy() | {'phase': np.angle(Zxx)}
         else:
-            data_arr = self.transform_npy(x.data_arr, split_complex=True)
+            data_arr = self.process_numpy(x.data_arr, split_complex=True)
             meta = x.meta
 
         return Signal2D(
@@ -296,9 +273,13 @@ class STFT(Transformer):
 class ISTFT(Transformer):
     takes = 'time_series'
 
+    def process_torch(self, x):
+        import torch
+        device = x.device
+        return torch.from_numpy(self.process_numpy(x.detach().cpu().numpy())).to(device)
+
     @by_channel
-    def transform_npy(self, x: np.ndarray) -> np.ndarray:
-        # return scipy_signal.istft(x)[1]
+    def process_numpy(self, x: np.ndarray) -> np.ndarray:
         center = self.config.get('center', False)
         hop_length = self.config.get('hop_length')
         return np.expand_dims(librosa.istft(x[0], hop_length=hop_length, center=center), 0)
@@ -315,7 +296,7 @@ class ISTFT(Transformer):
         else:
             Zxx = data_arr[0::2] + 1j * data_arr[1::2]
 
-        s_data_arr = self.transform_npy(Zxx)
+        s_data_arr = self.process_numpy(Zxx)
         new_time_map = np.zeros([*x.time_map.shape[:-1], x.time_map.shape[-1]+n_fft])
         new_time_map[..., int(n_fft/2): int(n_fft/2) + x.time_map.shape[-1]] = x.time_map
         return Signal(

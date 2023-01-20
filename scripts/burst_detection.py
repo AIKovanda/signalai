@@ -14,7 +14,7 @@ from signalai.tools.visualization import plot_binary_map
 
 OUTPUT_DIR = 'test'
 X_MAX = 1000  # time in ms of the experiment
-BIN_FILE = '/home/martin/BigData/burst_detection/hum_and_cracks/AE-DATA-conti-7382946824004051-ch4.bin'
+BIN_FILE = config.DATA_DIR / 'burst_detection' / 'hum_and_cracks' / 'AE-DATA-conti-7382946824004051-ch4.bin'
 
 
 def run(config_path):

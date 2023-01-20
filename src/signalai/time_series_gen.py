@@ -111,6 +111,7 @@ class TimeSeriesHolder(TimeSeriesGen):
         self._build_index_list()
 
     def _build_index_list(self):
+        assert self.timeseries is not None
         self.index_list = []
         if self.taken_length is None:
             priorities = self.priorities if self.priorities is not None else [1]*len(self.timeseries)
@@ -254,6 +255,42 @@ class TimeSeriesSum(Transformer):
 
     def _process(self, ts_list: list[TimeSeries]) -> TimeSeries:
         return sum_time_series(ts_list)
+
+
+class ChannelPruner(Transformer):
+    takes = 'time_series'
+
+    def _build(self):
+        assert 'choose_channels' in self.config
+
+    def transform_taken_length(self, length: int) -> int:
+        return length
+
+    def _process(self, ts: TimeSeries) -> TimeSeries:
+        choose_channels = eval(self.config.get("choose_channels"))
+        return ts.take_channels(channels=choose_channels)
+
+
+class TimeMapScale(Transformer):
+    """
+    channels: list containing list of integers
+    """
+    takes = 'time_series'
+
+    def _process(self, x: TimeSeries) -> np.ndarray:
+        first_crop = self.config.get("first_crop")
+        target_length = self.config.get("target_length")
+        if target_length is None:
+            target_length = x.time_map.shape[-1] * eval(str(self.config.get("scale")))
+        time_map = x.time_map.astype(int)
+        if first_crop is not None:
+            time_map = time_map[..., first_crop[0]: time_map.shape[-1] - first_crop[1]]
+        # nearest
+        return time_map[:, np.round(np.linspace(0, time_map.shape[-1] - 1, int(target_length))).astype(int)]
+
+    def transform_taken_length(self, length: int) -> int:
+        # here it does not make sense, but it would be hard to make alternative
+        return length
 
 
 class LambdaTransformer(Transformer):

@@ -1,46 +1,38 @@
-# these stuffs are necessary for the taskchain library
 tasks: signalai.tasks.processing.*
-uses: "{CONFIGS_DIR}/data_preparation/tensile_test/no_augmentation.yaml"
+uses: "{CONFIGS_DIR}/data_preparation/musdb18/augment.yaml"
 
 
 model:
   class: signalai.torch_model.TorchTimeSeriesModel
   kwargs:
-    taken_length: 32768
-    model_count: 2
+    taken_length: 65536
     model_definition:
       model:
         class: signalai.models.InceptionTime
         kwargs:
           build_config:
             - bottleneck_channels: 32
-              kernel_sizes: [11, 21, 41]
+              kernel_sizes: [51, 121, 255]
               n_filters: 32
-              # pooling_size: 8
-              # pooling_type: max
-              use_batch_norm: true
-              # activation: sigmoid
-
-          out_activation: sigmoid
+              use_residual: false
           in_channels: 1
-          outputs: 1
+          outputs: -4
 
     device: cuda
     training_params:
-      epochs: 10
+      epochs: 1
       dataloader_kwargs:
-        batch_size: 16
+        batch_size: 10
         shuffle: true
         num_workers: 12
 
       save_epoch_step: 1
-      # save_batch_step: 1500
-      # early_stopping_regression: 1500
-      # early_stopping_average_losses: 300
+      early_stopping_regression: 1500
+      early_stopping_average_losses: 300
       set:
         0:
           criterion:
-            name: BCELoss
+            name: L1Loss
           optimizer:
             name: Adam
             kwargs:
@@ -64,10 +56,22 @@ model:
       metrics: {}
       init_eval: true
       evaluators:
-        - class: signalai.evaluators.Binary
+        - class: signalai.evaluators.L12
+          kwargs:
+            zero_front: 1000
+            zero_end: 1000
+        - class: signalai.evaluators.SpectrogramL12
+          kwargs:
+            zero_front: 1000
+            zero_end: 1000
+        - class: signalai.evaluators.MELSpectrogramL12
+          kwargs:
+            zero_front: 1000
+            zero_end: 1000
+
       evaluation_params:
         dataloader_kwargs:
-          batch_size: 16
+          batch_size: 10
           shuffle: true
           num_workers: 8
 
@@ -88,12 +92,23 @@ transform_graph:
 
 
 evaluators:
-  - class: signalai.evaluators.Binary
+- class: signalai.evaluators.L12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
+- class: signalai.evaluators.SpectrogramL12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
+- class: signalai.evaluators.MELSpectrogramL12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
 
 evaluation_params:
   dataloader_kwargs:
-    batch_size: 16
+    batch_size: 10
     shuffle: true
     num_workers: 8
 
-  max_batches: 500
+  max_batches: 1000

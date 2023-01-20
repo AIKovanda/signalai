@@ -4,7 +4,7 @@ uses: "{CONFIGS_DIR}/data_preparation/burst_detection/signal_noscale.yaml"
 
 
 model:
-  class: signalai.torch_model.OneIOTorchTimeSeriesModel
+  class: signalai.torch_model.TorchTimeSeriesModel
   kwargs:
     taken_length: 32768
     model_definition:

@@ -1,5 +1,6 @@
 tasks: signalai.tasks.data_preparation.*
-uses: "{CONFIGS_DIR}/datasets/burst_detection.yaml"
+uses: "{CONFIGS_DIR}/datasets/musdb18.yaml"
+load_to_ram: true
 
 
 generators:
@@ -18,20 +19,22 @@ generators:
       transform_chance: 0.2
       gain_db: [-15., 15.]
 
-  x_lambda:
+  chorus:
+    class: signalai.audio_transformers.Chorus
+    kwargs:
+      transform_chance: 0.2
+      centre_delay_ms: [ 6.5, 8.5 ]
+
+  data_arr:
     class: signalai.time_series_gen.LambdaTransformer
     kwargs:
       lambda_w: w.data_arr
       apply_to_ts: true
 
-  y_lambda:
-    class: signalai.time_series_gen.LambdaTransformer
+  pruner:
+    class: signalai.time_series_gen.ChannelPruner
     kwargs:
-      lambda_w: np.array([w.meta['category']])
-      apply_to_ts: true
-
-  sum_ts:
-    class: signalai.time_series_gen.TimeSeriesSum
+      choose_channels: '[{0,1}, {2,3}, {4,5}, {6,7}]'
 
   sum_channels:
     class: signalai.time_series_gen.LambdaTransformer
@@ -39,44 +42,35 @@ generators:
       lambda_w: w.sum_channels()
       apply_to_ts: true
 
-  time_map_scale:
-    class: signalai.time_series_gen.TimeMapScale
-    kwargs:
-      scale: 1/16
-
 
 data_graph:
   =Z:
-    gain:
-      reverb:
-        burst_train
+    chorus:
+      gain:
+        reverb:
+          pruner:
+            karaoke_train
 
   =X:
-    x_lambda:
-      sum_ts:
-        - gain:
-            reverb:
-              hum_and_noise
-        - sum_channels: Z
+    data_arr:
+      sum_channels: Z
 
   =Y:
-    time_map_scale: Z
+    data_arr: Z
 
   =Z_test:
-    gain:
-      reverb:
-        burst_test
+    chorus:
+      gain:
+        reverb:
+          pruner:
+            karaoke_test
 
   =X_test:
-    x_lambda:
-      sum_ts:
-        - gain:
-            reverb:
-              hum_and_noise
-        - sum_channels: Z_test
+    data_arr:
+      sum_channels: Z_test
 
   =Y_test:
-    time_map_scale: Z_test
+    data_arr: Z_test
 
 
 train_gen:

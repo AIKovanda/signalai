@@ -13,9 +13,20 @@ class TrainModel(Task):
         input_tasks = [TrainTimeSeriesGen, ValidTimeSeriesGen]
         parameters = [
             Parameter('model'),
+            Parameter('generators', default={}, ignore_persistence=True),
+            Parameter('transform_graph', default={}, ignore_persistence=True),
         ]
 
-    def run(self, train_time_series_gen, valid_time_series_gen, model: TimeSeriesModel) -> DirData:
+    def run(self, train_time_series_gen, valid_time_series_gen, model: TimeSeriesModel, generators: dict,
+            transform_graph: dict) -> DirData:
+        graph = make_graph(
+            time_series_gens=generators,
+            structure=transform_graph,
+        )
+        if 'pre_transform' in graph:
+            model.set_pre_transform(graph['pre_transform'])
+        if 'post_transform' in graph:
+            model.set_post_transform(graph['post_transform'])
         dir_data = self.get_data_object()
         model.set_path(dir_data.dir)
         batch_history, eval_history = model.train_on_generator(

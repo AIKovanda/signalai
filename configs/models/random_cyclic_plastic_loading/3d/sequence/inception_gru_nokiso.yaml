@@ -3,7 +3,7 @@ uses: "{CONFIGS_DIR}/data_preparation/random_cyclic_plastic_loading/identity/3d/
 
 
 model:
-  class: signalai.torch_model.OneIOTorchTimeSeriesModel
+  class: signalai.torch_model.TorchTimeSeriesModel
   kwargs:
     taken_length: null
     model_definition:

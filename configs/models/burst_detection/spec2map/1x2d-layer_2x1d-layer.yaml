@@ -4,7 +4,7 @@ uses: "{CONFIGS_DIR}/data_preparation/burst_detection/magnitude.yaml"
 
 
 model:
-  class: signalai.torch_model.OneIOTorchTimeSeriesModel
+  class: signalai.torch_model.TorchTimeSeriesModel
   kwargs:
     taken_length: 32768
     model_definition:
@@ -76,7 +76,7 @@ generators:
       lambda_w: w.data_arr
       apply_to_ts: true
   stft:
-    class: signalai.transformers.STFT
+    class: signalai.audio_transformers.STFT
     kwargs:
       phase_as_meta: true
       n_fft: 1024

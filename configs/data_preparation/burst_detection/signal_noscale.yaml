@@ -4,7 +4,7 @@ uses: "{CONFIGS_DIR}/datasets/burst_detection.yaml"
 
 generators:
   reverb:
-    class: signalai.transformers.Reverb
+    class: signalai.audio_transformers.Reverb
     kwargs:
       transform_chance: 0.2
       room_size: [.0, 1.]
@@ -13,19 +13,19 @@ generators:
       dry_level: [.0, 1.]
 
   gain:
-    class: signalai.transformers.Gain
+    class: signalai.audio_transformers.Gain
     kwargs:
       transform_chance: 0.2
       gain_db: [-35., 35.]
 
   gain_noise:
-    class: signalai.transformers.Gain
+    class: signalai.audio_transformers.Gain
     kwargs:
       transform_chance: 0.2
       gain_db: [-15., 55.]
 
 #  chorus:
-#    class: signalai.transformers.Chorus
+#    class: signalai.audio_transformers.Chorus
 #    kwargs:
 #      transform_chance: 0.2
 #      centre_delay_ms: [6.5, 8.5]

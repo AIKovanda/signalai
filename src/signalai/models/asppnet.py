@@ -10,7 +10,7 @@ def crop_center(h1, h2):
     if h1_shape[3] == h2_shape[3]:
         return h1
     elif h1_shape[3] < h2_shape[3]:
-        raise ValueError('h1_shape[3] must be greater than h2_shape[3]')
+        raise ValueError(f'h1_shape[3] must be greater than h2_shape[3], {h1_shape[3]}<{h2_shape[3]}.')
 
     # s_freq = (h2_shape[2] - h1_shape[2]) // 2
     # e_freq = s_freq + h1_shape[2]

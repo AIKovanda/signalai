@@ -1,0 +1,122 @@
+tasks: signalai.tasks.processing.*
+
+
+model:
+  class: signalai.torch_model.TorchTimeSeriesModel
+  kwargs:
+    taken_length: 263168
+    model_definition:
+      model:
+        class: signalai.models.CascadedASPPNet
+        kwargs:
+          n_fft: 2048
+
+    device: cuda
+    training_params:
+      epochs: 1
+      loss_eval: "self.criterion(y_hat[0], y_batch[0]) * 0.8 + self.criterion(y_hat[1], y_batch[0]) * 0.1 + self.criterion(y_hat[2], y_batch[0]) * 0.1"
+      dataloader_kwargs:
+        batch_size: 3
+        shuffle: true
+        num_workers: 12
+
+      save_epoch_step: 1
+      early_stopping_regression: 1500
+      early_stopping_average_losses: 300
+      set:
+        0:
+          criterion:
+            name: L1Loss
+          optimizer:
+            name: Adam
+            kwargs:
+              weight_decay: 1.0e-5
+              lr: 1.0e-3
+        5:
+          optimizer:
+            name: Adam
+            kwargs:
+              weight_decay: 1.0e-5
+              lr: 1.0e-4
+        8:
+          optimizer:
+            name: Adam
+            kwargs:
+              weight_decay: 1.0e-5
+              lr: 1.0e-5
+
+    training_echo:
+      # echo_step: 5000
+      metrics: {}
+      init_eval: true
+      evaluators:
+        - class: signalai.evaluators.L12
+          kwargs:
+            zero_front: 1000
+            zero_end: 1000
+        - class: signalai.evaluators.SpectrogramL12
+          kwargs:
+            zero_front: 1000
+            zero_end: 1000
+        - class: signalai.evaluators.MELSpectrogramL12
+          kwargs:
+            zero_front: 1000
+            zero_end: 1000
+
+      evaluation_params:
+        dataloader_kwargs:
+          batch_size: 3
+          shuffle: true
+          num_workers: 8
+
+        max_batches: 250
+
+
+generators:
+  istft:
+    class: signalai.audio_transformers.ISTFT
+    kwargs:
+      phase_as_meta: false
+      hop_length: 1024
+  stft:
+    class: signalai.audio_transformers.STFT
+    kwargs:
+      phase_as_meta: false
+      n_fft: 2048
+      hop_length: 1024
+  x_lambda:
+    class: signalai.time_series_gen.LambdaTransformer
+    kwargs:
+      lambda_w: w.data_arr
+      apply_to_ts: true
+
+
+transform_graph:
+  =pre_transform:
+    x_lambda:
+      stft
+  =post_transform:
+    istft
+
+
+evaluators:
+- class: signalai.evaluators.L12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
+- class: signalai.evaluators.SpectrogramL12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
+- class: signalai.evaluators.MELSpectrogramL12
+  kwargs:
+    zero_front: 1000
+    zero_end: 1000
+
+evaluation_params:
+  dataloader_kwargs:
+    batch_size: 3
+    shuffle: true
+    num_workers: 8
+
+  max_batches: 1000

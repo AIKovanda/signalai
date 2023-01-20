@@ -1,5 +1,6 @@
 tasks: signalai.tasks.data_preparation.*
-uses: "{CONFIGS_DIR}/datasets/burst_detection.yaml"
+uses: "{CONFIGS_DIR}/datasets/musdb18.yaml"
+load_to_ram: true
 
 
 generators:
@@ -18,14 +19,27 @@ generators:
       transform_chance: 0.2
       gain_db: [-15., 15.]
 
-  x_lambda:
+  chorus:
+    class: signalai.audio_transformers.Chorus
+    kwargs:
+      transform_chance: 0.2
+      centre_delay_ms: [ 6.5, 8.5 ]
+
+  data_arr:
     class: signalai.time_series_gen.LambdaTransformer
     kwargs:
       lambda_w: w.data_arr
       apply_to_ts: true
 
-  sum_ts:
-    class: signalai.time_series_gen.TimeSeriesSum
+  pruner:
+    class: signalai.time_series_gen.ChannelPruner
+    kwargs:
+      choose_channels: '[{0,1}, {2,3}, {4,5}, {6,7}]'
+
+  instrument_pruner:
+    class: signalai.time_series_gen.ChannelPruner
+    kwargs:
+      choose_channels: '[3]'
 
   sum_channels:
     class: signalai.time_series_gen.LambdaTransformer
@@ -33,54 +47,48 @@ generators:
       lambda_w: w.sum_channels()
       apply_to_ts: true
 
-  time_map_scale:
-    class: signalai.time_series_gen.TimeMapScale
-    kwargs:
-      first_crop: [512, 512]  # needed when using STFT
-      target_length: 1985
-
   stft:
     class: signalai.audio_transformers.STFT
     kwargs:
-      phase_as_meta: true
-      n_fft: 1024
-      hop_length: 16
+      phase_as_meta: false
+      n_fft: 2048
+      hop_length: 1024
 
 
 data_graph:
   =Z:
-    gain:
-      reverb:
-        burst_train
+    chorus:
+      gain:
+        reverb:
+          pruner:
+            karaoke_train
 
   =X:
-    x_lambda:
+    data_arr:
       stft:
-        sum_ts:
-          - gain:
-              reverb:
-                hum_and_noise
-          - sum_channels: Z
+        sum_channels: Z
 
   =Y:
-    time_map_scale: Z
+    data_arr:
+      stft:
+        instrument_pruner: Z
 
   =Z_test:
-    gain:
-      reverb:
-        burst_test
+    chorus:
+      gain:
+        reverb:
+          pruner:
+            karaoke_test
 
   =X_test:
-    x_lambda:
+    data_arr:
       stft:
-        sum_ts:
-          - gain:
-              reverb:
-                hum_and_noise
-          - sum_channels: Z_test
+        sum_channels: Z_test
 
   =Y_test:
-    time_map_scale: Z_test
+    data_arr:
+      stft:
+        instrument_pruner: Z_test
 
 
 train_gen:

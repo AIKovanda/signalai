@@ -19,8 +19,6 @@ class TorchTimeSeriesModel(TimeSeriesModel):
 
     def init_model(self, model_definition: dict | nn.Module) -> None:
         model = model_definition['model']
-        # self.cfg.update({key: val for key, val in model_definition.items() if key != 'model'})
-
         if isinstance(model, nn.Module):
             self.model = model
             if (pretrained_weights := model_definition.get('pretrained_weights')) is not None:
@@ -37,18 +35,13 @@ class TorchTimeSeriesModel(TimeSeriesModel):
         y_hat = self.model(*x)
         if not isinstance(y_hat, tuple):
             y_hat = (y_hat,)
-        # print('-'*19, '\n', x_batch, '\n')
-        # print('-'*19, '\n', y_batch, '\n')
-        # print('-'*19, '\n', y_hat, '\n')
-        # assert False
         loss = self._apply_loss(y, y_hat)
         loss.backward()
         self.optimizer.step()
         return loss.item(), y_hat
 
-    @abc.abstractmethod
     def _apply_loss(self, y_batch: tuple, y_hat: tuple):
-        pass
+        return eval(self.training_params.get('loss_eval', 'self.criterion(y_hat[0], y_batch[0])'))
 
     def train_on_generator(self, time_series_gen: TorchDataset, valid_time_series_gen: TorchDataset = None) -> tuple[pd.DataFrame, pd.DataFrame]:
         batch_history = []
@@ -189,6 +182,9 @@ class TorchTimeSeriesModel(TimeSeriesModel):
             x = tuple(val.type(torch.float32).to(self.device) for val in x)
             y_true = tuple(val.type(torch.float32).to(self.device) for val in y)
             y_pred = self.predict_batch(x)
+            if self.post_transform is not None:
+                y_true = tuple(self.post_transform.process_torch(i) for i in y_true)
+                y_pred = tuple(self.post_transform.process_torch(i) for i in y_pred)
             if save_evaluation_dir is not None:
                 Path(save_evaluation_dir).mkdir(parents=True, exist_ok=True)
                 np.save(str(save_evaluation_dir / f'{i}-x.npy'), x[0].detach().cpu().numpy())
@@ -250,9 +246,3 @@ class TorchTimeSeriesModel(TimeSeriesModel):
         else:
             raise NotImplementedError(f"Optimizer '{optimizer_name}' not implemented yet!!")
         print('Optimized initialized with parameters ', kwargs)
-
-
-class OneIOTorchTimeSeriesModel(TorchTimeSeriesModel):
-
-    def _apply_loss(self, y_batch: tuple, y_hat: tuple):
-        return self.criterion(y_hat[0], y_batch[0])

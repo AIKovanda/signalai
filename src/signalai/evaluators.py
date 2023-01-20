@@ -2,6 +2,7 @@ import abc
 
 import numpy as np
 import torch
+from signalai.audio_transformers import STFT
 from sklearn.metrics import accuracy_score, auc, precision_score, recall_score, roc_curve
 from taskchain.parameter import AutoParameterObject
 
@@ -106,82 +107,74 @@ class Binary(TorchEvaluator):
         }
 
 
-# class L12(SignalEvaluator):  # todo
-#     name = 'L12'
-#
-#     def _transform_channels(self, pred_channel: np.ndarray, true_channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-#         return pred_channel, true_channel
-#
-#     @property
-#     def stat(self) -> dict[str, dict[str, float]]:
-#         print(self.name)
-#         l1 = []
-#         l2 = []
-#         period = None
-#         zero_front = self.params.get('zero_front', 0)
-#         zero_end = self.params.get('zero_end', 0)
-#         for y_true, y_pred in self.items:
-#             period = len(y_pred)
-#             for pred_channel, true_channel in zip(y_pred, y_true):
-#                 pred_channel[:zero_front] = 0
-#                 true_channel[:zero_front] = 0
-#                 pred_channel[-zero_end-1:] = 0
-#                 true_channel[-zero_end-1:] = 0
-#                 pred_arr, true_arr = self._transform_channels(pred_channel, true_channel)
-#                 l1.append(np.mean(np.abs(pred_arr - true_arr)))
-#                 l2.append(np.mean((pred_arr - true_arr) ** 2))
-#
-#         by_one_l1 = {str(i): float(np.mean(l1[i::period])) for i in range(period)}
-#         by_one_l2 = {str(i): float(np.mean(l2[i::period])) for i in range(period)}
-#         return {
-#             'l1': {'all': float(np.mean(l1)), **by_one_l1},
-#             'l2': {'all': float(np.mean(l2)), **by_one_l2},
-#         }
-#
-#
-# class SpectrogramL12(L12):
-#     name = 'spectrogram_L12'
-#
-#     def __init__(self, **params):
-#         super().__init__(**params)
-#         self._transform = STFT(phase_as_meta=True, n_fft=2048, hop_length=1024)
-#
-#     def _transform_channels(self, pred_channel: np.ndarray, true_channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-#         return self._transform(pred_channel).data_arr, self._transform(true_channel).data_arr
-#
-#
-# class MELSpectrogramL12(L12):
-#     name = 'mel_spectrogram_L12'
-#
-#     def _transform_channels(self, pred_channel: np.ndarray, true_channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-#         return (librosa.feature.melspectrogram(y=pred_channel, sr=44100),
-#                 librosa.feature.melspectrogram(y=true_channel, sr=44100))
-#
-#
-# class AutoEncoderL12(L12):
-#     name = 'AutoEncoderL12'
-#
-#     def __init__(self, **params):
-#         super().__init__(**params)
-#         config_path = config.CONFIGS_DIR / 'models' / 'autoencoder' / '4.yaml'
-#
-#         conf = Config(
-#             config.TASKS_DIR,  # where Taskchain data should be stored
-#             config_path,
-#             global_vars=config,  # set global variables
-#         )
-#         chain = conf.chain()
-#         chain.set_log_level('CRITICAL')
-#
-#         signal_model = chain.trained_model.value
-#         signal_model.load(batch='last')
-#
-#         self._transform = signal_model.model.encoder
-#         self._transform.to(config.DEVICE).eval()
-#
-#     def _transform_channels(self, pred_channel: np.ndarray, true_channel: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-#         with torch.no_grad():
-#             x = torch.from_numpy(pred_channel).type(torch.float32).unsqueeze(0).unsqueeze(0).to(config.DEVICE)
-#             y = torch.from_numpy(true_channel).type(torch.float32).unsqueeze(0).unsqueeze(0).to(config.DEVICE)
-#             return self._transform(x)[0][0].detach().cpu().numpy(), self._transform(y)[0][0].detach().cpu().numpy()
-#
+class L12(TorchEvaluator):
+    name = ''
+
+    def __init__(self, **params):
+        super().__init__(**params)
+        self.channels_count = None
+        self.l1, self.l2 = [], []
+
+    def reset_items(self):
+        self.l1, self.l2 = [], []
+
+    def transform_channels(self, true_channel: torch.Tensor, pred_channel: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        return true_channel, pred_channel
+
+    def process_one(self, y_true: tuple[torch.Tensor], y_pred: tuple[torch.Tensor]):
+        if self.channels_count is None:
+            self.channels_count = y_pred[0].shape[0]
+        assert self.channels_count == y_pred[0].shape[0], "y_pred has a different number of channels than previous ones"
+        assert self.channels_count == y_true[0].shape[0], "y_true has a different number of channels than previous y_pred"
+        zero_front = self.params.get('zero_front', 0)
+        zero_end = self.params.get('zero_end', 0)
+        assert zero_front >= 0 and zero_end >= 0
+        true = y_true[0].detach()
+        pred = y_pred[0].detach()
+        with torch.no_grad():
+            for true_channel, pred_channel in zip(true, pred):
+                if zero_front > 0:
+                    pred_channel[:zero_front] = 0
+                    true_channel[:zero_front] = 0
+                if zero_end > 0:
+                    pred_channel[-zero_end:] = 0
+                    true_channel[-zero_end:] = 0
+                true_channel, pred_channel = self.transform_channels(true_channel, pred_channel)
+                self.l1.append(torch.unsqueeze(torch.mean(torch.abs(pred_channel - true_channel)), 0))
+                self.l2.append(torch.unsqueeze(torch.mean((pred_channel - true_channel) ** 2), 0))
+
+    @property
+    def metric_value(self) -> dict[str, float]:
+        with torch.no_grad():
+            by_one_l1 = {f'{self.name}l1-ch{i}': float(torch.mean(torch.cat(self.l1[i::self.channels_count]))) for i in range(self.channels_count)}
+            by_one_l2 = {f'{self.name}l2-ch{i}': float(torch.mean(torch.cat(self.l2[i::self.channels_count]))) for i in range(self.channels_count)}
+            return {
+                f'{self.name}l1-all': float(torch.mean(torch.cat(self.l1))), **by_one_l1,
+                f'{self.name}l2-all': float(torch.mean(torch.cat(self.l2))), **by_one_l2,
+            }
+
+
+class SpectrogramL12(L12):
+    name = 'SPEC_'
+
+    def __init__(self, **params):
+        super().__init__(**params)
+        self._transform = STFT(phase_as_meta=True, n_fft=2048, hop_length=1024)
+
+    def transform_channels(self, true_channel: torch.Tensor, pred_channel: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        return (
+            torch.from_numpy(np.abs(self._transform.process_numpy(np.expand_dims(true_channel.cpu().numpy(), 0)))),
+            torch.from_numpy(np.abs(self._transform.process_numpy(np.expand_dims(pred_channel.cpu().numpy(), 0)))),
+        )
+
+
+class MELSpectrogramL12(L12):
+    name = 'MEL_'
+
+    def transform_channels(self, true_channel: torch.Tensor, pred_channel: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        import librosa
+        return (
+            torch.from_numpy(librosa.feature.melspectrogram(y=true_channel.cpu().numpy(), sr=44100)),
+            torch.from_numpy(librosa.feature.melspectrogram(y=pred_channel.cpu().numpy(), sr=44100)),
+        )
+
