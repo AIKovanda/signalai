@@ -5,7 +5,7 @@ from itertools import chain, count
 import numpy as np
 from taskchain.parameter import AutoParameterObject
 
-from signalai.time_series import TimeSeries, sum_time_series
+from signalai.time_series import sum_time_series, TimeSeries
 
 
 def offset_generator():

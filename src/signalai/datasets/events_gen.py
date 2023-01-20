@@ -3,10 +3,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from signalai.datasets.file_loader import GlobFileLoader
+from signalai.config import DATA_DIR
+from signalai.datasets.file_loader import FileLoader, GlobFileLoader
 from signalai.time_series import read_audio, Signal, stack_time_series, sum_time_series, TimeSeries
 from signalai.time_series_gen import TimeSeriesGen, TimeSeriesHolder
-from signalai.tools.utils import join_dicts
+from signalai.tools.utils import get_config, join_dicts
 
 
 class EventsGen(TimeSeriesGen):
@@ -20,14 +21,7 @@ class EventsGen(TimeSeriesGen):
     def is_infinite(self) -> bool:
         return True
 
-    def _build(self):
-        assert 'paths' in self.config, 'A dict class_name: dir_with_files'
-
-        for class_name, dir_with_files in self.config['paths'].items():
-            self.input_ts_gen_kwargs[class_name] = GlobFileLoader(
-                base_dir=dir_with_files, file_structure=self.config.get('file_structure', {}),
-            )
-            self.input_ts_gen_kwargs[class_name].build()
+    def set_signal_info(self):
         dim_set = set()
         meta_list = []
         fs_set = set()
@@ -36,13 +30,24 @@ class EventsGen(TimeSeriesGen):
             dim_set.add(s.data_arr.shape[0])
             meta_list.append(s.meta)
             fs_set.add(s.fs)
-
         assert len(fs_set) == 1, 'Items have different sample frequency.'
         assert len(dim_set) == 1, 'Items have different channel number.'
-
         self.signal_info['fs'] = fs_set.pop()
         self.signal_info['dim'] = dim_set.pop()
         self.signal_info['meta'] = join_dicts(*meta_list)
+
+    def _build(self):
+        assert 'structure' in self.config
+
+        for class_name, event_structure in get_config(self.config['structure']).items():
+            assert 'base_dir' in event_structure
+            assert 'all_file_structure' in event_structure
+            self.input_ts_gen_kwargs[class_name] = FileLoader(
+                base_dir=event_structure['base_dir'].format(DATA_DIR=DATA_DIR), all_file_structure=event_structure['all_file_structure'],
+            )
+            self.input_ts_gen_kwargs[class_name].build()
+
+        self.set_signal_info()
 
     def _getitem(self, item: int) -> TimeSeries:
         assert self.taken_length is not None
@@ -89,18 +94,32 @@ class EventsGen(TimeSeriesGen):
         return stack_time_series([non_zero_signals.get(key, zero_signal) for key in event_names])
 
 
-class CSVEventsGen(EventsGen):
-
+class GlobEventsGen(EventsGen):
     def _build(self):
-        assert 'filename' in self.config
-        assert 'classes_file' in self.config
+        assert 'structure' in self.config
 
-        df = pd.read_csv(self.config['classes_file'])
+        for class_name, event_structure in get_config(self.config['structure']).items():
+            assert 'base_dir' in event_structure
+            assert 'file_structure' in event_structure, 'file_structure is not set (at least to empty dict)'
+            self.input_ts_gen_kwargs[class_name] = GlobFileLoader(
+                base_dir=event_structure['base_dir'].format(DATA_DIR=DATA_DIR), file_structure=event_structure['file_structure'],
+            )
+            self.input_ts_gen_kwargs[class_name].build()
+
+        self.set_signal_info()
+
+
+class CSVEventsGen(EventsGen):
+    def _build(self):
+        assert 'file_path' in self.config
+        assert 'csv_file' in self.config
+
+        df = pd.read_csv(self.config['csv_file'])
         unique_events = df['event'].drop_duplicates().to_list()
 
-        files = list(Path('/'.join(self.config["filename"].split('/')[:-1])).glob(
-            self.config["filename"].split('/')[-1]))
-        assert len(files) > 0, 'There is no file!'
+        files = list(Path('/'.join(self.config["file_path"].split('/')[:-1])).glob(
+            self.config["file_path"].split('/')[-1]))
+        assert len(files) > 0, f'There is no file at {self.config["file_path"]}!'
 
         # loading all files
         all_signals = {}
@@ -124,3 +143,6 @@ class CSVEventsGen(EventsGen):
             self.input_ts_gen_kwargs[unique_event_type] = TimeSeriesHolder(
                 timeseries=event_signals,
             )
+            self.input_ts_gen_kwargs[unique_event_type].build()
+
+        self.set_signal_info()

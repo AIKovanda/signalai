@@ -22,7 +22,7 @@ from signalai.tools.filters import butter_bandpass_filter
 
 
 def by_channel(transform: Callable):
-    def wrapper(self, *args, **kwargs):
+    def by_channel_wrapper(self, *args, **kwargs):
         arg_len = set([len(arg) for arg in args])
         assert len(arg_len) == 1, f"Inputs must be the same length."
         processed_channels = []
@@ -32,7 +32,7 @@ def by_channel(transform: Callable):
             )
         return np.concatenate(processed_channels, axis=0)
 
-    return wrapper
+    return by_channel_wrapper
 
 
 def get_parameter_uniform(param_value: float | list[float] | None, default: float | list[float] | None) -> float:

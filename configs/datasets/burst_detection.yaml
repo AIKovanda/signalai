@@ -3,34 +3,48 @@ tasks: signalai.tasks.datasets.*
 
 datasets:
   burst_train:
-    class: signalai.datasets.events_gen.EventsGen
+    class: signalai.datasets.events_gen.GlobEventsGen
     kwargs:
-      paths:
-        crack120: '/home/martin/BigData/burst_detection/train/cracks-ch4-HPF120'
-        crack350: '/home/martin/BigData/burst_detection/train/cracks-ch4-HPF350'
+      structure:
+        crack120:
+          base_dir: '{DATA_DIR}/burst_detection/train/cracks-ch4-HPF120'
+          file_structure:
+            source_dtype: float32
+            target_dtype: float16
+            relative_priority: 1
+            fs: 44100
 
-      file_structure:
-        source_dtype: float32
-        target_dtype: float16
-        relative_priority: 1
-        fs: 44100
+        crack350:
+          base_dir: '{DATA_DIR}/burst_detection/train/cracks-ch4-HPF350'
+          file_structure:
+            source_dtype: float32
+            target_dtype: float16
+            relative_priority: 1
+            fs: 44100
 
       event_count_range: [1, 10]
       start_arange: [0, 65536]
       event_length_arange: [251,252]
 
   burst_test:
-    class: signalai.datasets.events_gen.EventsGen
+    class: signalai.datasets.events_gen.GlobEventsGen
     kwargs:
-      paths:
-        crack120: '/home/martin/BigData/burst_detection/test/cracks-ch4-HPF120'
-        crack350: '/home/martin/BigData/burst_detection/test/cracks-ch4-HPF350'
+      structure:
+        crack120:
+          base_dir: '{DATA_DIR}/burst_detection/test/cracks-ch4-HPF120'
+          file_structure:
+            source_dtype: float32
+            target_dtype: float16
+            relative_priority: 1
+            fs: 44100
 
-      file_structure:
-        source_dtype: float32
-        target_dtype: float16
-        relative_priority: 1
-        fs: 44100
+        crack350:
+          base_dir: '{DATA_DIR}/burst_detection/test/cracks-ch4-HPF350'
+          file_structure:
+            source_dtype: float32
+            target_dtype: float16
+            relative_priority: 1
+            fs: 44100
 
       event_count_range: [1, 10]
       start_arange: [0, 65536]
@@ -39,8 +53,7 @@ datasets:
   hum_and_noise:
     class: signalai.datasets.file_loader.FileLoader
     kwargs:
-      base_dir: '/home/martin/BigData/burst_detection/hum_and_noise'
-      zero_time_map: true
+      base_dir: '{DATA_DIR}/burst_detection/hum_and_noise'
       all_file_structure:
         - channels: ['AE-DATA-conti-7382934628139121-ch4.bin']
           source_dtype: float32

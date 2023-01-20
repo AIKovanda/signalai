@@ -364,29 +364,49 @@ def sum_time_series(series: list[TimeSeries]) -> TimeSeries:
 
 
 def stack_time_series(series: list[TimeSeries]) -> TimeSeries:
-    if len(series) == 0:
-        raise ValueError
-    elif len(series) == 1:
-        return series[0]
+    new_info = join_dicts(*[i.meta for i in series])
+    data_arrs = []
+    time_maps = []
+    length = len(series[0])
+    fs = series[0].fs
+    for i in series:
+        assert len(i) == length
+        assert i.fs is fs or i.fs == fs
+        data_arrs.append(i.data_arr)
+        time_maps.append(i.time_map)
 
-    ts0 = series[0]
-    for ts in series[1:]:
-        ts0 = ts0 | ts
+    new_data_arr = np.concatenate(data_arrs, axis=0)
+    new_time_map = np.concatenate(time_maps, axis=0)
 
-    return ts0
+    return type(series[0])(
+        data_arr=new_data_arr,
+        meta=new_info,
+        time_map=new_time_map,
+        fs=fs,
+    )
 
 
 def join_time_series(series: list[TimeSeries]) -> TimeSeries:
-    if len(series) == 0:
-        raise ValueError
-    elif len(series) == 1:
-        return series[0]
+    new_info = join_dicts(*[i.meta for i in series])
+    data_arrs = []
+    time_maps = []
+    channels_count = series[0].channels_count
+    fs = series[0].fs
+    for i in series:
+        assert i.channels_count == channels_count
+        assert i.fs is fs or i.fs == fs
+        data_arrs.append(i.data_arr)
+        time_maps.append(i.time_map)
 
-    ts0 = series[0]
-    for ts in series[1:]:
-        ts0 = ts0 & ts
+    new_data_arr = np.concatenate(data_arrs, axis=-1)
+    new_time_map = np.concatenate(time_maps, axis=-1)
 
-    return ts0
+    return type(series[0])(
+        data_arr=new_data_arr,
+        meta=new_info,
+        time_map=new_time_map,
+        fs=fs,
+    )
 
 
 def audio_file2numpy(file) -> tuple[np.ndarray, int]:
