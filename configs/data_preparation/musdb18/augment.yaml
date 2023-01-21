@@ -43,7 +43,7 @@ generators:
       apply_to_ts: true
 
 
-data_graph:
+data_graph_train:
   =Z:
     chorus:
       gain:
@@ -58,35 +58,52 @@ data_graph:
   =Y:
     data_arr: Z
 
-  =Z_test:
-    chorus:
-      gain:
-        reverb:
-          pruner:
-            karaoke_test
-
-  =X_test:
-    data_arr:
-      sum_channels: Z_test
-
-  =Y_test:
-    data_arr: Z_test
-
-
 train_gen:
   inputs:
     - X
   outputs:
     - Y
 
+
+data_graph_valid:
+  =Z:
+    chorus:
+      gain:
+        reverb:
+          pruner:
+            karaoke_test
+
+  =X:
+    data_arr:
+      sum_channels: Z
+
+  =Y:
+    data_arr: Z
+
 valid_gen:
   inputs:
-    - X_test
+    - X
   outputs:
-    - Y_test
+    - Y
+
+
+data_graph_test:
+  =Z:
+    chorus:
+      gain:
+        reverb:
+          pruner:
+            karaoke_test
+
+  =X:
+    data_arr:
+      sum_channels: Z
+
+  =Y:
+    data_arr: Z
 
 test_gen:
   inputs:
-    - X_test
+    - X
   outputs:
-    - Y_test
+    - Y

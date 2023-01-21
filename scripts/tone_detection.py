@@ -25,76 +25,78 @@ ALL_PIANO_TONES = [
     '$D_6$', '$D^{\\#}_6$', '$E_6$', '$F_6$', '$F^{\\#}_6$', '$G_6$', '$G^{\\#}_6$', '$A_6$',
     '$A^{\\#}_6$', '$B_6$', '$C_7$']
 
-
-config_path = config.CONFIGS_DIR / 'models' / f'{sys.argv[1]}' / f'{sys.argv[2]}' / f'{sys.argv[3]}.yaml'
-
-conf = Config(
-    config.TASKS_DIR,  # where Taskchain data should be stored
-    config_path,
-    global_vars=config,  # set global variables
-)
-chain = conf.chain()
-
-length, fs = chain.echo_info.value
-if fs is None:
-    fs = 48000
-
-x_max = 1000 * length / fs
-
-# chain.train_model.force()
-
-dc = chain.evaluate_model.force().value
-dt = dc.pop('items')
-
-nex_dir = config.BASE_DIR / 'eventlist' / f'{sys.argv[2]}'
-
-json_file = nex_dir / 'json' / f'{sys.argv[1]}.json'
-with json_file.open('w') as f:
-    json.dump(dc, f)
+OUTPUT_DIR = config.BASE_DIR / 'test' / f'piano_tones'
 
 
-img_dir = nex_dir / 'img' / f'{sys.argv[1]}'
-img_dir.mkdir(exist_ok=True, parents=True)
+def run(config_path):
+    conf = Config(
+        config.TASKS_DIR,  # where Taskchain data should be stored
+        config_path,
+        global_vars=config,  # set global variables
+    )
+    chain = conf.chain()
+    model = chain.trained_model.value
+    x_max = 1000 * model.taken_length / 48000
 
-for j in trange(30, desc=f'Plotting in {img_dir} '):
-    th = .5
-    plot_binary_map(dt[j][0], all_object_labels=ALL_PIANO_TONES, savefigs=[img_dir / f'{j}-binary_map_full.pdf',
-                                        img_dir / f'{j}-binary_map_full.pgf'],
-                    figsize=(7, 3), yshift=3.8, x_max=x_max, show=False, object_name='Tone')
+    t_gen = chain.test_time_series_gen.value
+    t_gen.reset_taken_length()
+    t_gen.set_taken_length(model.taken_length)
 
-    plot_binary_map(convolve2d((dt[j][1] > th).astype(int), np.ones((1, 5)), 'same') >= 3,
-                    all_object_labels=ALL_PIANO_TONES,
-                    savefigs=[img_dir / f'{j}-binary_map_pr_c.pdf', img_dir / f'{j}-binary_map_pr_c.pgf'],
-                    figsize=(7, 3), yshift=3.8, x_max=x_max, show=False, object_name='Tone')
+    output_dir = OUTPUT_DIR / config_path.stem
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    plot_binary_map(dt[j][1] > th, all_object_labels=ALL_PIANO_TONES,
-                    savefigs=[img_dir / f'{j}-binary_map_pred.pdf', img_dir / f'{j}-binary_map_pred.pgf'],
-                    figsize=(7, 3), yshift=3.8, x_max=x_max, show=False, object_name='Tone')
+    json_file = output_dir / f'{config_path.stem}.json'
+    with json_file.open('w') as f:
+        json.dump(chain.evaluate_model.force().value, f)
+
+    img_dir = output_dir / 'img'
+    img_dir.mkdir(exist_ok=True, parents=True)
+
+    ys = []
+    y_hats = []
+    for j in trange(30, desc=f'Plotting in {img_dir} '):
+        (x,), (y,) = t_gen.getitem(j)
+        y_hat = model.predict_numpy(x)[0]
+        ys.append(y)
+        y_hats.append(y_hat)
+        th = .5
+        plot_binary_map(y, all_object_labels=ALL_PIANO_TONES, savefigs=[img_dir / f'{j}-binary_map_full.pdf',
+                                            img_dir / f'{j}-binary_map_full.pgf'],
+                        figsize=(7, 3), yshift=3.8, x_max=x_max, show=False, object_name='Tone')
+
+        plot_binary_map(convolve2d((y_hat > th).astype(int), np.ones((1, 5)), 'same') >= 3,
+                        all_object_labels=ALL_PIANO_TONES,
+                        savefigs=[img_dir / f'{j}-binary_map_pr_c.pdf', img_dir / f'{j}-binary_map_pr_c.pgf'],
+                        figsize=(7, 3), yshift=3.8, x_max=x_max, show=False, object_name='Tone')
+
+        plot_binary_map(y_hat > th, all_object_labels=ALL_PIANO_TONES,
+                        savefigs=[img_dir / f'{j}-binary_map_pred.pdf', img_dir / f'{j}-binary_map_pred.pgf'],
+                        figsize=(7, 3), yshift=3.8, x_max=x_max, show=False, object_name='Tone')
+
+    fpr, tpr, _ = roc_curve(np.concatenate(ys, axis=1).reshape(-1), np.concatenate(y_hats, axis=1).reshape(-1))
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure(figsize=(10, 3))
+    lw = 2
+    plt.plot(
+        fpr,
+        tpr,
+        color="darkorange",
+        lw=lw,
+        label=f"ROC curve (area = {roc_auc:.04f})",
+    )
+    plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("Receiver operating characteristic")
+    plt.legend(loc="lower right")
+    plt.savefig(img_dir / f'roc_auc.pdf', bbox_inches='tight', pad_inches=0.)
+    plt.savefig(img_dir / f'roc_auc.pgf', bbox_inches='tight', pad_inches=0.)
+    plt.close()
 
 
-mp = np.concatenate([i[0] for i in dt], axis=1)
-pred = np.concatenate([i[1] for i in dt], axis=1)
-
-fpr, tpr, _ = roc_curve(mp.reshape(-1), pred.reshape(-1))
-roc_auc = auc(fpr, tpr)
-
-
-plt.figure(figsize=(10, 3))
-lw = 2
-plt.plot(
-    fpr,
-    tpr,
-    color="darkorange",
-    lw=lw,
-    label=f"ROC curve (area = {roc_auc:.04f})",
-)
-plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
-plt.xlim([0.0, 1.0])
-plt.ylim([0.0, 1.0])
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.title("Receiver operating characteristic")
-plt.legend(loc="lower right")
-plt.savefig(img_dir / f'roc_auc.pdf', bbox_inches='tight', pad_inches=0.)
-plt.savefig(img_dir / f'roc_auc.pgf', bbox_inches='tight', pad_inches=0.)
-plt.close()
+if __name__ == '__main__':
+    chosen_config_path = config.CONFIGS_DIR / 'models' / f'piano_tones' / f'spec2map' / f'1x2d-layer_2x1d-layer.yaml'
+    run(chosen_config_path)

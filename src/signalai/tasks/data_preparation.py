@@ -1,25 +1,8 @@
 from taskchain import InMemoryData, Parameter, Task
 
-from signalai.time_series_gen import TimeSeriesGen, make_graph
-from signalai.torch_dataset import TorchDataset
 from signalai.tasks.datasets import DatasetDict
-
-
-class TimeSeriesGenGraph(Task):
-    class Meta:
-        data_class = InMemoryData
-        input_tasks = [DatasetDict]
-        parameters = [
-            Parameter("data_graph"),
-            Parameter("generators", default={}),
-        ]
-
-    def run(self, dataset_dict: dict, generators: dict, data_graph: dict) -> dict[str, TimeSeriesGen]:
-        graph = make_graph(
-            time_series_gens={**dataset_dict, **generators},
-            structure=data_graph,
-        )
-        return graph
+from signalai.time_series_gen import make_graph
+from signalai.torch_dataset import TorchDataset
 
 
 class TaskTimeSeriesGen(Task):
@@ -27,10 +10,14 @@ class TaskTimeSeriesGen(Task):
         abstract = True
 
     def run(self) -> TorchDataset:
-        take_dict = self.parameters[self.meta.split_name]
+        graph = make_graph(
+            time_series_gens={**self.input_tasks['dataset_dict'].value, **self.parameters['generators']},
+            structure=self.parameters[f'data_graph_{self.meta.split_name}'],
+        )
+        take_dict = self.parameters[f'{self.meta.split_name}_gen']
         take = {val for i in ['inputs', 'outputs'] for val in take_dict[i]}
         relevant_graph = {
-            key: val for key, val in self.input_tasks['time_series_gen_graph'].value.items() if key in take}
+            key: val for key, val in graph.items() if key in take}
         params = {
             'take_dict': take_dict,
             'max_length': self.parameters['max_length'],
@@ -43,31 +30,37 @@ class TaskTimeSeriesGen(Task):
 class TrainTimeSeriesGen(TaskTimeSeriesGen):
     class Meta:
         data_class = InMemoryData
-        input_tasks = [TimeSeriesGenGraph]
+        input_tasks = [DatasetDict]
         parameters = [
+            Parameter("data_graph_train"),
             Parameter("train_gen"),
             Parameter("max_length", default=10**15),
+            Parameter("generators", default={}),
         ]
-        split_name = 'train_gen'
+        split_name = 'train'
 
 
 class ValidTimeSeriesGen(TaskTimeSeriesGen):
     class Meta:
         data_class = InMemoryData
-        input_tasks = [TimeSeriesGenGraph]
+        input_tasks = [DatasetDict]
         parameters = [
+            Parameter("data_graph_valid"),
             Parameter("valid_gen"),
             Parameter("max_length", default=10**15),
+            Parameter("generators", default={}),
         ]
-        split_name = 'valid_gen'
+        split_name = 'valid'
 
 
 class TestTimeSeriesGen(TaskTimeSeriesGen):
     class Meta:
         data_class = InMemoryData
-        input_tasks = [TimeSeriesGenGraph]
+        input_tasks = [DatasetDict]
         parameters = [
+            Parameter("data_graph_test"),
             Parameter("test_gen"),
             Parameter("max_length", default=10**15),
+            Parameter("generators", default={}),
         ]
-        split_name = 'test_gen'
+        split_name = 'test'

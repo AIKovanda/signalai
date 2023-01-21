@@ -154,9 +154,9 @@ class TorchTimeSeriesModel(TimeSeriesModel):
             y_hat = (y_hat,)
         return y_hat
 
-    def predict_numpy(self, *arr: tuple[np.ndarray]):
+    def predict_numpy(self, *arr: tuple[np.ndarray]) -> tuple[np.ndarray]:
         x = tuple(torch.from_numpy(np.stack(arr_)).type(torch.float32).to(self.device) for arr_ in zip(*arr))
-        return self.predict_batch(x)
+        return tuple(i.detach().cpu().numpy()[0] for i in self.predict_batch(x))
 
     def eval_on_generator(self, time_series_gen: TorchDataset, evaluators: list[TorchEvaluator], evaluation_params: dict,
                           use_tqdm=False, save_evaluation_dir: Path = None) -> dict:

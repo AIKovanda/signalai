@@ -16,7 +16,7 @@ generators:
       apply_to_ts: true
 
 
-data_graph:
+data_graph_train:
   =Z:
     experiment_train
   =X:
@@ -24,28 +24,38 @@ data_graph:
   =Y:
     y_lambda: Z
 
-  =Z_test:
-    experiment_test
-  =X_test:
-    x_lambda: Z_test
-  =Y_test:
-    y_lambda: Z_test
-
-
 train_gen:
   inputs:
     - X
   outputs:
     - Y
 
+
+data_graph_valid:
+  =Z:
+    experiment_test
+  =X:
+    x_lambda: Z
+  =Y:
+    y_lambda: Z
+
 valid_gen:
   inputs:
-    - X_test
+    - X
   outputs:
-    - Y_test
+    - Y
+
+
+data_graph_test:
+  =Z:
+    experiment_test
+  =X:
+    x_lambda: Z
+  =Y:
+    y_lambda: Z
 
 test_gen:
   inputs:
-    - X_test
+    - X
   outputs:
-    - Y_test
+    - Y

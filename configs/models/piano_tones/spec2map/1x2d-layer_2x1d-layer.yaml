@@ -1,0 +1,99 @@
+tasks: signalai.tasks.processing.*
+uses: "{CONFIGS_DIR}/data_preparation/piano_tones/piano_tones_mag.yaml"
+
+
+model:
+  class: signalai.torch_model.TorchTimeSeriesModel
+  kwargs:
+    taken_length: 131584
+    model_definition:
+      model:
+        class: signalai.models.Spec2Map
+        kwargs:
+          convs_2d: [8]
+          convs_1d: [512, 256]
+          activation: mish
+          out_activation: sigmoid
+          in_channels: 1
+          vertical_channels: 513
+          outputs: 85
+
+    device: cuda
+    training_params:
+      epochs: 12
+      dataloader_kwargs:
+        batch_size: 16
+        shuffle: true
+        num_workers: 8
+      max_batches: 3000
+      save_epoch_step: 1
+      # save_batch_step: 1500
+      # early_stopping_regression: 1500
+      # early_stopping_average_losses: 300
+      set:
+        0:
+          criterion:
+            name: BCELoss
+          optimizer:
+            name: Adam
+            kwargs:
+              weight_decay: 1.0e-5
+              lr: 2.0e-4
+        35:
+          optimizer:
+            name: Adam
+            kwargs:
+              weight_decay: 1.0e-5
+              lr: 1.0e-5
+        50:
+          optimizer:
+            name: Adam
+            kwargs:
+              weight_decay: 1.0e-5
+              lr: 1.0e-6
+
+    training_echo:
+      # echo_step: 5000
+      metrics: { }
+      init_eval: true
+      evaluators:
+        - class: signalai.evaluators.Binary
+      evaluation_params:
+        dataloader_kwargs:
+          batch_size: 16
+          shuffle: true
+          num_workers: 8
+
+        max_batches: 20
+
+
+generators:
+  x_lambda:
+    class: signalai.time_series_gen.LambdaTransformer
+    kwargs:
+      lambda_w: w.data_arr
+      apply_to_ts: true
+  stft:
+    class: signalai.audio_transformers.STFT
+    kwargs:
+      phase_as_meta: true
+      n_fft: 1024
+
+
+transform_graph:
+  =pre_transform:
+    x_lambda:
+      stft
+
+
+evaluators:
+- class: signalai.evaluators.Binary
+
+
+evaluation_params:
+  dataloader_kwargs:
+    batch_size: 16
+    shuffle: true
+    num_workers: 8
+
+  max_batches: 15

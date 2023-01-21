@@ -45,7 +45,7 @@ generators:
       scale: 1/16
 
 
-data_graph:
+data_graph_train:
   =Z:
     gain:
       reverb:
@@ -62,37 +62,56 @@ data_graph:
   =Y:
     time_map_scale: Z
 
-  =Z_test:
-    gain:
-      reverb:
-        burst_test
-
-  =X_test:
-    x_lambda:
-      sum_ts:
-        - gain:
-            reverb:
-              hum_and_noise
-        - sum_channels: Z_test
-
-  =Y_test:
-    time_map_scale: Z_test
-
-
 train_gen:
   inputs:
     - X
   outputs:
     - Y
 
+
+data_graph_valid:
+  =Z:
+    gain:
+      reverb:
+        burst_test
+
+  =X:
+    x_lambda:
+      sum_ts:
+        - gain:
+            reverb:
+              hum_and_noise
+        - sum_channels: Z
+
+  =Y:
+    time_map_scale: Z
+
 valid_gen:
   inputs:
-    - X_test
+    - X
   outputs:
-    - Y_test
+    - Y
+
+
+data_graph_test:
+  =Z:
+    gain:
+      reverb:
+        burst_test
+
+  =X:
+    x_lambda:
+      sum_ts:
+        - gain:
+            reverb:
+              hum_and_noise
+        - sum_channels: Z
+
+  =Y:
+    time_map_scale: Z
 
 test_gen:
   inputs:
-    - X_test
+    - X
   outputs:
-    - Y_test
+    - Y
