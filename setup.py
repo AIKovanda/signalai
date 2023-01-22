@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="signalai",
-    version="0.5.0",
+    version="1.0.0",
     author="Martin Kovanda",
     author_email="kovanda.physics@gmail.com",
     description="Toolbox for signal machine learning using neural networks",
