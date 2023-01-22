@@ -70,7 +70,11 @@ class TimeSeriesModel(AutoParameterObject, abc.ABC):
 
     def predict_ts(self, *ts: TimeSeries):
         assert self.pre_transform is not None
-        return self.predict_numpy(*[np.expand_dims(self.pre_transform.process(i), 0) for i in ts])
+        res = self.predict_numpy(*[np.expand_dims(self.pre_transform.process(i), 0) for i in ts])
+        if self.post_transform is not None:
+            assert len(res) == 1, 'Result from NN must have only one tensor, not implemented yet.'
+            res = (self.post_transform.process_numpy(res[0]),)
+        return res
 
     @abc.abstractmethod
     def eval_on_generator(self, time_series_gen: TorchDataset, evaluators: list, evaluation_params: dict,

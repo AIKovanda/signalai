@@ -13,300 +13,300 @@ datasets:
         - channels: ['ANiMAL_-_Easy_Tiger_-_1.aac',  'ANiMAL_-_Easy_Tiger_-_2.aac',  'ANiMAL_-_Easy_Tiger_-_3.aac',  'ANiMAL_-_Easy_Tiger_-_4.aac']
           target_dtype: float16
           fs: 44100
-#        - channels: ['ANiMAL_-_Rockshow_-_1.aac',  'ANiMAL_-_Rockshow_-_2.aac',  'ANiMAL_-_Rockshow_-_3.aac',  'ANiMAL_-_Rockshow_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['A_Classic_Education_-_NightOwl_-_1.aac',  'A_Classic_Education_-_NightOwl_-_2.aac',  'A_Classic_Education_-_NightOwl_-_3.aac',  'A_Classic_Education_-_NightOwl_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Actions_-_Devils_Words_-_1.aac',  'Actions_-_Devils_Words_-_2.aac',  'Actions_-_Devils_Words_-_3.aac',  'Actions_-_Devils_Words_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Actions_-_One_Minute_Smile_-_1.aac',  'Actions_-_One_Minute_Smile_-_2.aac',  'Actions_-_One_Minute_Smile_-_3.aac',  'Actions_-_One_Minute_Smile_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Actions_-_South_Of_The_Water_-_1.aac',  'Actions_-_South_Of_The_Water_-_2.aac',  'Actions_-_South_Of_The_Water_-_3.aac',  'Actions_-_South_Of_The_Water_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Aimee_Norwich_-_Child_-_1.aac',  'Aimee_Norwich_-_Child_-_2.aac',  'Aimee_Norwich_-_Child_-_3.aac',  'Aimee_Norwich_-_Child_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Alexander_Ross_-_Goodbye_Bolero_-_1.aac',  'Alexander_Ross_-_Goodbye_Bolero_-_2.aac',  'Alexander_Ross_-_Goodbye_Bolero_-_3.aac',  'Alexander_Ross_-_Goodbye_Bolero_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Alexander_Ross_-_Velvet_Curtain_-_1.aac',  'Alexander_Ross_-_Velvet_Curtain_-_2.aac',  'Alexander_Ross_-_Velvet_Curtain_-_3.aac',  'Alexander_Ross_-_Velvet_Curtain_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Angela_Thomas_Wade_-_Milk_Cow_Blues_-_1.aac',  'Angela_Thomas_Wade_-_Milk_Cow_Blues_-_2.aac',  'Angela_Thomas_Wade_-_Milk_Cow_Blues_-_3.aac',  'Angela_Thomas_Wade_-_Milk_Cow_Blues_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Atlantis_Bound_-_It_Was_My_Fault_For_Waiting_-_1.aac',  'Atlantis_Bound_-_It_Was_My_Fault_For_Waiting_-_2.aac',  'Atlantis_Bound_-_It_Was_My_Fault_For_Waiting_-_3.aac',  'Atlantis_Bound_-_It_Was_My_Fault_For_Waiting_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Auctioneer_-_Our_Future_Faces_-_1.aac',  'Auctioneer_-_Our_Future_Faces_-_2.aac',  'Auctioneer_-_Our_Future_Faces_-_3.aac',  'Auctioneer_-_Our_Future_Faces_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['AvaLuna_-_Waterduct_-_1.aac',  'AvaLuna_-_Waterduct_-_2.aac',  'AvaLuna_-_Waterduct_-_3.aac',  'AvaLuna_-_Waterduct_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['BigTroubles_-_Phantom_-_1.aac',  'BigTroubles_-_Phantom_-_2.aac',  'BigTroubles_-_Phantom_-_3.aac',  'BigTroubles_-_Phantom_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Bill_Chudziak_-_Children_Of_No-one_-_1.aac',  'Bill_Chudziak_-_Children_Of_No-one_-_2.aac',  'Bill_Chudziak_-_Children_Of_No-one_-_3.aac',  'Bill_Chudziak_-_Children_Of_No-one_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Black_Bloc_-_If_You_Want_Success_-_1.aac',  'Black_Bloc_-_If_You_Want_Success_-_2.aac',  'Black_Bloc_-_If_You_Want_Success_-_3.aac',  'Black_Bloc_-_If_You_Want_Success_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Celestial_Shore_-_Die_For_Us_-_1.aac',  'Celestial_Shore_-_Die_For_Us_-_2.aac',  'Celestial_Shore_-_Die_For_Us_-_3.aac',  'Celestial_Shore_-_Die_For_Us_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Chris_Durban_-_Celebrate_-_1.aac',  'Chris_Durban_-_Celebrate_-_2.aac',  'Chris_Durban_-_Celebrate_-_3.aac',  'Chris_Durban_-_Celebrate_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Clara_Berry_And_Wooldog_-_Air_Traffic_-_1.aac',  'Clara_Berry_And_Wooldog_-_Air_Traffic_-_2.aac',  'Clara_Berry_And_Wooldog_-_Air_Traffic_-_3.aac',  'Clara_Berry_And_Wooldog_-_Air_Traffic_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Clara_Berry_And_Wooldog_-_Stella_-_1.aac',  'Clara_Berry_And_Wooldog_-_Stella_-_2.aac',  'Clara_Berry_And_Wooldog_-_Stella_-_3.aac',  'Clara_Berry_And_Wooldog_-_Stella_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Clara_Berry_And_Wooldog_-_Waltz_For_My_Victims_-_1.aac',  'Clara_Berry_And_Wooldog_-_Waltz_For_My_Victims_-_2.aac',  'Clara_Berry_And_Wooldog_-_Waltz_For_My_Victims_-_3.aac',  'Clara_Berry_And_Wooldog_-_Waltz_For_My_Victims_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Cnoc_An_Tursa_-_Bannockburn_-_1.aac',  'Cnoc_An_Tursa_-_Bannockburn_-_2.aac',  'Cnoc_An_Tursa_-_Bannockburn_-_3.aac',  'Cnoc_An_Tursa_-_Bannockburn_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Creepoid_-_OldTree_-_1.aac',  'Creepoid_-_OldTree_-_2.aac',  'Creepoid_-_OldTree_-_3.aac',  'Creepoid_-_OldTree_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Dark_Ride_-_Burning_Bridges_-_1.aac',  'Dark_Ride_-_Burning_Bridges_-_2.aac',  'Dark_Ride_-_Burning_Bridges_-_3.aac',  'Dark_Ride_-_Burning_Bridges_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Dreamers_Of_The_Ghetto_-_Heavy_Love_-_1.aac',  'Dreamers_Of_The_Ghetto_-_Heavy_Love_-_2.aac',  'Dreamers_Of_The_Ghetto_-_Heavy_Love_-_3.aac',  'Dreamers_Of_The_Ghetto_-_Heavy_Love_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Drumtracks_-_Ghost_Bitch_-_1.aac',  'Drumtracks_-_Ghost_Bitch_-_2.aac',  'Drumtracks_-_Ghost_Bitch_-_3.aac',  'Drumtracks_-_Ghost_Bitch_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Faces_On_Film_-_Waiting_For_Ga_-_1.aac',  'Faces_On_Film_-_Waiting_For_Ga_-_2.aac',  'Faces_On_Film_-_Waiting_For_Ga_-_3.aac',  'Faces_On_Film_-_Waiting_For_Ga_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Fergessen_-_Back_From_The_Start_-_1.aac',  'Fergessen_-_Back_From_The_Start_-_2.aac',  'Fergessen_-_Back_From_The_Start_-_3.aac',  'Fergessen_-_Back_From_The_Start_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Fergessen_-_Nos_Palpitants_-_1.aac',  'Fergessen_-_Nos_Palpitants_-_2.aac',  'Fergessen_-_Nos_Palpitants_-_3.aac',  'Fergessen_-_Nos_Palpitants_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Fergessen_-_The_Wind_-_1.aac',  'Fergessen_-_The_Wind_-_2.aac',  'Fergessen_-_The_Wind_-_3.aac',  'Fergessen_-_The_Wind_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Flags_-_54_-_1.aac',  'Flags_-_54_-_2.aac',  'Flags_-_54_-_3.aac',  'Flags_-_54_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Giselle_-_Moss_-_1.aac',  'Giselle_-_Moss_-_2.aac',  'Giselle_-_Moss_-_3.aac',  'Giselle_-_Moss_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Grants_-_PunchDrunk_-_1.aac',  'Grants_-_PunchDrunk_-_2.aac',  'Grants_-_PunchDrunk_-_3.aac',  'Grants_-_PunchDrunk_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Helado_Negro_-_Mitad_Del_Mundo_-_1.aac',  'Helado_Negro_-_Mitad_Del_Mundo_-_2.aac',  'Helado_Negro_-_Mitad_Del_Mundo_-_3.aac',  'Helado_Negro_-_Mitad_Del_Mundo_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Hezekiah_Jones_-_Borrowed_Heart_-_1.aac',  'Hezekiah_Jones_-_Borrowed_Heart_-_2.aac',  'Hezekiah_Jones_-_Borrowed_Heart_-_3.aac',  'Hezekiah_Jones_-_Borrowed_Heart_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Hollow_Ground_-_Left_Blind_-_1.aac',  'Hollow_Ground_-_Left_Blind_-_2.aac',  'Hollow_Ground_-_Left_Blind_-_3.aac',  'Hollow_Ground_-_Left_Blind_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Hop_Along_-_Sister_Cities_-_1.aac',  'Hop_Along_-_Sister_Cities_-_2.aac',  'Hop_Along_-_Sister_Cities_-_3.aac',  'Hop_Along_-_Sister_Cities_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Invisible_Familiars_-_Disturbing_Wildlife_-_1.aac',  'Invisible_Familiars_-_Disturbing_Wildlife_-_2.aac',  'Invisible_Familiars_-_Disturbing_Wildlife_-_3.aac',  'Invisible_Familiars_-_Disturbing_Wildlife_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['James_May_-_All_Souls_Moon_-_1.aac',  'James_May_-_All_Souls_Moon_-_2.aac',  'James_May_-_All_Souls_Moon_-_3.aac',  'James_May_-_All_Souls_Moon_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['James_May_-_Dont_Let_Go_-_1.aac',  'James_May_-_Dont_Let_Go_-_2.aac',  'James_May_-_Dont_Let_Go_-_3.aac',  'James_May_-_Dont_Let_Go_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['James_May_-_If_You_Say_-_1.aac',  'James_May_-_If_You_Say_-_2.aac',  'James_May_-_If_You_Say_-_3.aac',  'James_May_-_If_You_Say_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['James_May_-_On_The_Line_-_1.aac',  'James_May_-_On_The_Line_-_2.aac',  'James_May_-_On_The_Line_-_3.aac',  'James_May_-_On_The_Line_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Jay_Menon_-_Through_My_Eyes_-_1.aac',  'Jay_Menon_-_Through_My_Eyes_-_2.aac',  'Jay_Menon_-_Through_My_Eyes_-_3.aac',  'Jay_Menon_-_Through_My_Eyes_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Johnny_Lokke_-_Promises_&_Lies_-_1.aac',  'Johnny_Lokke_-_Promises_&_Lies_-_2.aac',  'Johnny_Lokke_-_Promises_&_Lies_-_3.aac',  'Johnny_Lokke_-_Promises_&_Lies_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Johnny_Lokke_-_Whisper_To_A_Scream_-_1.aac',  'Johnny_Lokke_-_Whisper_To_A_Scream_-_2.aac',  'Johnny_Lokke_-_Whisper_To_A_Scream_-_3.aac',  'Johnny_Lokke_-_Whisper_To_A_Scream_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Jokers,_Jacks_&_Kings_-_Sea_Of_Leaves_-_1.aac',  'Jokers,_Jacks_&_Kings_-_Sea_Of_Leaves_-_2.aac',  'Jokers,_Jacks_&_Kings_-_Sea_Of_Leaves_-_3.aac',  'Jokers,_Jacks_&_Kings_-_Sea_Of_Leaves_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Leaf_-_Come_Around_-_1.aac',  'Leaf_-_Come_Around_-_2.aac',  'Leaf_-_Come_Around_-_3.aac',  'Leaf_-_Come_Around_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Leaf_-_Summerghost_-_1.aac',  'Leaf_-_Summerghost_-_2.aac',  'Leaf_-_Summerghost_-_3.aac',  'Leaf_-_Summerghost_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Leaf_-_Wicked_-_1.aac',  'Leaf_-_Wicked_-_2.aac',  'Leaf_-_Wicked_-_3.aac',  'Leaf_-_Wicked_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Lushlife_-_Toynbee_Suite_-_1.aac',  'Lushlife_-_Toynbee_Suite_-_2.aac',  'Lushlife_-_Toynbee_Suite_-_3.aac',  'Lushlife_-_Toynbee_Suite_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Matthew_Entwistle_-_Dont_You_Ever_-_1.aac',  'Matthew_Entwistle_-_Dont_You_Ever_-_2.aac',  'Matthew_Entwistle_-_Dont_You_Ever_-_3.aac',  'Matthew_Entwistle_-_Dont_You_Ever_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Meaxic_-_Take_A_Step_-_1.aac',  'Meaxic_-_Take_A_Step_-_2.aac',  'Meaxic_-_Take_A_Step_-_3.aac',  'Meaxic_-_Take_A_Step_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Meaxic_-_You_Listen_-_1.aac',  'Meaxic_-_You_Listen_-_2.aac',  'Meaxic_-_You_Listen_-_3.aac',  'Meaxic_-_You_Listen_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_80s_Rock_-_1.aac',  'Music_Delta_-_80s_Rock_-_2.aac',  'Music_Delta_-_80s_Rock_-_3.aac',  'Music_Delta_-_80s_Rock_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Beatles_-_1.aac',  'Music_Delta_-_Beatles_-_2.aac',  'Music_Delta_-_Beatles_-_3.aac',  'Music_Delta_-_Beatles_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Britpop_-_1.aac',  'Music_Delta_-_Britpop_-_2.aac',  'Music_Delta_-_Britpop_-_3.aac',  'Music_Delta_-_Britpop_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Country1_-_1.aac',  'Music_Delta_-_Country1_-_2.aac',  'Music_Delta_-_Country1_-_3.aac',  'Music_Delta_-_Country1_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Country2_-_1.aac',  'Music_Delta_-_Country2_-_2.aac',  'Music_Delta_-_Country2_-_3.aac',  'Music_Delta_-_Country2_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Disco_-_1.aac',  'Music_Delta_-_Disco_-_2.aac',  'Music_Delta_-_Disco_-_3.aac',  'Music_Delta_-_Disco_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Gospel_-_1.aac',  'Music_Delta_-_Gospel_-_2.aac',  'Music_Delta_-_Gospel_-_3.aac',  'Music_Delta_-_Gospel_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Grunge_-_1.aac',  'Music_Delta_-_Grunge_-_2.aac',  'Music_Delta_-_Grunge_-_3.aac',  'Music_Delta_-_Grunge_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Hendrix_-_1.aac',  'Music_Delta_-_Hendrix_-_2.aac',  'Music_Delta_-_Hendrix_-_3.aac',  'Music_Delta_-_Hendrix_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Punk_-_1.aac',  'Music_Delta_-_Punk_-_2.aac',  'Music_Delta_-_Punk_-_3.aac',  'Music_Delta_-_Punk_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Reggae_-_1.aac',  'Music_Delta_-_Reggae_-_2.aac',  'Music_Delta_-_Reggae_-_3.aac',  'Music_Delta_-_Reggae_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Rock_-_1.aac',  'Music_Delta_-_Rock_-_2.aac',  'Music_Delta_-_Rock_-_3.aac',  'Music_Delta_-_Rock_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Music_Delta_-_Rockabilly_-_1.aac',  'Music_Delta_-_Rockabilly_-_2.aac',  'Music_Delta_-_Rockabilly_-_3.aac',  'Music_Delta_-_Rockabilly_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Night_Panther_-_Fire_-_1.aac',  'Night_Panther_-_Fire_-_2.aac',  'Night_Panther_-_Fire_-_3.aac',  'Night_Panther_-_Fire_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['North_To_Alaska_-_All_The_Same_-_1.aac',  'North_To_Alaska_-_All_The_Same_-_2.aac',  'North_To_Alaska_-_All_The_Same_-_3.aac',  'North_To_Alaska_-_All_The_Same_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Patrick_Talbot_-_A_Reason_To_Leave_-_1.aac',  'Patrick_Talbot_-_A_Reason_To_Leave_-_2.aac',  'Patrick_Talbot_-_A_Reason_To_Leave_-_3.aac',  'Patrick_Talbot_-_A_Reason_To_Leave_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Patrick_Talbot_-_Set_Me_Free_-_1.aac',  'Patrick_Talbot_-_Set_Me_Free_-_2.aac',  'Patrick_Talbot_-_Set_Me_Free_-_3.aac',  'Patrick_Talbot_-_Set_Me_Free_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Phre_The_Eon_-_Everybodys_Falling_Apart_-_1.aac',  'Phre_The_Eon_-_Everybodys_Falling_Apart_-_2.aac',  'Phre_The_Eon_-_Everybodys_Falling_Apart_-_3.aac',  'Phre_The_Eon_-_Everybodys_Falling_Apart_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Port_St_Willow_-_Stay_Even_-_1.aac',  'Port_St_Willow_-_Stay_Even_-_2.aac',  'Port_St_Willow_-_Stay_Even_-_3.aac',  'Port_St_Willow_-_Stay_Even_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Remember_December_-_C_U_Next_Time_-_1.aac',  'Remember_December_-_C_U_Next_Time_-_2.aac',  'Remember_December_-_C_U_Next_Time_-_3.aac',  'Remember_December_-_C_U_Next_Time_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Secret_Mountains_-_High_Horse_-_1.aac',  'Secret_Mountains_-_High_Horse_-_2.aac',  'Secret_Mountains_-_High_Horse_-_3.aac',  'Secret_Mountains_-_High_Horse_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Skelpolu_-_Human_Mistakes_-_1.aac',  'Skelpolu_-_Human_Mistakes_-_2.aac',  'Skelpolu_-_Human_Mistakes_-_3.aac',  'Skelpolu_-_Human_Mistakes_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Skelpolu_-_Together_Alone_-_1.aac',  'Skelpolu_-_Together_Alone_-_2.aac',  'Skelpolu_-_Together_Alone_-_3.aac',  'Skelpolu_-_Together_Alone_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Snowmine_-_Curfews_-_1.aac',  'Snowmine_-_Curfews_-_2.aac',  'Snowmine_-_Curfews_-_3.aac',  'Snowmine_-_Curfews_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Spike_Mullings_-_Mikes_Sulking_-_1.aac',  'Spike_Mullings_-_Mikes_Sulking_-_2.aac',  'Spike_Mullings_-_Mikes_Sulking_-_3.aac',  'Spike_Mullings_-_Mikes_Sulking_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['St_Vitus_-_Word_Gets_Around_-_1.aac',  'St_Vitus_-_Word_Gets_Around_-_2.aac',  'St_Vitus_-_Word_Gets_Around_-_3.aac',  'St_Vitus_-_Word_Gets_Around_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Steven_Clark_-_Bounty_-_1.aac',  'Steven_Clark_-_Bounty_-_2.aac',  'Steven_Clark_-_Bounty_-_3.aac',  'Steven_Clark_-_Bounty_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Strand_Of_Oaks_-_Spacestation_-_1.aac',  'Strand_Of_Oaks_-_Spacestation_-_2.aac',  'Strand_Of_Oaks_-_Spacestation_-_3.aac',  'Strand_Of_Oaks_-_Spacestation_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Sweet_Lights_-_You_Let_Me_Down_-_1.aac',  'Sweet_Lights_-_You_Let_Me_Down_-_2.aac',  'Sweet_Lights_-_You_Let_Me_Down_-_3.aac',  'Sweet_Lights_-_You_Let_Me_Down_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Swinging_Steaks_-_Lost_My_Way_-_1.aac',  'Swinging_Steaks_-_Lost_My_Way_-_2.aac',  'Swinging_Steaks_-_Lost_My_Way_-_3.aac',  'Swinging_Steaks_-_Lost_My_Way_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['The_Districts_-_Vermont_-_1.aac',  'The_Districts_-_Vermont_-_2.aac',  'The_Districts_-_Vermont_-_3.aac',  'The_Districts_-_Vermont_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['The_Long_Wait_-_Back_Home_To_Blue_-_1.aac',  'The_Long_Wait_-_Back_Home_To_Blue_-_2.aac',  'The_Long_Wait_-_Back_Home_To_Blue_-_3.aac',  'The_Long_Wait_-_Back_Home_To_Blue_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['The_Scarlet_Brand_-_Les_Fleurs_Du_Mal_-_1.aac',  'The_Scarlet_Brand_-_Les_Fleurs_Du_Mal_-_2.aac',  'The_Scarlet_Brand_-_Les_Fleurs_Du_Mal_-_3.aac',  'The_Scarlet_Brand_-_Les_Fleurs_Du_Mal_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['The_So_So_Glos_-_Emergency_-_1.aac',  'The_So_So_Glos_-_Emergency_-_2.aac',  'The_So_So_Glos_-_Emergency_-_3.aac',  'The_So_So_Glos_-_Emergency_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['The_WrongUns_-_Rothko_-_1.aac',  'The_WrongUns_-_Rothko_-_2.aac',  'The_WrongUns_-_Rothko_-_3.aac',  'The_WrongUns_-_Rothko_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Tim_Taler_-_Stalker_-_1.aac',  'Tim_Taler_-_Stalker_-_2.aac',  'Tim_Taler_-_Stalker_-_3.aac',  'Tim_Taler_-_Stalker_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Titanium_-_Haunted_Age_-_1.aac',  'Titanium_-_Haunted_Age_-_2.aac',  'Titanium_-_Haunted_Age_-_3.aac',  'Titanium_-_Haunted_Age_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Traffic_Experiment_-_Once_More_(With_Feeling)_-_1.aac',  'Traffic_Experiment_-_Once_More_(With_Feeling)_-_2.aac',  'Traffic_Experiment_-_Once_More_(With_Feeling)_-_3.aac',  'Traffic_Experiment_-_Once_More_(With_Feeling)_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Traffic_Experiment_-_Sirens_-_1.aac',  'Traffic_Experiment_-_Sirens_-_2.aac',  'Traffic_Experiment_-_Sirens_-_3.aac',  'Traffic_Experiment_-_Sirens_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Triviul_-_Angelsaint_-_1.aac',  'Triviul_-_Angelsaint_-_2.aac',  'Triviul_-_Angelsaint_-_3.aac',  'Triviul_-_Angelsaint_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Triviul_-_Dorothy_-_1.aac',  'Triviul_-_Dorothy_-_2.aac',  'Triviul_-_Dorothy_-_3.aac',  'Triviul_-_Dorothy_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Voelund_-_Comfort_Lives_In_Belief_-_1.aac',  'Voelund_-_Comfort_Lives_In_Belief_-_2.aac',  'Voelund_-_Comfort_Lives_In_Belief_-_3.aac',  'Voelund_-_Comfort_Lives_In_Belief_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Wall_Of_Death_-_Femme_-_1.aac',  'Wall_Of_Death_-_Femme_-_2.aac',  'Wall_Of_Death_-_Femme_-_3.aac',  'Wall_Of_Death_-_Femme_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Young_Griffo_-_Blood_To_Bone_-_1.aac',  'Young_Griffo_-_Blood_To_Bone_-_2.aac',  'Young_Griffo_-_Blood_To_Bone_-_3.aac',  'Young_Griffo_-_Blood_To_Bone_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Young_Griffo_-_Facade_-_1.aac',  'Young_Griffo_-_Facade_-_2.aac',  'Young_Griffo_-_Facade_-_3.aac',  'Young_Griffo_-_Facade_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Young_Griffo_-_Pennies_-_1.aac',  'Young_Griffo_-_Pennies_-_2.aac',  'Young_Griffo_-_Pennies_-_3.aac',  'Young_Griffo_-_Pennies_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
+        - channels: ['ANiMAL_-_Rockshow_-_1.aac',  'ANiMAL_-_Rockshow_-_2.aac',  'ANiMAL_-_Rockshow_-_3.aac',  'ANiMAL_-_Rockshow_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['A_Classic_Education_-_NightOwl_-_1.aac',  'A_Classic_Education_-_NightOwl_-_2.aac',  'A_Classic_Education_-_NightOwl_-_3.aac',  'A_Classic_Education_-_NightOwl_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Actions_-_Devils_Words_-_1.aac',  'Actions_-_Devils_Words_-_2.aac',  'Actions_-_Devils_Words_-_3.aac',  'Actions_-_Devils_Words_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Actions_-_One_Minute_Smile_-_1.aac',  'Actions_-_One_Minute_Smile_-_2.aac',  'Actions_-_One_Minute_Smile_-_3.aac',  'Actions_-_One_Minute_Smile_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Actions_-_South_Of_The_Water_-_1.aac',  'Actions_-_South_Of_The_Water_-_2.aac',  'Actions_-_South_Of_The_Water_-_3.aac',  'Actions_-_South_Of_The_Water_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Aimee_Norwich_-_Child_-_1.aac',  'Aimee_Norwich_-_Child_-_2.aac',  'Aimee_Norwich_-_Child_-_3.aac',  'Aimee_Norwich_-_Child_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Alexander_Ross_-_Goodbye_Bolero_-_1.aac',  'Alexander_Ross_-_Goodbye_Bolero_-_2.aac',  'Alexander_Ross_-_Goodbye_Bolero_-_3.aac',  'Alexander_Ross_-_Goodbye_Bolero_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Alexander_Ross_-_Velvet_Curtain_-_1.aac',  'Alexander_Ross_-_Velvet_Curtain_-_2.aac',  'Alexander_Ross_-_Velvet_Curtain_-_3.aac',  'Alexander_Ross_-_Velvet_Curtain_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Angela_Thomas_Wade_-_Milk_Cow_Blues_-_1.aac',  'Angela_Thomas_Wade_-_Milk_Cow_Blues_-_2.aac',  'Angela_Thomas_Wade_-_Milk_Cow_Blues_-_3.aac',  'Angela_Thomas_Wade_-_Milk_Cow_Blues_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Atlantis_Bound_-_It_Was_My_Fault_For_Waiting_-_1.aac',  'Atlantis_Bound_-_It_Was_My_Fault_For_Waiting_-_2.aac',  'Atlantis_Bound_-_It_Was_My_Fault_For_Waiting_-_3.aac',  'Atlantis_Bound_-_It_Was_My_Fault_For_Waiting_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Auctioneer_-_Our_Future_Faces_-_1.aac',  'Auctioneer_-_Our_Future_Faces_-_2.aac',  'Auctioneer_-_Our_Future_Faces_-_3.aac',  'Auctioneer_-_Our_Future_Faces_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['AvaLuna_-_Waterduct_-_1.aac',  'AvaLuna_-_Waterduct_-_2.aac',  'AvaLuna_-_Waterduct_-_3.aac',  'AvaLuna_-_Waterduct_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['BigTroubles_-_Phantom_-_1.aac',  'BigTroubles_-_Phantom_-_2.aac',  'BigTroubles_-_Phantom_-_3.aac',  'BigTroubles_-_Phantom_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Bill_Chudziak_-_Children_Of_No-one_-_1.aac',  'Bill_Chudziak_-_Children_Of_No-one_-_2.aac',  'Bill_Chudziak_-_Children_Of_No-one_-_3.aac',  'Bill_Chudziak_-_Children_Of_No-one_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Black_Bloc_-_If_You_Want_Success_-_1.aac',  'Black_Bloc_-_If_You_Want_Success_-_2.aac',  'Black_Bloc_-_If_You_Want_Success_-_3.aac',  'Black_Bloc_-_If_You_Want_Success_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Celestial_Shore_-_Die_For_Us_-_1.aac',  'Celestial_Shore_-_Die_For_Us_-_2.aac',  'Celestial_Shore_-_Die_For_Us_-_3.aac',  'Celestial_Shore_-_Die_For_Us_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Chris_Durban_-_Celebrate_-_1.aac',  'Chris_Durban_-_Celebrate_-_2.aac',  'Chris_Durban_-_Celebrate_-_3.aac',  'Chris_Durban_-_Celebrate_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Clara_Berry_And_Wooldog_-_Air_Traffic_-_1.aac',  'Clara_Berry_And_Wooldog_-_Air_Traffic_-_2.aac',  'Clara_Berry_And_Wooldog_-_Air_Traffic_-_3.aac',  'Clara_Berry_And_Wooldog_-_Air_Traffic_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Clara_Berry_And_Wooldog_-_Stella_-_1.aac',  'Clara_Berry_And_Wooldog_-_Stella_-_2.aac',  'Clara_Berry_And_Wooldog_-_Stella_-_3.aac',  'Clara_Berry_And_Wooldog_-_Stella_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Clara_Berry_And_Wooldog_-_Waltz_For_My_Victims_-_1.aac',  'Clara_Berry_And_Wooldog_-_Waltz_For_My_Victims_-_2.aac',  'Clara_Berry_And_Wooldog_-_Waltz_For_My_Victims_-_3.aac',  'Clara_Berry_And_Wooldog_-_Waltz_For_My_Victims_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Cnoc_An_Tursa_-_Bannockburn_-_1.aac',  'Cnoc_An_Tursa_-_Bannockburn_-_2.aac',  'Cnoc_An_Tursa_-_Bannockburn_-_3.aac',  'Cnoc_An_Tursa_-_Bannockburn_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Creepoid_-_OldTree_-_1.aac',  'Creepoid_-_OldTree_-_2.aac',  'Creepoid_-_OldTree_-_3.aac',  'Creepoid_-_OldTree_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Dark_Ride_-_Burning_Bridges_-_1.aac',  'Dark_Ride_-_Burning_Bridges_-_2.aac',  'Dark_Ride_-_Burning_Bridges_-_3.aac',  'Dark_Ride_-_Burning_Bridges_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Dreamers_Of_The_Ghetto_-_Heavy_Love_-_1.aac',  'Dreamers_Of_The_Ghetto_-_Heavy_Love_-_2.aac',  'Dreamers_Of_The_Ghetto_-_Heavy_Love_-_3.aac',  'Dreamers_Of_The_Ghetto_-_Heavy_Love_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Drumtracks_-_Ghost_Bitch_-_1.aac',  'Drumtracks_-_Ghost_Bitch_-_2.aac',  'Drumtracks_-_Ghost_Bitch_-_3.aac',  'Drumtracks_-_Ghost_Bitch_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Faces_On_Film_-_Waiting_For_Ga_-_1.aac',  'Faces_On_Film_-_Waiting_For_Ga_-_2.aac',  'Faces_On_Film_-_Waiting_For_Ga_-_3.aac',  'Faces_On_Film_-_Waiting_For_Ga_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Fergessen_-_Back_From_The_Start_-_1.aac',  'Fergessen_-_Back_From_The_Start_-_2.aac',  'Fergessen_-_Back_From_The_Start_-_3.aac',  'Fergessen_-_Back_From_The_Start_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Fergessen_-_Nos_Palpitants_-_1.aac',  'Fergessen_-_Nos_Palpitants_-_2.aac',  'Fergessen_-_Nos_Palpitants_-_3.aac',  'Fergessen_-_Nos_Palpitants_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Fergessen_-_The_Wind_-_1.aac',  'Fergessen_-_The_Wind_-_2.aac',  'Fergessen_-_The_Wind_-_3.aac',  'Fergessen_-_The_Wind_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Flags_-_54_-_1.aac',  'Flags_-_54_-_2.aac',  'Flags_-_54_-_3.aac',  'Flags_-_54_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Giselle_-_Moss_-_1.aac',  'Giselle_-_Moss_-_2.aac',  'Giselle_-_Moss_-_3.aac',  'Giselle_-_Moss_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Grants_-_PunchDrunk_-_1.aac',  'Grants_-_PunchDrunk_-_2.aac',  'Grants_-_PunchDrunk_-_3.aac',  'Grants_-_PunchDrunk_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Helado_Negro_-_Mitad_Del_Mundo_-_1.aac',  'Helado_Negro_-_Mitad_Del_Mundo_-_2.aac',  'Helado_Negro_-_Mitad_Del_Mundo_-_3.aac',  'Helado_Negro_-_Mitad_Del_Mundo_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Hezekiah_Jones_-_Borrowed_Heart_-_1.aac',  'Hezekiah_Jones_-_Borrowed_Heart_-_2.aac',  'Hezekiah_Jones_-_Borrowed_Heart_-_3.aac',  'Hezekiah_Jones_-_Borrowed_Heart_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Hollow_Ground_-_Left_Blind_-_1.aac',  'Hollow_Ground_-_Left_Blind_-_2.aac',  'Hollow_Ground_-_Left_Blind_-_3.aac',  'Hollow_Ground_-_Left_Blind_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Hop_Along_-_Sister_Cities_-_1.aac',  'Hop_Along_-_Sister_Cities_-_2.aac',  'Hop_Along_-_Sister_Cities_-_3.aac',  'Hop_Along_-_Sister_Cities_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Invisible_Familiars_-_Disturbing_Wildlife_-_1.aac',  'Invisible_Familiars_-_Disturbing_Wildlife_-_2.aac',  'Invisible_Familiars_-_Disturbing_Wildlife_-_3.aac',  'Invisible_Familiars_-_Disturbing_Wildlife_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['James_May_-_All_Souls_Moon_-_1.aac',  'James_May_-_All_Souls_Moon_-_2.aac',  'James_May_-_All_Souls_Moon_-_3.aac',  'James_May_-_All_Souls_Moon_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['James_May_-_Dont_Let_Go_-_1.aac',  'James_May_-_Dont_Let_Go_-_2.aac',  'James_May_-_Dont_Let_Go_-_3.aac',  'James_May_-_Dont_Let_Go_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['James_May_-_If_You_Say_-_1.aac',  'James_May_-_If_You_Say_-_2.aac',  'James_May_-_If_You_Say_-_3.aac',  'James_May_-_If_You_Say_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['James_May_-_On_The_Line_-_1.aac',  'James_May_-_On_The_Line_-_2.aac',  'James_May_-_On_The_Line_-_3.aac',  'James_May_-_On_The_Line_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Jay_Menon_-_Through_My_Eyes_-_1.aac',  'Jay_Menon_-_Through_My_Eyes_-_2.aac',  'Jay_Menon_-_Through_My_Eyes_-_3.aac',  'Jay_Menon_-_Through_My_Eyes_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Johnny_Lokke_-_Promises_&_Lies_-_1.aac',  'Johnny_Lokke_-_Promises_&_Lies_-_2.aac',  'Johnny_Lokke_-_Promises_&_Lies_-_3.aac',  'Johnny_Lokke_-_Promises_&_Lies_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Johnny_Lokke_-_Whisper_To_A_Scream_-_1.aac',  'Johnny_Lokke_-_Whisper_To_A_Scream_-_2.aac',  'Johnny_Lokke_-_Whisper_To_A_Scream_-_3.aac',  'Johnny_Lokke_-_Whisper_To_A_Scream_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Jokers,_Jacks_&_Kings_-_Sea_Of_Leaves_-_1.aac',  'Jokers,_Jacks_&_Kings_-_Sea_Of_Leaves_-_2.aac',  'Jokers,_Jacks_&_Kings_-_Sea_Of_Leaves_-_3.aac',  'Jokers,_Jacks_&_Kings_-_Sea_Of_Leaves_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Leaf_-_Come_Around_-_1.aac',  'Leaf_-_Come_Around_-_2.aac',  'Leaf_-_Come_Around_-_3.aac',  'Leaf_-_Come_Around_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Leaf_-_Summerghost_-_1.aac',  'Leaf_-_Summerghost_-_2.aac',  'Leaf_-_Summerghost_-_3.aac',  'Leaf_-_Summerghost_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Leaf_-_Wicked_-_1.aac',  'Leaf_-_Wicked_-_2.aac',  'Leaf_-_Wicked_-_3.aac',  'Leaf_-_Wicked_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Lushlife_-_Toynbee_Suite_-_1.aac',  'Lushlife_-_Toynbee_Suite_-_2.aac',  'Lushlife_-_Toynbee_Suite_-_3.aac',  'Lushlife_-_Toynbee_Suite_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Matthew_Entwistle_-_Dont_You_Ever_-_1.aac',  'Matthew_Entwistle_-_Dont_You_Ever_-_2.aac',  'Matthew_Entwistle_-_Dont_You_Ever_-_3.aac',  'Matthew_Entwistle_-_Dont_You_Ever_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Meaxic_-_Take_A_Step_-_1.aac',  'Meaxic_-_Take_A_Step_-_2.aac',  'Meaxic_-_Take_A_Step_-_3.aac',  'Meaxic_-_Take_A_Step_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Meaxic_-_You_Listen_-_1.aac',  'Meaxic_-_You_Listen_-_2.aac',  'Meaxic_-_You_Listen_-_3.aac',  'Meaxic_-_You_Listen_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_80s_Rock_-_1.aac',  'Music_Delta_-_80s_Rock_-_2.aac',  'Music_Delta_-_80s_Rock_-_3.aac',  'Music_Delta_-_80s_Rock_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Beatles_-_1.aac',  'Music_Delta_-_Beatles_-_2.aac',  'Music_Delta_-_Beatles_-_3.aac',  'Music_Delta_-_Beatles_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Britpop_-_1.aac',  'Music_Delta_-_Britpop_-_2.aac',  'Music_Delta_-_Britpop_-_3.aac',  'Music_Delta_-_Britpop_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Country1_-_1.aac',  'Music_Delta_-_Country1_-_2.aac',  'Music_Delta_-_Country1_-_3.aac',  'Music_Delta_-_Country1_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Country2_-_1.aac',  'Music_Delta_-_Country2_-_2.aac',  'Music_Delta_-_Country2_-_3.aac',  'Music_Delta_-_Country2_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Disco_-_1.aac',  'Music_Delta_-_Disco_-_2.aac',  'Music_Delta_-_Disco_-_3.aac',  'Music_Delta_-_Disco_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Gospel_-_1.aac',  'Music_Delta_-_Gospel_-_2.aac',  'Music_Delta_-_Gospel_-_3.aac',  'Music_Delta_-_Gospel_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Grunge_-_1.aac',  'Music_Delta_-_Grunge_-_2.aac',  'Music_Delta_-_Grunge_-_3.aac',  'Music_Delta_-_Grunge_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Hendrix_-_1.aac',  'Music_Delta_-_Hendrix_-_2.aac',  'Music_Delta_-_Hendrix_-_3.aac',  'Music_Delta_-_Hendrix_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Punk_-_1.aac',  'Music_Delta_-_Punk_-_2.aac',  'Music_Delta_-_Punk_-_3.aac',  'Music_Delta_-_Punk_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Reggae_-_1.aac',  'Music_Delta_-_Reggae_-_2.aac',  'Music_Delta_-_Reggae_-_3.aac',  'Music_Delta_-_Reggae_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Rock_-_1.aac',  'Music_Delta_-_Rock_-_2.aac',  'Music_Delta_-_Rock_-_3.aac',  'Music_Delta_-_Rock_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Music_Delta_-_Rockabilly_-_1.aac',  'Music_Delta_-_Rockabilly_-_2.aac',  'Music_Delta_-_Rockabilly_-_3.aac',  'Music_Delta_-_Rockabilly_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Night_Panther_-_Fire_-_1.aac',  'Night_Panther_-_Fire_-_2.aac',  'Night_Panther_-_Fire_-_3.aac',  'Night_Panther_-_Fire_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['North_To_Alaska_-_All_The_Same_-_1.aac',  'North_To_Alaska_-_All_The_Same_-_2.aac',  'North_To_Alaska_-_All_The_Same_-_3.aac',  'North_To_Alaska_-_All_The_Same_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Patrick_Talbot_-_A_Reason_To_Leave_-_1.aac',  'Patrick_Talbot_-_A_Reason_To_Leave_-_2.aac',  'Patrick_Talbot_-_A_Reason_To_Leave_-_3.aac',  'Patrick_Talbot_-_A_Reason_To_Leave_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Patrick_Talbot_-_Set_Me_Free_-_1.aac',  'Patrick_Talbot_-_Set_Me_Free_-_2.aac',  'Patrick_Talbot_-_Set_Me_Free_-_3.aac',  'Patrick_Talbot_-_Set_Me_Free_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Phre_The_Eon_-_Everybodys_Falling_Apart_-_1.aac',  'Phre_The_Eon_-_Everybodys_Falling_Apart_-_2.aac',  'Phre_The_Eon_-_Everybodys_Falling_Apart_-_3.aac',  'Phre_The_Eon_-_Everybodys_Falling_Apart_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Port_St_Willow_-_Stay_Even_-_1.aac',  'Port_St_Willow_-_Stay_Even_-_2.aac',  'Port_St_Willow_-_Stay_Even_-_3.aac',  'Port_St_Willow_-_Stay_Even_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Remember_December_-_C_U_Next_Time_-_1.aac',  'Remember_December_-_C_U_Next_Time_-_2.aac',  'Remember_December_-_C_U_Next_Time_-_3.aac',  'Remember_December_-_C_U_Next_Time_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Secret_Mountains_-_High_Horse_-_1.aac',  'Secret_Mountains_-_High_Horse_-_2.aac',  'Secret_Mountains_-_High_Horse_-_3.aac',  'Secret_Mountains_-_High_Horse_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Skelpolu_-_Human_Mistakes_-_1.aac',  'Skelpolu_-_Human_Mistakes_-_2.aac',  'Skelpolu_-_Human_Mistakes_-_3.aac',  'Skelpolu_-_Human_Mistakes_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Skelpolu_-_Together_Alone_-_1.aac',  'Skelpolu_-_Together_Alone_-_2.aac',  'Skelpolu_-_Together_Alone_-_3.aac',  'Skelpolu_-_Together_Alone_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Snowmine_-_Curfews_-_1.aac',  'Snowmine_-_Curfews_-_2.aac',  'Snowmine_-_Curfews_-_3.aac',  'Snowmine_-_Curfews_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Spike_Mullings_-_Mikes_Sulking_-_1.aac',  'Spike_Mullings_-_Mikes_Sulking_-_2.aac',  'Spike_Mullings_-_Mikes_Sulking_-_3.aac',  'Spike_Mullings_-_Mikes_Sulking_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['St_Vitus_-_Word_Gets_Around_-_1.aac',  'St_Vitus_-_Word_Gets_Around_-_2.aac',  'St_Vitus_-_Word_Gets_Around_-_3.aac',  'St_Vitus_-_Word_Gets_Around_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Steven_Clark_-_Bounty_-_1.aac',  'Steven_Clark_-_Bounty_-_2.aac',  'Steven_Clark_-_Bounty_-_3.aac',  'Steven_Clark_-_Bounty_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Strand_Of_Oaks_-_Spacestation_-_1.aac',  'Strand_Of_Oaks_-_Spacestation_-_2.aac',  'Strand_Of_Oaks_-_Spacestation_-_3.aac',  'Strand_Of_Oaks_-_Spacestation_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Sweet_Lights_-_You_Let_Me_Down_-_1.aac',  'Sweet_Lights_-_You_Let_Me_Down_-_2.aac',  'Sweet_Lights_-_You_Let_Me_Down_-_3.aac',  'Sweet_Lights_-_You_Let_Me_Down_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Swinging_Steaks_-_Lost_My_Way_-_1.aac',  'Swinging_Steaks_-_Lost_My_Way_-_2.aac',  'Swinging_Steaks_-_Lost_My_Way_-_3.aac',  'Swinging_Steaks_-_Lost_My_Way_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['The_Districts_-_Vermont_-_1.aac',  'The_Districts_-_Vermont_-_2.aac',  'The_Districts_-_Vermont_-_3.aac',  'The_Districts_-_Vermont_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['The_Long_Wait_-_Back_Home_To_Blue_-_1.aac',  'The_Long_Wait_-_Back_Home_To_Blue_-_2.aac',  'The_Long_Wait_-_Back_Home_To_Blue_-_3.aac',  'The_Long_Wait_-_Back_Home_To_Blue_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['The_Scarlet_Brand_-_Les_Fleurs_Du_Mal_-_1.aac',  'The_Scarlet_Brand_-_Les_Fleurs_Du_Mal_-_2.aac',  'The_Scarlet_Brand_-_Les_Fleurs_Du_Mal_-_3.aac',  'The_Scarlet_Brand_-_Les_Fleurs_Du_Mal_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['The_So_So_Glos_-_Emergency_-_1.aac',  'The_So_So_Glos_-_Emergency_-_2.aac',  'The_So_So_Glos_-_Emergency_-_3.aac',  'The_So_So_Glos_-_Emergency_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['The_WrongUns_-_Rothko_-_1.aac',  'The_WrongUns_-_Rothko_-_2.aac',  'The_WrongUns_-_Rothko_-_3.aac',  'The_WrongUns_-_Rothko_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Tim_Taler_-_Stalker_-_1.aac',  'Tim_Taler_-_Stalker_-_2.aac',  'Tim_Taler_-_Stalker_-_3.aac',  'Tim_Taler_-_Stalker_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Titanium_-_Haunted_Age_-_1.aac',  'Titanium_-_Haunted_Age_-_2.aac',  'Titanium_-_Haunted_Age_-_3.aac',  'Titanium_-_Haunted_Age_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Traffic_Experiment_-_Once_More_(With_Feeling)_-_1.aac',  'Traffic_Experiment_-_Once_More_(With_Feeling)_-_2.aac',  'Traffic_Experiment_-_Once_More_(With_Feeling)_-_3.aac',  'Traffic_Experiment_-_Once_More_(With_Feeling)_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Traffic_Experiment_-_Sirens_-_1.aac',  'Traffic_Experiment_-_Sirens_-_2.aac',  'Traffic_Experiment_-_Sirens_-_3.aac',  'Traffic_Experiment_-_Sirens_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Triviul_-_Angelsaint_-_1.aac',  'Triviul_-_Angelsaint_-_2.aac',  'Triviul_-_Angelsaint_-_3.aac',  'Triviul_-_Angelsaint_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Triviul_-_Dorothy_-_1.aac',  'Triviul_-_Dorothy_-_2.aac',  'Triviul_-_Dorothy_-_3.aac',  'Triviul_-_Dorothy_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Voelund_-_Comfort_Lives_In_Belief_-_1.aac',  'Voelund_-_Comfort_Lives_In_Belief_-_2.aac',  'Voelund_-_Comfort_Lives_In_Belief_-_3.aac',  'Voelund_-_Comfort_Lives_In_Belief_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Wall_Of_Death_-_Femme_-_1.aac',  'Wall_Of_Death_-_Femme_-_2.aac',  'Wall_Of_Death_-_Femme_-_3.aac',  'Wall_Of_Death_-_Femme_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Young_Griffo_-_Blood_To_Bone_-_1.aac',  'Young_Griffo_-_Blood_To_Bone_-_2.aac',  'Young_Griffo_-_Blood_To_Bone_-_3.aac',  'Young_Griffo_-_Blood_To_Bone_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Young_Griffo_-_Facade_-_1.aac',  'Young_Griffo_-_Facade_-_2.aac',  'Young_Griffo_-_Facade_-_3.aac',  'Young_Griffo_-_Facade_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Young_Griffo_-_Pennies_-_1.aac',  'Young_Griffo_-_Pennies_-_2.aac',  'Young_Griffo_-_Pennies_-_3.aac',  'Young_Griffo_-_Pennies_-_4.aac']
+          target_dtype: float16
+          fs: 44100
 
   karaoke_test:
     class: signalai.datasets.file_loader.FileLoader
@@ -317,15 +317,15 @@ datasets:
         - channels: ['AM_Contra_-_Heart_Peripheral_-_1.aac', 'AM_Contra_-_Heart_Peripheral_-_2.aac', 'AM_Contra_-_Heart_Peripheral_-_3.aac', 'AM_Contra_-_Heart_Peripheral_-_4.aac']
           target_dtype: float16
           fs: 44100
-#        - channels: ['Al_James_-_Schoolboy_Facination_-_1.aac', 'Al_James_-_Schoolboy_Facination_-_2.aac', 'Al_James_-_Schoolboy_Facination_-_3.aac', 'Al_James_-_Schoolboy_Facination_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Angels_In_Amplifiers_-_Im_Alright_-_1.aac', 'Angels_In_Amplifiers_-_Im_Alright_-_2.aac', 'Angels_In_Amplifiers_-_Im_Alright_-_3.aac', 'Angels_In_Amplifiers_-_Im_Alright_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
-#        - channels: ['Arise_-_Run_Run_Run_-_1.aac', 'Arise_-_Run_Run_Run_-_2.aac', 'Arise_-_Run_Run_Run_-_3.aac', 'Arise_-_Run_Run_Run_-_4.aac']
-#          target_dtype: float16
-#          fs: 44100
+        - channels: ['Al_James_-_Schoolboy_Facination_-_1.aac', 'Al_James_-_Schoolboy_Facination_-_2.aac', 'Al_James_-_Schoolboy_Facination_-_3.aac', 'Al_James_-_Schoolboy_Facination_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Angels_In_Amplifiers_-_Im_Alright_-_1.aac', 'Angels_In_Amplifiers_-_Im_Alright_-_2.aac', 'Angels_In_Amplifiers_-_Im_Alright_-_3.aac', 'Angels_In_Amplifiers_-_Im_Alright_-_4.aac']
+          target_dtype: float16
+          fs: 44100
+        - channels: ['Arise_-_Run_Run_Run_-_1.aac', 'Arise_-_Run_Run_Run_-_2.aac', 'Arise_-_Run_Run_Run_-_3.aac', 'Arise_-_Run_Run_Run_-_4.aac']
+          target_dtype: float16
+          fs: 44100
 #        - channels: ['BKS_-_Bulldozer_-_1.aac', 'BKS_-_Bulldozer_-_2.aac', 'BKS_-_Bulldozer_-_3.aac', 'BKS_-_Bulldozer_-_4.aac']
 #          target_dtype: float16
 #          fs: 44100

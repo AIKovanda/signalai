@@ -239,7 +239,7 @@ class STFT(Transformer):
     takes = 'time_series'
 
     @by_channel
-    def process_numpy(self, x: np.ndarray, split_complex=False) -> np.ndarray:
+    def process_numpy(self, x: np.ndarray, split_complex=True) -> np.ndarray:
         center = self.config.get('center', False)
         n_fft = self.config.get('n_fft', 256)
         hop_length = self.config.get('hop_length')
@@ -273,13 +273,25 @@ class STFT(Transformer):
 class ISTFT(Transformer):
     takes = 'time_series'
 
-    def process_torch(self, x):
+    def process_torch(self, x, phase=None):
         import torch
         device = x.device
-        return torch.from_numpy(self.process_numpy(x.detach().cpu().numpy())).to(device)
+        return torch.from_numpy(self.process_numpy(x.detach().cpu().numpy(), phase)).to(device)
+
+    def to_complex(self, x: np.ndarray, phase=None) -> np.ndarray:
+        if self.config.get('phase_as_meta', True):
+            assert phase is not None, "Phase must be included in the input information"
+            Zxx = x * np.exp(1j * phase)
+        else:
+            Zxx = x[0::2] + 1j * x[1::2]
+
+        return Zxx
+
+    def process_numpy(self, x: np.ndarray, phase=None) -> np.ndarray:
+        return self._process_numpy(self.to_complex(x, phase))
 
     @by_channel
-    def process_numpy(self, x: np.ndarray) -> np.ndarray:
+    def _process_numpy(self, x: np.ndarray) -> np.ndarray:
         center = self.config.get('center', False)
         hop_length = self.config.get('hop_length')
         return np.expand_dims(librosa.istft(x[0], hop_length=hop_length, center=center), 0)
@@ -290,13 +302,7 @@ class ISTFT(Transformer):
         phase = meta.pop('phase', None)
         data_arr = x.data_arr
 
-        if self.config.get('phase_as_meta', True):
-            assert phase is not None, "Phase must be included in the input information"
-            Zxx = data_arr * np.exp(1j * phase)
-        else:
-            Zxx = data_arr[0::2] + 1j * data_arr[1::2]
-
-        s_data_arr = self.process_numpy(Zxx)
+        s_data_arr = self.process_numpy(self.to_complex(data_arr, phase))
         new_time_map = np.zeros([*x.time_map.shape[:-1], x.time_map.shape[-1]+n_fft])
         new_time_map[..., int(n_fft/2): int(n_fft/2) + x.time_map.shape[-1]] = x.time_map
         return Signal(

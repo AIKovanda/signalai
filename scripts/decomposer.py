@@ -47,7 +47,7 @@ def run(config_path, architecture_name, model_name):
         channel_results = []
         for j in range(song_signal.channels_count):
             channel_results.append(np.concatenate(
-                [signal_model.predict_ts(holder.getitem(i).take_channels([j]))[0][0].detach().cpu().numpy()
+                [signal_model.predict_ts(holder.getitem(i).take_channels([j]))[0]
                  for i in range(len(holder))], axis=1))
 
         for j, (instrument_channels) in enumerate(zip(*channel_results)):

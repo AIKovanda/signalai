@@ -178,7 +178,6 @@ class Transformer(TimeSeriesGen):
 
             if np.random.rand() > transform_chance:
                 return input_
-
             return self._process(input_)
         elif self.takes == 'list':
             if len(self.input_ts_gen_args) > 0:
@@ -217,7 +216,14 @@ class Transformer(TimeSeriesGen):
 
     def _getitem(self, item: int) -> TimeSeries:
         if self.takes == 'time_series':
-            return self._process(self.input_ts_gen_args[0].getitem(item))
+            input_ = self.input_ts_gen_args[0].getitem(item)
+            transform_chance = self.config.get('transform_chance', 1.)
+            skip_transform = np.random.rand() > transform_chance and self.transform_taken_length(
+                self.taken_length) == self.taken_length
+
+            if skip_transform:
+                return input_
+            return self._process(input_)
         elif self.takes == 'list':
             return self._process([tsg.getitem(item) for tsg in self.input_ts_gen_args])
         elif self.takes == 'dict':

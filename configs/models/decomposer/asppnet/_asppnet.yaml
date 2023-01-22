@@ -13,7 +13,7 @@ model:
 
     device: cuda
     training_params:
-      epochs: 1
+      epochs: 15
       loss_eval: "self.criterion(y_hat[0], y_batch[0]) * 0.8 + self.criterion(y_hat[1], y_batch[0]) * 0.1 + self.criterion(y_hat[2], y_batch[0]) * 0.1"
       dataloader_kwargs:
         batch_size: 3
@@ -21,8 +21,8 @@ model:
         num_workers: 12
 
       save_epoch_step: 1
-      early_stopping_regression: 1500
-      early_stopping_average_losses: 300
+#      early_stopping_regression: 1500
+#      early_stopping_average_losses: 300
       set:
         0:
           criterion:

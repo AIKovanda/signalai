@@ -17,13 +17,7 @@ generators:
     class: signalai.audio_transformers.Gain
     kwargs:
       transform_chance: 0.2
-      gain_db: [-15., 15.]
-
-  chorus:
-    class: signalai.audio_transformers.Chorus
-    kwargs:
-      transform_chance: 0.2
-      centre_delay_ms: [ 6.5, 8.5 ]
+      gain_db: [-5., 5.]
 
   data_arr:
     class: signalai.time_series_gen.LambdaTransformer
@@ -57,11 +51,10 @@ generators:
 
 data_graph_train:
   =Z:
-    chorus:
+    reverb:
       gain:
-        reverb:
-          pruner:
-            karaoke_train
+        pruner:
+          karaoke_train
 
   =X:
     data_arr:
@@ -82,11 +75,10 @@ train_gen:
 
 data_graph_valid:
   =Z:
-    chorus:
+    reverb:
       gain:
-        reverb:
-          pruner:
-            karaoke_test
+        pruner:
+          karaoke_test
 
   =X:
     data_arr:
@@ -107,11 +99,10 @@ valid_gen:
 
 data_graph_test:
   =Z:
-    chorus:
+    reverb:
       gain:
-        reverb:
-          pruner:
-            karaoke_test
+        pruner:
+          karaoke_test
 
   =X:
     data_arr:

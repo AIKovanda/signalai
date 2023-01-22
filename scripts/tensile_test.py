@@ -45,7 +45,7 @@ def run(config_path):
         print(f"Evaluating signal by model {model_id}...")
         signal_model.load(model_id=model_id)
         
-        np_result = [signal_model.predict_ts(holder.getitem(i))[0].detach().cpu().numpy() for i in trange(len(holder))]
+        np_result = [signal_model.predict_ts(holder.getitem(i)) for i in trange(len(holder))]
         np_result = np.concatenate(np_result, axis=-1)
 
         print('Shape of output tensor:', np_result.shape)

@@ -339,7 +339,7 @@ class Signal(TimeSeries):
             y = np.int16(self.data_arr.T)
         if fs is None:
             fs = self.fs
-        song = pydub.AudioSegment(y.tobytes(), frame_rate=fs, sample_width=2, channels=self.data_arr.ndim)
+        song = pydub.AudioSegment(y.tobytes(), frame_rate=fs, sample_width=2, channels=self.data_arr.shape[0])
         song.export(file, format="mp3", bitrate="320k")
 
 

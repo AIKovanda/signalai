@@ -39,7 +39,7 @@ def run(config_path):
     print('Shape of input signal:', signal.data_arr.shape)
     print("Signal loaded successfully.")
 
-    np_result = [signal_model.predict_ts(holder.getitem(i))[0][0].detach().cpu().numpy() for i in trange(len(holder))]
+    np_result = [signal_model.predict_ts(holder.getitem(i))[0] for i in trange(len(holder))]
     np_result = np.concatenate(np_result, axis=1)
 
     print('Shape of output tensor:', np_result.shape)
@@ -49,14 +49,14 @@ def run(config_path):
     output_dir.mkdir(exist_ok=True)
 
     cracks_list = ['crack 0', 'crack 1']
-    plot_binary_map(np_result > .5, all_object_labels=cracks_list, savefigs=[output_dir / f'binary_map_full.pdf'],
+    plot_binary_map(np_result > .5, all_object_labels=cracks_list, savefigs=[output_dir / f'{config_path.stem}-binary_map_full.pdf'],
                     figsize=(14, 1), xshift=.7, yshift=-0.5, x_max=X_MAX, show=False, object_name='Crack')
 
     print('Plotting graphs...')
     plt.figure(figsize=(28, 9))
     sns.lineplot(x=range(np_result.shape[1]), y=np_result[0, :])
     sns.lineplot(x=range(np_result.shape[1]), y=np_result[1, :])
-    plt.savefig(str(output_dir / f'bursts.png'), bbox_inches='tight', pad_inches=0.)
+    plt.savefig(str(output_dir / f'{config_path.stem}-bursts.png'), bbox_inches='tight', pad_inches=0.)
 
 
 if __name__ == '__main__':
